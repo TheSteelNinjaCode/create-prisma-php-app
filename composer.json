@@ -1,0 +1,23 @@
+{
+  "name": "tsnc/create-prisma-php-app",
+  "license": "MIT",
+  "description": "Prisma-PHP: A Revolutionary Library Bridging PHP with Prisma ORM",
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/app/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Jefferson Abraham Omier",
+      "email": "thesteelninjacode@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^7.4|^8.0",
+    "vlucas/phpdotenv": "^5.6@dev",
+    "ramsey/uuid": "5.x-dev",
+    "hidehalo/nanoid-php": "1.x-dev",
+    "firebase/php-jwt": "dev-main"
+  }
+}
