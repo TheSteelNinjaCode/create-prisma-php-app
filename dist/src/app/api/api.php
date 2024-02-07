@@ -4,7 +4,7 @@ namespace App\Api;
 
 require_once __DIR__ . "/../../../bootstrap.php";
 
-use App\Classes\Prisma\Prisma;
+use Lib\Prisma\Classes\Prisma;
 
 header('Content-Type: application/json');
 
@@ -31,7 +31,7 @@ if (!empty($paramsJson)) {
 }
 
 // Construct the full class name and check for class and property existence
-$fullClassName = "App\\Classes\\Prisma\\" . $className;
+$fullClassName = "Lib\\Prisma\\Classes\\" . $className;
 if (!class_exists($fullClassName) || !property_exists(Prisma::class, $className)) {
     echo json_encode(['error' => "Error: Class $fullClassName not found or property $className not found in Prisma class!"]);
     exit;

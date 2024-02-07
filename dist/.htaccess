@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# Serve favicon.ico from the correct path
+RewriteRule ^favicon\.ico$ src/app/favicon.ico [L,NC]
+
+# Redirect requests for static files to their correct path
+RewriteRule ^(css|js|images|assets)/(.*)$ src/app/$1/$2 [L,NC]
+
+# Redirect all other requests to layout.php, if they are not directly accessing a file or directory
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule !^src/app/ src/app/layout.php [QSA,L]
