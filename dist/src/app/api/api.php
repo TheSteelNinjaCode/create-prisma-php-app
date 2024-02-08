@@ -17,7 +17,7 @@ if (empty($_SERVER["HTTP_X_REQUESTED_WITH"]) || $_SERVER["HTTP_X_REQUESTED_WITH"
 // Retrieve class name, method name, and params from POST data
 $className = $_POST["className"] ?? "";
 $methodName = $_POST["methodName"] ?? "";
-$paramsJson = $_POST["params"] ?? '';
+$paramsJson = $_POST["params"] ?? "";
 
 $params = null; // Initialize params as null
 
@@ -48,7 +48,7 @@ if (!method_exists($instance, $methodName)) {
 
 try {
     // Call the method with params if they are provided and decoded; otherwise, call without params
-    $result = $params !== null ? call_user_method_with_params($instance, $methodName, $params) : $instance->$methodName();
+    $result = $params !== null ? callUserMethodWithParams($instance, $methodName, $params) : $instance->$methodName();
     // Encode and return the result as JSON
     echo json_encode(['result' => $result instanceof \stdClass ? (array)$result : $result]);
 } catch (\ArgumentCountError | \Exception $e) {
@@ -56,7 +56,7 @@ try {
     echo json_encode(['error' => "Error: " . $e->getMessage()]);
 }
 
-function call_user_method_with_params($instance, $methodName, $params)
+function callUserMethodWithParams($instance, $methodName, $params)
 {
     // Determine how to call the method based on the presence of specific keys in $params
     if (isset($params['identifier'], $params['data'])) {

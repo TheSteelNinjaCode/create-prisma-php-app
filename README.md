@@ -147,20 +147,20 @@ PrismaPHPProject
 │   ├── schema.prisma               # Main Prisma schema file
 │   └── seed.js                     # Database seeding script
 ├── public                          # Publicly accessible files
-│   ├── index.php                   # Application entry point
-│   ├── css                         # CSS files
-│   ├── js                          # JavaScript files
-│   └── assets                      # Static assets like images, fonts
+│   └── [...]
 ├── src                             # Source code
-│   ├── App                         # Core application code
-│   │   ├── Api                     # API endpoints and logic
-│   │   ├── Classes                 # Custom application classes
-│   │   ├── Controller              # MVC controllers
-│   │   ├── Model                   # Data models
-│   │   └── View                    # View templates
+│   ├── app                         # Core application code
+│   │   ├── api                     # API endpoints and logic
+│   │   ├── assets                  # Static assets (images, fonts, etc.)
+│   │   ├── css                     # CSS stylesheets
+│   │   ├── favicon                 # Favicon files
+│   │   ├── index.php               # Main application entry point
+│   │   ├── layout.php              # Main application layout
+│   │   └── [...]                   # Other application files (/users, /dashboard, etc.)
 │   ├── Lib                         # Utility functions and libraries
 │   └── [...]
 ├── settings                        # Configuration files
+│   ├── bs-config.cjs               # BrowserSync configuration
 │   ├── paths.php                   # Path settings
 │   └── project-settings.js         # Project settings
 ├── vendor                          # Composer dependencies
@@ -191,6 +191,12 @@ For a better development experience, consider installing the following Visual St
 - [PHP Intelephense](https://marketplace.visualstudio.com/items?itemName=bmewburn.vscode-intelephense-client)
 - [PHP Debug](https://marketplace.visualstudio.com/items?itemName=felixfbecker.php-debug)
 - [Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)
+
+## Video Tutorial
+
+For a step-by-step guide on how to use `create-prisma-php-app`, watch the following video:
+
+[Prisma-PHP: A Revolutionary Library Bridging PHP with Prisma ORM](https://www.youtube.com/playlist?list=PLS-62wu4j8sS0Ia7ZkWHQ41W85Ice85PA)
 
 ## Contributing
 
