@@ -15,7 +15,7 @@
     }
   ],
   "require": {
-    "php": "^7.4|^8.0",
+    "php": "^8.1",
     "vlucas/phpdotenv": "^5.6@dev",
     "ramsey/uuid": "5.x-dev",
     "hidehalo/nanoid-php": "1.x-dev",

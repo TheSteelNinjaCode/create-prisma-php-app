@@ -6,27 +6,57 @@ require_once __DIR__ . "/../../../bootstrap.php";
 
 use Lib\Prisma\Classes\Prisma;
 
+// CORS headers
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, Accept, Origin, Authorization, X-CSRF-Token');
 header('Content-Type: application/json');
 
-if (empty($_SERVER["HTTP_X_REQUESTED_WITH"]) || $_SERVER["HTTP_X_REQUESTED_WITH"] != "XMLHttpRequest") {
+// Preflight request handling
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+// Check for valid POST request with XMLHttpRequest
+if ($_SERVER["REQUEST_METHOD"] !== "POST" || empty($_SERVER["HTTP_X_REQUESTED_WITH"]) || $_SERVER["HTTP_X_REQUESTED_WITH"] != "XMLHttpRequest") {
     http_response_code(400); // Bad Request
-    echo json_encode(["error" => "This endpoint expects an XMLHttpRequest."]);
+    echo json_encode(["error" => "Invalid request method or type."]);
     exit;
 }
 
-// Retrieve class name, method name, and params from POST data
-$className = $_POST["className"] ?? "";
-$methodName = $_POST["methodName"] ?? "";
-$paramsJson = $_POST["params"] ?? "";
+// Initialize variables
+$className = $methodName = $paramsJson = "";
+$params = null;
 
-$params = null; // Initialize params as null
+// Determine request content type
+$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 
-// Attempt to decode JSON only if paramsJson is not empty
-if (!empty($paramsJson)) {
-    $params = json_decode($paramsJson, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        echo json_encode(['error' => 'Error: Invalid JSON in params!']);
+// Handle JSON content type
+if (stripos($contentType, 'application/json') !== false) {
+    $inputJSON = file_get_contents('php://input');
+    $input = json_decode($inputJSON, true);
+    if (json_last_error() === JSON_ERROR_NONE) {
+        $className = $input['className'] ?? '';
+        $methodName = $input['methodName'] ?? '';
+        // Directly assign $params without double decoding
+        $params = $input['params'] ?? []; // Initialize as empty array if not set
+    } else {
+        echo json_encode(['error' => 'Error: Invalid JSON body!']);
         exit;
+    }
+} else {
+    // Handle form-urlencoded data
+    $className = $_POST["className"] ?? "";
+    $methodName = $_POST["methodName"] ?? "";
+    $paramsJson = $_POST["params"] ?? "";
+    if (!empty($paramsJson)) {
+        $params = json_decode($paramsJson, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo json_encode(['error' => 'Error: Invalid JSON in params!']);
+            exit;
+        }
+    } else {
+        $params = []; // Initialize as empty array if not set
     }
 }
 
@@ -47,12 +77,9 @@ if (!method_exists($instance, $methodName)) {
 }
 
 try {
-    // Call the method with params if they are provided and decoded; otherwise, call without params
-    $result = $params !== null ? callUserMethodWithParams($instance, $methodName, $params) : $instance->$methodName();
-    // Encode and return the result as JSON
+    $result = callUserMethodWithParams($instance, $methodName, $params);
     echo json_encode(['result' => $result instanceof \stdClass ? (array)$result : $result]);
 } catch (\ArgumentCountError | \Exception $e) {
-    // Catch and return any errors during method execution
     echo json_encode(['error' => "Error: " . $e->getMessage()]);
 }
 

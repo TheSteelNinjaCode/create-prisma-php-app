@@ -41,6 +41,12 @@ npx create-prisma-php-app@latest
 composer install
 ```
 
+- Set your PHP_ROOT_PATH_EXE in `settings/project-settings.js` file
+
+```javascript
+PHP_ROOT_PATH_EXE: "D:\\xampp\\php\\php.exe", // Replace with your PHP path
+```
+
 ## What's Included
 
 ### Prisma ORM and TypeScript Support
@@ -153,16 +159,19 @@ PrismaPHPProject
 │   │   ├── api                     # API endpoints and logic
 │   │   ├── assets                  # Static assets (images, fonts, etc.)
 │   │   ├── css                     # CSS stylesheets
+│   │   ├── js                      # JavaScript files
 │   │   ├── favicon                 # Favicon files
 │   │   ├── index.php               # Main application entry point
 │   │   ├── layout.php              # Main application layout
+│   │   ├── metadata.php            # Metadata for the application
+│   │   ├── not-found.php           # 404 page
 │   │   └── [...]                   # Other application files (/users, /dashboard, etc.)
 │   ├── Lib                         # Utility functions and libraries
 │   └── [...]
 ├── settings                        # Configuration files
 │   ├── bs-config.cjs               # BrowserSync configuration
 │   ├── paths.php                   # Path settings
-│   └── project-settings.js         # Project settings
+│   └── project-settings.js         # Project settings **NOTE**: PHP_ROOT_PATH_EXE: "D:\\xampp\\php\\php.exe", Replace with your PHP path
 ├── vendor                          # Composer dependencies
 ├── bootstrap.php                   # Initialization script
 ├── .env                            # Environment variables

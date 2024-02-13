@@ -10,3 +10,12 @@ RewriteRule ^(css|js|images|assets)/(.*)$ src/app/$1/$2 [L,NC]
 # RewriteCond %{REQUEST_FILENAME} !-f
 # RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule !^src/app/ src/app/layout.php [QSA,L]
+
+# Allow cross-origin requests (CORS) for all routes
+# This is only necessary if you are using the API from a different domain
+# You can remove this section if you are only using the API from the same domain
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+  Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+</IfModule>
