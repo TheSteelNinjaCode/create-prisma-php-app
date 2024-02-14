@@ -41,3 +41,28 @@ $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVE
 $domainName = $_SERVER['HTTP_HOST'];
 $scriptPath = dirname($_SERVER['SCRIPT_NAME']);
 $baseUrl = $protocol . $domainName . rtrim($scriptPath, '/') . '/';
+
+ob_start();
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+set_exception_handler(function ($exception) {
+    echo "<div class='error'>An error occurred: " . $exception->getMessage() . "</div>";
+});
+
+try {
+    $result = determineContentToInclude();
+    $contentToInclude = $result['path'] ?? '';
+
+    if (!empty($contentToInclude)) {
+        require_once $contentToInclude;
+    } else {
+        require_once "not-found.php";
+    }
+} catch (Throwable $e) {
+    echo "<div class='error'>An error occurred: " . $e->getMessage() . "</div>";
+}
+
+$content = ob_get_clean();

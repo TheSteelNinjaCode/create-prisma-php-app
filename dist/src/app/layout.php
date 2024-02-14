@@ -2,16 +2,6 @@
 
 require_once "../../bootstrap.php";
 
-$result = determineContentToInclude();
-$contentToInclude = $result['path'] ?? '';
-
-ob_start();
-if (!empty($contentToInclude)) {
-    require_once $contentToInclude;
-} else {
-    require_once "not-found.php";
-}
-$content = ob_get_clean();
 ?>
 
 <!DOCTYPE html>
@@ -24,7 +14,6 @@ $content = ob_get_clean();
     <title><?php echo htmlspecialchars($metadata['title']); ?></title>
     <link rel="shortcut icon" href="<?php echo $baseUrl; ?>favicon.ico" type="image/x-icon">
     <script>
-        // Define a global variable to store the base URL.
         const baseUrl = '<?php echo $baseUrl; ?>';
     </script>
 </head>
