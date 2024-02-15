@@ -9,7 +9,7 @@
             <a class="text-sm font-medium hover:underline underline-offset-4" href="#">
                 Features
             </a>
-            <a class="text-sm font-medium hover:underline underline-offset-4" href="#">
+            <a class="text-sm font-medium hover:underline underline-offset-4" href="https://prismaphp.tsnc.tech/docs?doc=get-started" target="_blank">
                 Documentation
             </a>
             <a class="text-sm font-medium hover:underline underline-offset-4" href="#">

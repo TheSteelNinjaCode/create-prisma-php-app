@@ -6,6 +6,8 @@ Prisma-PHP: A Revolutionary Library Bridging PHP with Prisma ORM
 
 `create-prisma-php-app` is an innovative command-line tool designed to seamlessly integrate PHP with Prisma ORM. This tool stands out by offering a unique combination of PHP's robust server-side capabilities with Prisma's modern ORM features. Whether you're building a small project or a large-scale application, `create-prisma-php-app` provides the tools and flexibility needed to elevate your development experience.
 
+## Complete documentation is available at [Prisma-PHP](https://prismaphp.tsnc.tech/)
+
 ## Prerequisites
 
 Ensure your system is equipped with:
@@ -166,7 +168,7 @@ PrismaPHPProject
 │   │   ├── metadata.php            # Metadata for the application
 │   │   ├── not-found.php           # 404 page
 │   │   └── [...]                   # Other application files (/users, /dashboard, etc.)
-│   ├── Lib                         # Utility functions and libraries
+│   ├── lib                         # Utility functions and libraries
 │   └── [...]
 ├── settings                        # Configuration files
 │   ├── bs-config.cjs               # BrowserSync configuration
@@ -186,7 +188,7 @@ PrismaPHPProject
 ## Documentation and Resources
 
 - [Node.js](https://nodejs.org/en/docs/)
-- [XAMPP](https://www.apachefriends.org/documentation/)
+- [XAMPP](https://www.apachefriends.org/index.html)
 - [Composer](https://getcomposer.org/doc/)
 - [Prisma Documentation](https://www.prisma.io/docs/)
 - [PHP Documentation](https://www.php.net/manual/en/)
