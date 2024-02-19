@@ -138,7 +138,7 @@ class StateManager {
    *
    * @param {*} update
    */
-  setState(update, saveToStorage = true) {
+  setState(update, saveToStorage = false) {
     this.state = { ...this.state, ...update };
     this.listeners.forEach((listener) => listener(this.state));
     if (saveToStorage) {
