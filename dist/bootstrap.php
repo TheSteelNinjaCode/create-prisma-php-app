@@ -4,13 +4,6 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-$isLocal = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']);
-if ($isLocal) {
-    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-    header("Cache-Control: post-check=0, pre-check=0", false);
-    header("Pragma: no-cache");
-}
-
 require_once __DIR__ . '/settings/paths.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
