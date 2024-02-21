@@ -3,4 +3,6 @@ module.exports = {
   serveStatic: ["src/app"],
   files: "src/**/*.*",
   notify: false,
+  open: false,
+  ghostMode: false,
 };
