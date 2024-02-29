@@ -77,23 +77,8 @@ if (!method_exists($instance, $methodName)) {
 }
 
 try {
-    $result = callUserMethodWithParams($instance, $methodName, $params);
+    $result = $instance->$methodName($params);
     echo json_encode(['result' => $result instanceof \stdClass ? (array)$result : $result]);
 } catch (\ArgumentCountError | \Exception $e) {
     echo json_encode(['error' => "Error: " . $e->getMessage()]);
-}
-
-function callUserMethodWithParams($instance, $methodName, $params)
-{
-    // Determine how to call the method based on the presence of specific keys in $params
-    if (isset($params['identifier'], $params['data'])) {
-        return $instance->$methodName($params['identifier'], $params['data']);
-    } elseif (isset($params['criteria'], $params['aggregates'])) {
-        return $instance->$methodName($params['criteria'], $params['aggregates']);
-    } elseif (isset($params['criteria'], $params['data'])) {
-        return $instance->$methodName($params['criteria'], $params['data']);
-    } else {
-        // If none of the specific keys are present, pass the whole $params array
-        return $instance->$methodName($params);
-    }
 }

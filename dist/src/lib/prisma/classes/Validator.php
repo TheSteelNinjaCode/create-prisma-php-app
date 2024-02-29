@@ -27,7 +27,11 @@ class Validator
     public static function validateDateTime($value)
     {
         $date = \DateTime::createFromFormat('Y-m-d H:i:s', $value);
-        return $date && $date->format('Y-m-d H:i:s') === $value;
+        if ($date && $date->format('Y-m-d H:i:s') === $value) {
+            return $value;
+        } else {
+            return null;
+        }
     }
 
     public static function validateJson($value)
