@@ -56,6 +56,24 @@ set_exception_handler(function ($exception) {
     echo "<div class='error'>An error occurred: " . $exception->getMessage() . "</div>";
 });
 
+set_exception_handler(function ($exception) use (&$content) {
+    ob_start();
+    echo "<div class='error'>An error occurred: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
+    $content .= ob_get_clean();
+});
+
+register_shutdown_function(function () use (&$content) {
+    $error = error_get_last();
+    if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_CORE_ERROR || $error['type'] === E_COMPILE_ERROR)) {
+        ob_start();
+        echo "<div class='error'>An error occurred: " . $error['message'] . "</div>";
+        $errorContent = ob_get_clean();
+        $content = $errorContent . $content;
+        ob_clean();
+        echo "<html><body>{$content}</body></html>";
+    }
+});
+
 try {
     $result = determineContentToInclude();
     $contentToInclude = $result['path'] ?? '';
