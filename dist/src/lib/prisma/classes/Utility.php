@@ -11,10 +11,14 @@ enum ArrayType: string
 
 abstract class Utility
 {
-    public static function checkFieldsExistWithReferences(array $select, array &$relatedEntityFields, array &$primaryEntityFields, array $relationName, $fields, $modelName)
+    public static function checkFieldsExistWithReferences(array $select, array &$relatedEntityFields, array &$primaryEntityFields, array $relationName, $fields, $modelName, $timestamp)
     {
         if (isset($select) && is_array($select)) {
             foreach ($select as $key => $value) {
+
+                if ($key === $timestamp) {
+                    continue;
+                }
 
                 if (is_numeric($key) && is_string($value)) {
                     if (array_key_exists($value, $fields))
