@@ -11,11 +11,17 @@ enum ArrayType: string
 
 abstract class Utility
 {
-    public static function checkFieldsExistWithReferences(array $select, array &$relatedEntityFields, array &$primaryEntityFields, array $relationName, $fields, $modelName, $timestamp)
-    {
+    public static function checkFieldsExistWithReferences(
+        array $select,
+        array &$relatedEntityFields,
+        array &$primaryEntityFields,
+        array $relationName,
+        array $fields,
+        string $modelName,
+        string $timestamp
+    ) {
         if (isset($select) && is_array($select)) {
             foreach ($select as $key => $value) {
-
                 if ($key === $timestamp) {
                     continue;
                 }
@@ -30,6 +36,12 @@ abstract class Utility
                         throw new \Exception("The field '$key' does not exist in the $modelName model.");
                     }
 
+                    if (is_string($key) && array_key_exists($key, $fields)) {
+                        if (!is_bool($value) && !is_array($value)) {
+                            throw new \Exception("The '$key' is indexed, waiting example: ['$key' => true]");
+                        }
+                    }
+
                     if (!is_array($value))
                         continue;
                 }
@@ -40,6 +52,10 @@ abstract class Utility
                     } else {
                         if (is_array($value) && empty($value)) {
                             $relatedEntityFields[$key] = [$key];
+                        } else {
+                            if (!is_bool($value) || empty($value)) {
+                                throw new \Exception("The '$key' is indexed, waiting example: ['$key' => true] or ['$key' => ['select' => ['field1' => true, 'field2' => true]]]");
+                            }
                         }
                     }
                 } else {
@@ -78,10 +94,9 @@ abstract class Utility
         }
     }
 
-    public static function checkFieldsExist(array $select, $fields)
+    public static function checkFieldsExist(array $select, array $fields, string $modelName)
     {
         foreach ($select as $key => $value) {
-
             if (is_numeric($key) && is_string($value)) {
                 if (array_key_exists($value, $fields))
                     throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true]");
@@ -93,9 +108,8 @@ abstract class Utility
 
             foreach (explode(',', $key) as $fieldName) {
                 $fieldName = trim($fieldName);
-
                 if (!array_key_exists($fieldName, $fields)) {
-                    throw new \Exception("The field '$fieldName' does not exist.");
+                    throw new \Exception("The field '$fieldName' does not exist in the $modelName model.");
                 }
             }
         }
@@ -125,6 +139,10 @@ abstract class Utility
                 } else {
                     if (is_array($value) && empty($value)) {
                         $relatedEntityFields[$key] = [$key];
+                    } else {
+                        if (!is_bool($value) || empty($value)) {
+                            throw new \Exception("The '$key' is indexed, waiting example: ['$key' => true] or ['$key' => ['select' => ['field1' => true, 'field2' => true]]]");
+                        }
                     }
                 }
 
