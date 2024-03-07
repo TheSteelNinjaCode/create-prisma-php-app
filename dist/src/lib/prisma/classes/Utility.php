@@ -130,7 +130,7 @@ abstract class Utility
         }
     }
 
-    public static function checkIncludes(array $include, array &$relatedEntityFields, array &$includes)
+    public static function checkIncludes(array $include, array &$relatedEntityFields, array &$includes, array $fields, string $modelName)
     {
         if (isset($include) && is_array($include)) {
             foreach ($include as $key => $value) {
@@ -141,7 +141,7 @@ abstract class Utility
                         $relatedEntityFields[$key] = [$key];
                     } else {
                         if (!is_bool($value) || empty($value)) {
-                            throw new \Exception("The '$key' is indexed, waiting example: ['$key' => true] or ['$key' => ['select' => ['field1' => true, 'field2' => true]]]");
+                            throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true] or ['$value' => ['select' => ['field1' => true, 'field2' => true]]]");
                         }
                     }
                 }
@@ -152,6 +152,10 @@ abstract class Utility
 
                 if (isset($value) && empty($value) || !is_bool($value)) {
                     continue;
+                }
+
+                if (!array_key_exists($key, $fields)) {
+                    throw new \Exception("The field '$key' does not exist in the $modelName model.");
                 }
 
                 $includes[$key] = $value;
