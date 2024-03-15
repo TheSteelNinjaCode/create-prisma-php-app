@@ -19,6 +19,7 @@
     "vlucas/phpdotenv": "^5.6@dev",
     "ramsey/uuid": "5.x-dev",
     "hidehalo/nanoid-php": "1.x-dev",
-    "firebase/php-jwt": "dev-main"
+    "firebase/php-jwt": "dev-main",
+    "phpmailer/phpmailer": "^6.9"
   }
 }
