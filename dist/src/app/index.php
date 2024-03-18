@@ -22,7 +22,7 @@
             <div class="px-4 md:px-6">
                 <div class="flex flex-col items-center space-y-4 text-center">
                     <h1 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none flex items-center gap-3 justify-center">
-                        Welcome to Prisma PHP <img class="h-20 w-20" src="<?= $baseUrl ?>assets/images/prisma-php.png" alt="Prisma PHP">
+                        Welcome to Prisma PHP <img class="h-20 w-20 hidden sm:block" src="<?= $baseUrl ?>assets/images/prisma-php.png" alt="Prisma PHP">
                     </h1>
                     <p class="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
                         The Next Generation ORM for PHP
