@@ -162,4 +162,116 @@ abstract class Utility
             }
         }
     }
+
+    public static function processConditions(array $conditions, &$sqlConditions, &$bindings, $dbType, $prefix = '', $level = 0)
+    {
+        foreach ($conditions as $key => $value) {
+            if (in_array($key, ['AND', 'OR', 'NOT'])) {
+                $groupedConditions = [];
+                if ($key === 'NOT') {
+                    self::processNotCondition($value, $groupedConditions, $bindings, $dbType, $prefix . $key . '_', $level);
+                } else {
+                    foreach ($value as $conditionIndex => $subCondition) {
+                        if ($key === 'OR' && is_array($subCondition)) {
+                            if (!is_numeric($conditionIndex)) {
+                                throw new \Exception("The '$key' condition must be an indexed array.");
+                            }
+                            foreach ($subCondition as $subKey => $subValue) {
+                                self::processSingleCondition($subKey, $subValue, $groupedConditions, $bindings, $dbType, $prefix . $key . $conditionIndex . '_', $level + 1);
+                            }
+                        } else {
+                            if (is_numeric($conditionIndex)) {
+                                self::processConditions($subCondition, $groupedConditions, $bindings, $dbType, $prefix . $key . $conditionIndex . '_', $level + 1);
+                            } else {
+                                self::processSingleCondition($conditionIndex, $subCondition, $groupedConditions, $bindings, $dbType, $prefix . $key . $conditionIndex . '_', $level + 1);
+                            }
+                        }
+                    }
+                }
+                if (!empty($groupedConditions)) {
+                    $conditionGroup = '(' . implode(" $key ", $groupedConditions) . ')';
+                    if ($key === 'NOT') {
+                        $conditionGroup = 'NOT ' . $conditionGroup;
+                    }
+                    $sqlConditions[] = $conditionGroup;
+                }
+            } else {
+                self::processSingleCondition($key, $value, $sqlConditions, $bindings, $dbType, $prefix, $level);
+            }
+        }
+    }
+
+    private static function processSingleCondition($key, $value, &$sqlConditions, &$bindings, $dbType, $prefix, $level)
+    {
+        $fieldQuoted = $dbType == 'pgsql' ? "\"$key\"" : "`$key`";
+        if (is_array($value)) {
+            foreach ($value as $condition => $val) {
+                $bindingKey = ":" . $prefix . $key . "_" . $condition . $level;
+                switch ($condition) {
+                    case 'contains':
+                    case 'startsWith':
+                    case 'endsWith':
+                    case 'equals':
+                    case 'not':
+                        $validatedValue = Validator::validateString($val);
+                        $likeOperator = $condition === 'contains' ? ($dbType == 'pgsql' ? 'ILIKE' : 'LIKE') : '=';
+                        if ($condition === 'startsWith') $validatedValue .= '%';
+                        if ($condition === 'endsWith') $validatedValue = '%' . $validatedValue;
+                        if ($condition === 'contains') $validatedValue = '%' . $validatedValue . '%';
+                        $sqlConditions[] = $condition === 'not' ? "$fieldQuoted != $bindingKey" : "$fieldQuoted $likeOperator $bindingKey";
+                        $bindings[$bindingKey] = $validatedValue;
+                        break;
+                    case 'gt':
+                    case 'gte':
+                    case 'lt':
+                    case 'lte':
+                        $validatedValue = is_float($val) ? Validator::validateFloat($val) : Validator::validateInt($val);
+                        $operator = $condition === 'gt' ? '>' : ($condition === 'gte' ? '>=' : ($condition === 'lt' ? '<' : '<='));
+                        $sqlConditions[] = "$fieldQuoted $operator $bindingKey";
+                        $bindings[$bindingKey] = $validatedValue;
+                        break;
+                    case 'in':
+                    case 'notIn':
+                        $inPlaceholders = [];
+                        foreach ($val as $i => $inVal) {
+                            $inKey = $bindingKey . "_" . $i;
+                            // Assuming the values are strings; adjust validation as necessary.
+                            $validatedValue = Validator::validateString($inVal);
+                            $inPlaceholders[] = $inKey;
+                            $bindings[$inKey] = $validatedValue;
+                        }
+                        $inClause = implode(', ', $inPlaceholders);
+                        $sqlConditions[] = "$fieldQuoted " . ($condition === 'notIn' ? 'NOT IN' : 'IN') . " ($inClause)";
+                        break;
+                    default:
+                        // Handle other conditions or log an error/warning for unsupported conditions
+                        throw new \Exception("Unsupported condition: $condition");
+                        break;
+                }
+            }
+        } else {
+            // For scalar non-array values; direct equals condition assumed
+            $bindingKey = ":" . $prefix . $key . $level;
+            // Use appropriate validation based on expected type; assuming string for simplicity
+            $validatedValue = Validator::validateString($value);
+            $sqlConditions[] = "$fieldQuoted = $bindingKey";
+            $bindings[$bindingKey] = $validatedValue;
+        }
+    }
+
+    private static function processNotCondition($conditions, &$sqlConditions, &$bindings, $dbType, $prefix, $level = 0)
+    {
+        foreach ($conditions as $key => $value) {
+            self::processSingleCondition($key, $value, $sqlConditions, $bindings, $dbType, $prefix . 'NOT_', $level);
+        }
+    }
+
+    public static function checkForInvalidKeys(array $data, array $fields, string $modelName)
+    {
+        foreach ($data as $key => $value) {
+            if (!empty($key) && !in_array($key, $fields)) {
+                throw new \Exception("The field '$key' does not exist in the $modelName model.");
+            }
+        }
+    }
 }
