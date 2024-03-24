@@ -115,7 +115,7 @@ abstract class Utility
         }
     }
 
-    public static function checkArrayContents(array $array)
+    public static function checkArrayContents(array $array): ArrayType
     {
         foreach ($array as $key => $value) {
             if (is_array($value)) {

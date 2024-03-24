@@ -25,9 +25,11 @@ function determineContentToInclude()
     $metadata = $metadata[$uri] ?? $metadata['default'];
 
     if ($uri) {
-        $path = $baseDir . '/' . $uri . '.php';
-        if (file_exists($path)) {
-            $includePath = $path;
+        if (substr($uri, -4) == '.php') {
+            $path = $baseDir . '/' . $uri;
+            if (file_exists($path)) {
+                $includePath = $path;
+            }
         } else {
             $path = $baseDir . '/' . $uri . '/index.php';
             if (file_exists($path)) {
