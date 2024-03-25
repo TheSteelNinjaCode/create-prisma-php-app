@@ -171,21 +171,16 @@ abstract class Utility
                 if ($key === 'NOT') {
                     self::processNotCondition($value, $groupedConditions, $bindings, $dbType, $prefix . $key . '_', $level);
                 } else {
-                    foreach ($value as $conditionIndex => $subCondition) {
-                        if ($key === 'OR' && is_array($subCondition)) {
-                            if (!is_numeric($conditionIndex)) {
-                                throw new \Exception("The '$key' condition must be an indexed array.");
-                            }
-                            foreach ($subCondition as $subKey => $subValue) {
-                                self::processSingleCondition($subKey, $subValue, $groupedConditions, $bindings, $dbType, $prefix . $key . $conditionIndex . '_', $level + 1);
-                            }
+                    foreach ($value as $conditionKey => $subCondition) {
+                        if (is_numeric($conditionKey)) {
+                            self::processConditions($subCondition, $groupedConditions, $bindings, $dbType, $prefix . $key . $conditionKey . '_', $level + 1);
                         } else {
-                            if (is_numeric($conditionIndex)) {
-                                self::processConditions($subCondition, $groupedConditions, $bindings, $dbType, $prefix . $key . $conditionIndex . '_', $level + 1);
-                            } else {
-                                self::processSingleCondition($conditionIndex, $subCondition, $groupedConditions, $bindings, $dbType, $prefix . $key . $conditionIndex . '_', $level + 1);
-                            }
+                            self::processSingleCondition($conditionKey, $subCondition, $groupedConditions, $bindings, $dbType, $prefix . $key . $conditionKey . '_', $level + 1);
                         }
+                    }
+                    if (!empty($groupedConditions)) {
+                        $conditionGroup = '(' . implode(" $key ", $groupedConditions) . ')';
+                        $sqlConditions[] = $conditionGroup;
                     }
                 }
                 if (!empty($groupedConditions)) {
