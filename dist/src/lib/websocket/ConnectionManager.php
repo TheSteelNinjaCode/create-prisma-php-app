@@ -17,7 +17,7 @@ class ConnectionManager implements MessageComponentInterface
     public function onOpen(ConnectionInterface $conn)
     {
         $this->clients->attach($conn);
-        echo "New connection! ({$conn->resourceId})\n";
+        echo "New connection! ({$conn->resourceId})";
     }
 
     public function onMessage(ConnectionInterface $from, $msg)
@@ -28,12 +28,12 @@ class ConnectionManager implements MessageComponentInterface
     public function onClose(ConnectionInterface $conn)
     {
         $this->clients->detach($conn);
-        echo "Connection {$conn->resourceId} has disconnected\n";
+        echo "Connection {$conn->resourceId} has disconnected";
     }
 
     public function onError(ConnectionInterface $conn, \Exception $e)
     {
-        echo "An error has occurred: {$e->getMessage()}\n";
+        echo "An error has occurred: {$e->getMessage()}";
         $conn->close();
     }
 }
