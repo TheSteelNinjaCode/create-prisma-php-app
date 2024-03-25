@@ -7,8 +7,8 @@ const serverScriptPath = path.join(
   __dirname,
   "..",
   "src",
-  "lib",
-  "websocket",
+  "Lib",
+  "Websocket",
   "server.php"
 );
 
@@ -46,7 +46,7 @@ restartServer();
 // Watch for changes and restart the server
 const chokidar = require("chokidar");
 chokidar
-  .watch(path.join(__dirname, "..", "src", "lib", "websocket", "**", "*"))
+  .watch(path.join(__dirname, "..", "src", "Lib", "Websocket", "**", "*"))
   .on("change", (event, path) => {
     console.log(`${event}: ${path}`);
     restartServer();

@@ -1,7 +1,7 @@
 @echo off
 set PORT=8080
 set "PHP_PATH=php"
-set "SERVER_SCRIPT_PATH= src\lib\websocket\server.php"
+set "SERVER_SCRIPT_PATH= src\Lib\Websocket\server.php"
 
 echo [INFO] Checking for processes using port %PORT%...
 netstat -aon | findstr :%PORT%
