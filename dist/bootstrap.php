@@ -24,14 +24,28 @@ function determineContentToInclude()
     $includePath = '';
     $metadata = $metadata[$uri] ?? $metadata['default'];
 
+    $isDirectAccessToPrivateRoute = preg_match('/^_/', $uri);
+
+    if ($isDirectAccessToPrivateRoute) {
+        return ['path' => $includePath];
+    }
+
     if ($uri) {
+        $groupFolder = findGroupFolder($uri);
+        if ($groupFolder) {
+            $path = $baseDir .= $groupFolder;
+            if (file_exists($path)) {
+                $includePath = $path;
+            }
+        }
+
         if (substr($uri, -4) == '.php') {
             $path = $baseDir . '/' . $uri;
             if (file_exists($path)) {
                 $includePath = $path;
             }
         } else {
-            $path = $baseDir . '/' . $uri . '/index.php';
+            $path = $baseDir . "/$uri/index.php";
             if (file_exists($path)) {
                 $includePath = $path;
             }
@@ -41,6 +55,111 @@ function determineContentToInclude()
     }
 
     return ['path' => $includePath];
+}
+
+function checkForDuplicateRoutes()
+{
+    $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files_list.json"), true);
+
+    $normalizedRoutesMap = [];
+    foreach ($routes as $route) {
+        $routeWithoutGroups = preg_replace('/\(.*?\)/', '', $route);
+        $routeTrimmed = ltrim($routeWithoutGroups, '.\\/');
+        $routeNormalized = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $routeTrimmed);
+        $normalizedRoutesMap[$routeNormalized][] = $route;
+    }
+
+    $errorMessages = [];
+    foreach ($normalizedRoutesMap as $normalizedRoute => $originalRoutes) {
+        if (count($originalRoutes) > 1 && strpos($normalizedRoute, DIRECTORY_SEPARATOR) !== false) {
+            $errorMessages[] = "Duplicate route found after normalization: " . $normalizedRoute;
+            foreach ($originalRoutes as $originalRoute) {
+                $errorMessages[] = "- Grouped original route: " . $originalRoute;
+            }
+        }
+    }
+
+    if (!empty($errorMessages)) {
+        $errorMessageString = implode("<br>", $errorMessages);
+        throw new Exception($errorMessageString);
+    }
+}
+
+function writeRoutes()
+{
+    $directory = './';
+
+    if (is_dir($directory)) {
+        $filesList = [];
+
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory));
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $filesList[] = $file->getPathname();
+            }
+        }
+
+        $jsonData = json_encode($filesList, JSON_PRETTY_PRINT);
+        $jsonFileName = SETTINGS_PATH . '/files_list.json';
+        @file_put_contents($jsonFileName, $jsonData);
+    }
+}
+
+function findGroupFolder($uri): string
+{
+    $uriSegments = explode('/', $uri);
+    $constructedPath = '';
+    $groupFolder = '';
+    $finalMatch = '';
+
+    foreach ($uriSegments as $segment) {
+        if (!empty($segment)) {
+            if (isGroupIdentifier($segment)) {
+                return $segment;
+            }
+
+            $constructedPath .= (empty($constructedPath) ? '' : '/') . $segment;
+            $matchedGroupFolder = matchGroupFolder($constructedPath);
+            if ($matchedGroupFolder) {
+                $groupFolder = $matchedGroupFolder;
+                $finalMatch = $groupFolder;
+            }
+        }
+    }
+
+    if ($finalMatch) {
+        return $finalMatch;
+    } else {
+        return '';
+    }
+}
+
+function isGroupIdentifier($segment): bool
+{
+    return preg_match('/^\(.*\)$/', $segment);
+}
+
+function matchGroupFolder($constructedPath): ?string
+{
+    $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files_list.json"), true);
+    $bestMatch = null;
+
+    foreach ($routes as $route) {
+        $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
+        $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
+        if (stripos($cleanedRoute, $constructedPath) !== false) {
+            if ($bestMatch === null || strlen($cleanedRoute) < strlen($bestMatch)) {
+                $bestMatch = $normalizedRoute;
+            }
+        }
+    }
+
+    if ($bestMatch !== null) {
+        return $bestMatch;
+    }
+
+    return null;
 }
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
@@ -78,6 +197,8 @@ register_shutdown_function(function () use (&$content) {
 
 try {
     $result = determineContentToInclude();
+    writeRoutes();
+    checkForDuplicateRoutes();
     $contentToInclude = $result['path'] ?? '';
 
     if (!empty($contentToInclude)) {
