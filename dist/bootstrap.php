@@ -23,9 +23,9 @@ function determineContentToInclude()
     $baseDir = __DIR__ . '/src/app';
     $includePath = '';
     $metadata = $metadata[$uri] ?? $metadata['default'];
-
+    writeRoutes();
+    
     $isDirectAccessToPrivateRoute = preg_match('/^_/', $uri);
-
     if ($isDirectAccessToPrivateRoute) {
         return ['path' => $includePath];
     }
@@ -197,7 +197,6 @@ register_shutdown_function(function () use (&$content) {
 
 try {
     $result = determineContentToInclude();
-    writeRoutes();
     checkForDuplicateRoutes();
     $contentToInclude = $result['path'] ?? '';
 
