@@ -6,6 +6,10 @@ class Validator
 {
     public static function validateString($value)
     {
+        if ($value === null) {
+            return '';
+        }
+
         return htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8');
     }
 
