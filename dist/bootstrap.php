@@ -24,7 +24,7 @@ function determineContentToInclude()
     $includePath = '';
     $metadata = $metadata[$uri] ?? $metadata['default'];
     writeRoutes();
-    
+
     $isDirectAccessToPrivateRoute = preg_match('/^_/', $uri);
     if ($isDirectAccessToPrivateRoute) {
         return ['path' => $includePath];
@@ -109,27 +109,17 @@ function writeRoutes()
 function findGroupFolder($uri): string
 {
     $uriSegments = explode('/', $uri);
-    $constructedPath = '';
-    $groupFolder = '';
-    $finalMatch = '';
-
     foreach ($uriSegments as $segment) {
         if (!empty($segment)) {
             if (isGroupIdentifier($segment)) {
                 return $segment;
             }
-
-            $constructedPath .= (empty($constructedPath) ? '' : '/') . $segment;
-            $matchedGroupFolder = matchGroupFolder($constructedPath);
-            if ($matchedGroupFolder) {
-                $groupFolder = $matchedGroupFolder;
-                $finalMatch = $groupFolder;
-            }
         }
     }
 
-    if ($finalMatch) {
-        return $finalMatch;
+    $matchedGroupFolder = matchGroupFolder($uri);
+    if ($matchedGroupFolder) {
+        return $matchedGroupFolder;
     } else {
         return '';
     }
@@ -144,22 +134,22 @@ function matchGroupFolder($constructedPath): ?string
 {
     $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files_list.json"), true);
     $bestMatch = null;
+    $normalizedConstructedPath = ltrim(str_replace('\\', '/', $constructedPath), './');
+
+    if (substr($normalizedConstructedPath, -4) !== '.php') {
+        $normalizedConstructedPath = "/$normalizedConstructedPath/index.php";
+    }
 
     foreach ($routes as $route) {
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
         $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
-        if (stripos($cleanedRoute, $constructedPath) !== false) {
-            if ($bestMatch === null || strlen($cleanedRoute) < strlen($bestMatch)) {
-                $bestMatch = $normalizedRoute;
-            }
+        if ($cleanedRoute === $normalizedConstructedPath) {
+            $bestMatch = $normalizedRoute;
+            break;
         }
     }
 
-    if ($bestMatch !== null) {
-        return $bestMatch;
-    }
-
-    return null;
+    return $bestMatch;
 }
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
