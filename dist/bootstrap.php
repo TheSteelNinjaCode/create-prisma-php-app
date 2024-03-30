@@ -59,7 +59,7 @@ function determineContentToInclude()
 
 function checkForDuplicateRoutes()
 {
-    $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files_list.json"), true);
+    $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files-list.json"), true);
 
     $normalizedRoutesMap = [];
     foreach ($routes as $route) {
@@ -101,7 +101,7 @@ function writeRoutes()
         }
 
         $jsonData = json_encode($filesList, JSON_PRETTY_PRINT);
-        $jsonFileName = SETTINGS_PATH . '/files_list.json';
+        $jsonFileName = SETTINGS_PATH . '/files-list.json';
         @file_put_contents($jsonFileName, $jsonData);
     }
 }
@@ -132,7 +132,7 @@ function isGroupIdentifier($segment): bool
 
 function matchGroupFolder($constructedPath): ?string
 {
-    $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files_list.json"), true);
+    $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files-list.json"), true);
     $bestMatch = null;
     $normalizedConstructedPath = ltrim(str_replace('\\', '/', $constructedPath), './');
 

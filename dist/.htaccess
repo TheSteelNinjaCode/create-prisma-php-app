@@ -1,27 +1,18 @@
+# Turn on rewrite engine
 RewriteEngine On
 
-# Serve favicon.ico from the correct path
-# RewriteRule ^favicon\.ico$ src/app/favicon.ico [L,NC]
-
-# Redirect requests for static files to their correct path
-# RewriteRule ^(css|js|images|assets)/(.*)$ src/app/$1/$2 [L,NC]
-
-# Redirect all other requests to layout.php, if they are not directly accessing a file or directory
-# RewriteCond %{REQUEST_FILENAME} !-f
-# RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule !^src/app/ src/app/layout.php [QSA,L]
-
-# Deny access to .env file
+# Deny access to .env file for security
 <Files .env>
     Order allow,deny
     Deny from all
 </Files>
 
 # Allow cross-origin requests (CORS) for all routes
-# This is only necessary if you are using the API from a different domain
-# You can remove this section if you are only using the API from the same domain
 <IfModule mod_headers.c>
-  Header set Access-Control-Allow-Origin "*"
-  Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-  Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
 </IfModule>
+
+# Redirect all non-file and non-directory requests not starting with src/app/ to src/app/layout.php
+RewriteRule !^src/app/ src/app/layout.php [QSA,L]
