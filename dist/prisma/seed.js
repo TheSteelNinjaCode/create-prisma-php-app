@@ -50,6 +50,19 @@ async function main() {
   // await prisma.user.deleteMany();
   // await prisma.user.createMany({ data: userData });
   // ========================================
+  // Code for SQLite
+  // ========================================
+  // UserRole
+  // ----------------------------------------
+  // await prisma.userRole.deleteMany();
+  // await prisma.userRole.createMany({ data: userRoleData });
+  // SQLite automatically handles ID incrementation and does not require manual sequence reset
+  // ----------------------------------------
+  // User
+  // ----------------------------------------
+  // await prisma.user.deleteMany();
+  // await prisma.user.createMany({ data: userData });
+  // ========================================
   // Code for MongoDB
   // ----------------------------------------
   // UserRole
