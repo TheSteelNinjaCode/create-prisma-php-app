@@ -60,8 +60,8 @@ if (stripos($contentType, 'application/json') !== false) {
 }
 
 // Construct the full class name and check for class and property existence
-$fullClassName = "Lib\\Prisma\\Classes\\" . $className;
-if (!class_exists($fullClassName) || !property_exists(Prisma::class, $className)) {
+$fullClassName = "Lib\\Prisma\\Classes\\" . pascalCase($className);
+if (!class_exists($fullClassName) || !property_exists(Prisma::class, camelCase($className))) {
     echo json_encode(['error' => "Error: Class $fullClassName not found or property $className not found in Prisma class!"]);
     exit;
 }
@@ -80,4 +80,19 @@ try {
     echo json_encode(['result' => $result instanceof \stdClass ? (array)$result : $result]);
 } catch (\ArgumentCountError | \Exception $e) {
     echo json_encode(['error' => "Error: " . $e->getMessage()]);
+}
+
+function camelCase($string)
+{
+    $string = ucwords($string, "_");
+    $string = str_replace("_", "", $string);
+    $string = lcfirst($string);
+    return $string;
+}
+
+function pascalCase($string)
+{
+    $string = ucwords($string, "_");
+    $string = str_replace("_", "", $string);
+    return $string;
 }
