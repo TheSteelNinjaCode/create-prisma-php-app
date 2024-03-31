@@ -22,18 +22,19 @@ function determineContentToInclude()
     $uri = trim($requestUri, '/');
     $baseDir = __DIR__ . '/src/app';
     $includePath = '';
+    $layoutsToInclude = [];
     $metadata = $metadata[$uri] ?? $metadata['default'];
     writeRoutes();
 
     $isDirectAccessToPrivateRoute = preg_match('/^_/', $uri);
     if ($isDirectAccessToPrivateRoute) {
-        return ['path' => $includePath];
+        return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri];
     }
 
     if ($uri) {
         $groupFolder = findGroupFolder($uri);
         if ($groupFolder) {
-            $path = $baseDir .= $groupFolder;
+            $path = $baseDir . $groupFolder;
             if (file_exists($path)) {
                 $includePath = $path;
             }
@@ -44,17 +45,34 @@ function determineContentToInclude()
             if (file_exists($path)) {
                 $includePath = $path;
             }
-        } else {
-            $path = $baseDir . "/$uri/index.php";
-            if (file_exists($path)) {
-                $includePath = $path;
+        }
+
+        $currentPath = $baseDir;
+        $getGroupFolder = getGroupFolder($groupFolder);
+        $modifiedUri = $uri;
+        if (!empty($getGroupFolder)) {
+            $modifiedUri = $getGroupFolder;
+        }
+
+        foreach (explode('/', $modifiedUri) as $segment) {
+            if (empty($segment)) {
+                continue;
             }
+            $currentPath .= '/' . $segment;
+            $potentialLayoutPath = $currentPath . '/layout.php';
+            if (file_exists($potentialLayoutPath)) {
+                $layoutsToInclude[] = $potentialLayoutPath;
+            }
+        }
+
+        if (empty($layoutsToInclude)) {
+            $layoutsToInclude[] = $baseDir . '/layout.php';
         }
     } else {
         $includePath = $baseDir . '/index.php';
     }
 
-    return ['path' => $includePath];
+    return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri];
 }
 
 function checkForDuplicateRoutes()
@@ -152,10 +170,23 @@ function matchGroupFolder($constructedPath): ?string
     return $bestMatch;
 }
 
+function getGroupFolder($uri): string
+{
+    $lastSlashPos = strrpos($uri, '/');
+    $pathWithoutFile = substr($uri, 0, $lastSlashPos);
+
+    if (preg_match('/\(([^)]+)\)[^()]*$/', $pathWithoutFile, $matches)) {
+        return $pathWithoutFile;
+    }
+
+    return "";
+}
+
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
 $domainName = $_SERVER['HTTP_HOST'];
-$scriptPath = dirname($_SERVER['SCRIPT_NAME']);
+$scriptPath = dirname($_SERVER['SCRIPT_NAME']) . '/';
 $baseUrl = $protocol . $domainName . rtrim($scriptPath, '/') . '/';
+$pathname = "";
 
 ob_start();
 
@@ -189,8 +220,14 @@ try {
     $result = determineContentToInclude();
     checkForDuplicateRoutes();
     $contentToInclude = $result['path'] ?? '';
+    $layoutsToInclude = $result['layouts'] ?? [];
+    $pathname = $result['uri'] ? "/" . $result['uri'] : "/";
 
     if (!empty($contentToInclude)) {
+        foreach ($layoutsToInclude as $layoutPath) {
+            require_once $layoutPath;
+        }
+
         require_once $contentToInclude;
     } else {
         require_once "not-found.php";
