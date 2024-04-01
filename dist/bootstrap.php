@@ -222,9 +222,16 @@ try {
     $contentToInclude = $result['path'] ?? '';
     $layoutsToInclude = $result['layouts'] ?? [];
     $pathname = $result['uri'] ? "/" . $result['uri'] : "/";
+    if (!empty($layoutsToInclude))
+        $isParentLayout = strpos($layoutsToInclude[0], 'src/app/layout.php') !== false;
+    else
+        $isParentLayout = false;
 
     ob_start();
     if (!empty($contentToInclude)) {
+        if (!$isParentLayout) {
+            require_once $contentToInclude;
+        }
         $childContent = ob_get_clean();
         for ($i = count($layoutsToInclude) - 1; $i >= 0; $i--) {
             $layoutPath = $layoutsToInclude[$i];
@@ -233,7 +240,9 @@ try {
             $childContent = ob_get_clean();
         }
 
-        require_once $contentToInclude;
+        if ($isParentLayout) {
+            require_once $contentToInclude;
+        }
         $content = $childContent;
     } else {
         require_once 'not-found.php';
