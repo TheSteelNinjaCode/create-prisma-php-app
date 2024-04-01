@@ -223,17 +223,23 @@ try {
     $layoutsToInclude = $result['layouts'] ?? [];
     $pathname = $result['uri'] ? "/" . $result['uri'] : "/";
 
+    ob_start();
     if (!empty($contentToInclude)) {
-        foreach ($layoutsToInclude as $layoutPath) {
+        $childContent = ob_get_clean();
+        for ($i = count($layoutsToInclude) - 1; $i >= 0; $i--) {
+            $layoutPath = $layoutsToInclude[$i];
+            ob_start();
             require_once $layoutPath;
+            $childContent = ob_get_clean();
         }
 
         require_once $contentToInclude;
+        $content = $childContent;
     } else {
-        require_once "not-found.php";
+        require_once 'not-found.php';
+        $notFound = ob_get_clean();
     }
+    $content .= ob_get_clean();
 } catch (Throwable $e) {
     echo "<div class='error'>An error occurred: " . $e->getMessage() . "</div>";
 }
-
-$content = ob_get_clean();
