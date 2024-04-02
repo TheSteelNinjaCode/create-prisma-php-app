@@ -190,16 +190,12 @@ $pathname = "";
 
 ob_start();
 
-set_error_handler(function ($severity, $message, $file, $line) {
-    throw new ErrorException($message, 0, $severity, $file, $line);
-});
-
-set_exception_handler(function ($exception) {
-    echo "<div class='error'>An error occurred: " . $exception->getMessage() . "</div>";
+set_error_handler(function ($severity, $message, $file, $line) use (&$content) {
+    echo "<div class='error'>An error occurred: $severity - $message in $file on line $line</div>";
+    $content .= ob_get_clean();
 });
 
 set_exception_handler(function ($exception) use (&$content) {
-    ob_start();
     echo "<div class='error'>An error occurred: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
     $content .= ob_get_clean();
 });
@@ -207,12 +203,8 @@ set_exception_handler(function ($exception) use (&$content) {
 register_shutdown_function(function () use (&$content) {
     $error = error_get_last();
     if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_CORE_ERROR || $error['type'] === E_COMPILE_ERROR)) {
-        ob_start();
         echo "<div class='error'>An error occurred: " . $error['message'] . "</div>";
-        $errorContent = ob_get_clean();
-        $content = $errorContent . $content;
-        ob_clean();
-        echo "<html><body>{$content}</body></html>";
+        $content .= ob_get_clean();
     }
 });
 
@@ -227,7 +219,6 @@ try {
     else
         $isParentLayout = false;
 
-    ob_start();
     if (!empty($contentToInclude)) {
         if (!$isParentLayout) {
             require_once $contentToInclude;
@@ -250,5 +241,6 @@ try {
     }
     $content .= ob_get_clean();
 } catch (Throwable $e) {
-    echo "<div class='error'>An error occurred: " . $e->getMessage() . "</div>";
+    echo "<div class='error'>An error occurred: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
+    $content .= ob_get_clean();
 }
