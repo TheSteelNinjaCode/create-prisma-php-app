@@ -7,7 +7,7 @@ if (session_status() == PHP_SESSION_NONE) {
 require_once __DIR__ . '/settings/paths.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
-$metadata = include __DIR__ . '/src/app/metadata.php';
+$metadata = require_once __DIR__ . '/src/app/metadata.php';
 
 function determineContentToInclude()
 {
@@ -35,13 +35,6 @@ function determineContentToInclude()
         $groupFolder = findGroupFolder($uri);
         if ($groupFolder) {
             $path = $baseDir . $groupFolder;
-            if (file_exists($path)) {
-                $includePath = $path;
-            }
-        }
-
-        if (substr($uri, -4) == '.php') {
-            $path = $baseDir . '/' . $uri;
             if (file_exists($path)) {
                 $includePath = $path;
             }
@@ -153,10 +146,7 @@ function matchGroupFolder($constructedPath): ?string
     $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files-list.json"), true);
     $bestMatch = null;
     $normalizedConstructedPath = ltrim(str_replace('\\', '/', $constructedPath), './');
-
-    if (substr($normalizedConstructedPath, -4) !== '.php') {
-        $normalizedConstructedPath = "/$normalizedConstructedPath/index.php";
-    }
+    $normalizedConstructedPath = "/$normalizedConstructedPath/index.php";
 
     foreach ($routes as $route) {
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');

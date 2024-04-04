@@ -1,10 +1,10 @@
 /**
- * Description placeholder
+ * Debounces a function to limit the rate at which it is called.
  *
- * @param {*} func
- * @param {*} wait
- * @param {*} immediate
- * @returns {(...args: {}) => void}
+ * @param {Function} func - The function to debounce.
+ * @param {number} wait - The number of milliseconds to wait before invoking the function.
+ * @param {boolean} immediate - Whether to invoke the function immediately on the leading edge.
+ * @returns {Function} - The debounced function.
  */
 function debounce(func, wait, immediate) {
   let timeout;
@@ -21,50 +21,167 @@ function debounce(func, wait, immediate) {
 }
 
 /**
- * Description placeholder
- *
- * @async
- * @param {{ className: any; methodName: any; params?: {}; }} param0
- * @param {*} param0.className
- * @param {*} param0.methodName
- * @param {{}} [param0.params={}]
- * @returns {unknown}
+ * Represents a HTTP request.
  */
-async function fetchApi({ className, methodName, params = {} }) {
-  // Construct the request body with provided parameters
-  let requestBody = {
-    className: className,
-    methodName: methodName,
-    params: JSON.stringify(params),
-  };
+class RequestApi {
+  static instance = null;
 
-  // Return the fetch promise to the caller
-  const response = await fetch(`${baseUrl}api/api.php`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "X-Requested-With": "XMLHttpRequest",
-    },
-    body: new URLSearchParams(requestBody),
-  });
-  if (!response.ok) {
-    // If the response is not ok, reject the promise
-    throw new Error("Network response was not ok");
+  /**
+   * The constructor is now private. To ensure it's not accessible from outside,
+   * you can throw an error if someone tries to instantiate it directly
+   * (though JavaScript does not have true private constructors).
+   */
+  constructor(baseURL = window.location.origin) {
+    this.baseURL = baseURL;
   }
-  const data = await response.json();
-  if (data.error) {
-    // If the API returned an error, reject the promise
-    throw new Error(data.error);
+
+  /**
+   * Static method to get instance of RequestApi.
+   *
+   * @param {string} [baseURL=window.location.origin] - The base URL for the request.
+   * @returns {RequestApi} The singleton instance of the RequestApi.
+   */
+  static getInstance(baseURL = window.location.origin) {
+    if (!RequestApi.instance) {
+      RequestApi.instance = new RequestApi(baseURL);
+    }
+    return RequestApi.instance;
   }
-  return data;
-  // Note: No catch here, let the caller handle any errors
+
+  /**
+   * Sends a HTTP request.
+   *
+   * @async
+   * @param {string} method - The HTTP method.
+   * @param {string} url - The URL to send the request to.
+   * @param {*} [data=null] - The data to send with the request.
+   * @param {Object} [headers={}] - The headers to include in the request.
+   * @returns {Promise<unknown>} - A promise that resolves to the response data.
+   */
+  async request(method, url, data = null, headers = {}) {
+    let fullUrl = `${this.baseURL}${url}`;
+    const options = {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        ...headers,
+      },
+    };
+
+    if (data) {
+      if (method === "GET") {
+        const params = new URLSearchParams(data).toString();
+        fullUrl += `?${params}`;
+      } else if (method !== "HEAD" && method !== "OPTIONS") {
+        options.body = JSON.stringify(data);
+      }
+    }
+
+    try {
+      const response = await fetch(fullUrl, options);
+      if (method === "HEAD") {
+        return response.headers;
+      }
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await response.json();
+      } else {
+        return await response.text();
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Sends a GET request.
+   *
+   * @param {string} url - The URL to send the request to.
+   * @param {*} [params] - The parameters to include in the request.
+   * @param {Object} [headers={}] - The headers to include in the request.
+   * @returns {Promise<unknown>} - A promise that resolves to the response data.
+   */
+  get(url, params, headers) {
+    return this.request("GET", url, params, headers);
+  }
+
+  /**
+   * Sends a POST request.
+   *
+   * @param {string} url - The URL to send the request to.
+   * @param {*} data - The data to send with the request.
+   * @param {Object} [headers={}] - The headers to include in the request.
+   * @returns {Promise<unknown>} - A promise that resolves to the response data.
+   */
+  post(url, data, headers) {
+    return this.request("POST", url, data, headers);
+  }
+
+  /**
+   * Sends a PUT request.
+   *
+   * @param {string} url - The URL to send the request to.
+   * @param {*} data - The data to send with the request.
+   * @param {Object} [headers={}] - The headers to include in the request.
+   * @returns {Promise<unknown>} - A promise that resolves to the response data.
+   */
+  put(url, data, headers) {
+    return this.request("PUT", url, data, headers);
+  }
+
+  /**
+   * Sends a DELETE request.
+   *
+   * @param {string} url - The URL to send the request to.
+   * @param {*} data - The data to send with the request.
+   * @param {Object} [headers={}] - The headers to include in the request.
+   * @returns {Promise<unknown>} - A promise that resolves to the response data.
+   */
+  delete(url, data, headers) {
+    return this.request("DELETE", url, data, headers);
+  }
+
+  /**
+   * Sends a PATCH request.
+   *
+   * @param {string} url - The URL to send the request to.
+   * @param {*} data - The data to send with the request.
+   * @param {Object} [headers={}] - The headers to include in the request.
+   * @returns {Promise<unknown>} - A promise that resolves to the response data.
+   */
+  patch(url, data, headers) {
+    return this.request("PATCH", url, data, headers);
+  }
+
+  /**
+   * Sends a HEAD request.
+   *
+   * @param {string} url - The URL to send the request to.
+   * @param {Object} [headers={}] - The headers to include in the request.
+   * @returns {Promise<unknown>} - A promise that resolves to the response headers.
+   */
+  head(url, headers) {
+    return this.request("HEAD", url, null, headers);
+  }
+
+  /**
+   * Sends an OPTIONS request.
+   *
+   * @param {string} url - The URL to send the request to.
+   * @param {Object} [headers={}] - The headers to include in the request.
+   * @returns {Promise<unknown>} - A promise that resolves to the options available.
+   */
+  options(url, headers) {
+    return this.request("OPTIONS", url, null, headers);
+  }
 }
 
 /**
- * Description placeholder
+ * Copies text to the clipboard.
  *
- * @param {*} text
- * @param {*} btnElement
+ * @param {string} text - The text to copy.
+ * @param {HTMLElement} btnElement - The button element that triggered the copy action.
  */
 function copyToClipboard(text, btnElement) {
   navigator.clipboard.writeText(text).then(
@@ -89,9 +206,9 @@ function copyToClipboard(text, btnElement) {
 }
 
 /**
- * Description placeholder
+ * Copies code to the clipboard.
  *
- * @param {*} btnElement
+ * @param {HTMLElement} btnElement - The button element that triggered the copy action.
  */
 function copyCode(btnElement) {
   // Assuming your code block is uniquely identifiable close to your button
@@ -105,25 +222,27 @@ function copyCode(btnElement) {
 }
 
 /**
- * Description placeholder
- *
- * @class StateManager
- * @typedef {StateManager}
+ * Manages the application state.
  */
 class StateManager {
   static instance = null;
 
+  /**
+   * Creates a new StateManager instance.
+   *
+   * @param {{}} [initialState={}] - The initial state.
+   */
   constructor(initialState = {}) {
     this.state = initialState;
     this.listeners = [];
   }
 
   /**
-   * Description placeholder
+   * Gets the singleton instance of StateManager.
    *
    * @static
-   * @param {{}} [initialState={}]
-   * @returns {*}
+   * @param {{}} [initialState={}] - The initial state.
+   * @returns {StateManager} - The StateManager instance.
    */
   static getInstance(initialState = {}) {
     if (!StateManager.instance) {
@@ -134,10 +253,10 @@ class StateManager {
   }
 
   /**
-   * Description placeholder
+   * Sets the state.
    *
-   * @param {*} update
-   * @param {boolean} [saveToStorage=false]
+   * @param {*} update - The state update.
+   * @param {boolean} [saveToStorage=false] - Whether to save the state to localStorage.
    */
   setState(update, saveToStorage = false) {
     this.state = { ...this.state, ...update };
@@ -148,10 +267,10 @@ class StateManager {
   }
 
   /**
-   * Description placeholder
+   * Subscribes to state changes.
    *
-   * @param {*} listener
-   * @returns {() => any}
+   * @param {*} listener - The listener function.
+   * @returns {Function} - A function to unsubscribe the listener.
    */
   subscribe(listener) {
     this.listeners.push(listener);
@@ -160,10 +279,16 @@ class StateManager {
       (this.listeners = this.listeners.filter((l) => l !== listener));
   }
 
+  /**
+   * Saves the state to localStorage.
+   */
   saveState() {
     localStorage.setItem("appState", JSON.stringify(this.state));
   }
 
+  /**
+   * Loads the state from localStorage.
+   */
   loadState() {
     const state = localStorage.getItem("appState");
     if (state) {
@@ -173,9 +298,9 @@ class StateManager {
   }
 
   /**
-   * Description placeholder
-   * Reset the state to its initial value and optionally clear it from localStorage
-   * @param {boolean} [clearFromStorage=false]
+   * Resets the state to its initial value.
+   *
+   * @param {boolean} [clearFromStorage=false] - Whether to clear the state from localStorage.
    */
   resetState(clearFromStorage = false) {
     this.state = {}; // Reset the state to an empty object or a default state if you prefer
@@ -186,5 +311,5 @@ class StateManager {
   }
 }
 
-// This creates the instance and automatically loads the state if available
-const store = StateManager.getInstance({});
+const store = StateManager.getInstance();
+const api = RequestApi.getInstance();
