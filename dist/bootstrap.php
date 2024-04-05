@@ -209,6 +209,7 @@ try {
     else
         $isParentLayout = false;
 
+    ob_start();
     if (!empty($contentToInclude)) {
         if (!$isParentLayout) {
             require_once $contentToInclude;

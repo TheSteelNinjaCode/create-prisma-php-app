@@ -27,6 +27,7 @@ $isGet = $requestMethod === 'GET';
 $isPost = $requestMethod === 'POST';
 $isPut = $requestMethod === 'PUT';
 $isDelete = $requestMethod === 'DELETE';
+$isPatch = $requestMethod === 'PATCH';
 $isHead = $requestMethod === 'HEAD';
 $isOptions = $requestMethod === 'OPTIONS';
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
