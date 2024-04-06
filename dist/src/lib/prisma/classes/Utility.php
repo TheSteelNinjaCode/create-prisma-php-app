@@ -103,6 +103,32 @@ abstract class Utility
             }
 
             if (isset($value) && empty($value) || !is_bool($value)) {
+                if (is_string($key) && !array_key_exists($key, $fields)) {
+                    throw new \Exception("The field '$key' does not exist in the $modelName model.");
+                }
+
+                if (is_array($value) && !empty($value)) {
+
+                    $isRelatedModel = false;
+
+                    foreach ($fields as $field) {
+                        $relation = $field['decorators']['relation'] ?? null;
+                        $inverseRelation = $field['decorators']['inverseRelation'] ?? null;
+
+                        if (isset($relation['name']) && $relation['name'] == $key || isset($inverseRelation['name']) && $inverseRelation['name'] == $key) $isRelatedModel = true;
+                    }
+
+                    if ($isRelatedModel) continue;
+
+                    $keys = array_keys($value);
+                    foreach ($keys as $fieldName) {
+                        $fieldName = trim($fieldName);
+                        if (!array_key_exists($fieldName, $fields)) {
+                            throw new \Exception("The field '$fieldName' does not exist in the $modelName model.");
+                        }
+                    }
+                }
+
                 continue;
             }
 
@@ -265,7 +291,7 @@ abstract class Utility
     {
         foreach ($data as $key => $value) {
             if (!empty($key) && !in_array($key, $fields)) {
-                throw new \Exception("The field '$key' does not exist in the $modelName model.");
+                throw new \Exception("The field '$key' does not exist in the $modelName model. Accepted fields: " . implode(', ', $fields));
             }
         }
     }
