@@ -7,6 +7,9 @@ use PHPMailer\PHPMailer\Exception;
 use Lib\Prisma\Classes\Validator;
 use Dotenv\Dotenv;
 
+$dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
+$dotenv->load();
+
 class Mailer
 {
     private PHPMailer $mail;
@@ -14,9 +17,6 @@ class Mailer
 
     public function __construct()
     {
-        $dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
-        $dotenv->load();
-
         $this->mail = new PHPMailer(true);
         $this->setup();
 
@@ -84,8 +84,8 @@ class Mailer
             $this->mail->AltBody = $altBody;
 
             return $this->mail->send();
-        } catch (\Exception) {
-            echo "Message could not be sent. Mailer Error: {$this->mail->ErrorInfo}";
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage());
         }
     }
 }
