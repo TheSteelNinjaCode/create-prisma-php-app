@@ -115,7 +115,7 @@ abstract class Utility
                         $relation = $field['decorators']['relation'] ?? null;
                         $inverseRelation = $field['decorators']['inverseRelation'] ?? null;
 
-                        if (isset($relation['name']) && $relation['name'] == $key || isset($inverseRelation['name']) && $inverseRelation['name'] == $key) $isRelatedModel = true;
+                        if (isset($relation['name']) && $relation['name'] == $key || isset($inverseRelation['fromField']) && $inverseRelation['fromField'] == $key) $isRelatedModel = true;
                     }
 
                     if ($isRelatedModel) continue;
