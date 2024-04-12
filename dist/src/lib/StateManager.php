@@ -7,6 +7,7 @@ namespace Lib;
  */
 class StateManager
 {
+    private const APP_STATE = 'appState';
     private $state;
     private $listeners;
 
@@ -76,7 +77,7 @@ class StateManager
      */
     private function saveState()
     {
-        $_SESSION['appState'] = json_encode($this->state);
+        $_SESSION[self::APP_STATE] = json_encode($this->state);
     }
 
     /**
@@ -84,8 +85,8 @@ class StateManager
      */
     private function loadState()
     {
-        if (isset($_SESSION['appState'])) {
-            $this->state = json_decode($_SESSION['appState'], true);
+        if (isset($_SESSION[self::APP_STATE])) {
+            $this->state = json_decode($_SESSION[self::APP_STATE], true);
             foreach ($this->listeners as $listener) {
                 call_user_func($listener, $this->state);
             }
@@ -93,18 +94,33 @@ class StateManager
     }
 
     /**
-     * Resets the application state.
+     * Resets the application state partially or completely.
      *
+     * @param string|null $key The key of the state to reset. If null, resets the entire state.
      * @param bool $clearFromStorage Whether to clear the state from storage.
      */
-    public function resetState($clearFromStorage = false)
+    public function resetState($key = null, $clearFromStorage = false)
     {
-        $this->state = [];
+        if ($key === null) {
+            // Reset the entire state
+            $this->state = [];
+        } else {
+            // Reset only the part of the state identified by $key
+            unset($this->state[$key]);
+        }
+
+        // Notify all listeners about the state change
         foreach ($this->listeners as $listener) {
             call_user_func($listener, $this->state);
         }
+
         if ($clearFromStorage) {
-            unset($_SESSION['appState']);
+            // Save the updated state to the session or clear it
+            if (empty($this->state)) {
+                unset($_SESSION[self::APP_STATE]);
+            } else {
+                $_SESSION[self::APP_STATE] = json_encode($this->state);
+            }
         }
     }
 }
