@@ -72,7 +72,7 @@ class AuthMiddleware
         $roleBasedRoutes = AuthConfig::$roleBasedRoutes ?? [];
         foreach ($roleBasedRoutes as $pattern => $data) {
             if (self::getUriRegex($pattern, $requestUri)) {
-                $userRole = $auth->getPayload()['userRole'] ?? null;
+                $userRole = $auth->getPayload() ?? null;
                 if ($userRole !== null && AuthConfig::checkAuthRole($userRole, $data[AuthConfig::ROLE_IDENTIFIER])) {
                     return true;
                 }
