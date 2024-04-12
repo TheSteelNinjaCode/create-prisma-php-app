@@ -2,6 +2,8 @@
 
 namespace Lib\Prisma\Classes;
 
+use Lib\Validator;
+
 enum ArrayType: string
 {
     case Associative = 'associative';

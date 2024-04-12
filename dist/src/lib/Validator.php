@@ -1,6 +1,6 @@
 <?php
 
-namespace Lib\Prisma\Classes;
+namespace Lib;
 
 class Validator
 {

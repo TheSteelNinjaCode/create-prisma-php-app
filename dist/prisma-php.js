@@ -34,6 +34,7 @@ const main = async () => {
       const commandArgs = [localSettings.projectName];
       if (localSettings.tailwindcss) commandArgs.push("--tailwindcss");
       if (localSettings.websocket) commandArgs.push("--websocket");
+      if (localSettings.prisma) commandArgs.push("--prisma");
       console.log("Executing command...\n");
       await executeCommand("npx", [
         "create-prisma-php-app@latest",
@@ -55,6 +56,25 @@ const main = async () => {
   }
   if (formattedCommand === commandsToExecute.generateClass) {
     try {
+      const currentDir = process.cwd();
+      const configPath = path.join(currentDir, "prisma-php.json");
+      if (!fs.existsSync(configPath)) {
+        console.error(
+          chalk.red(
+            "The configuration file 'prisma-php.json' was not found in the current directory."
+          )
+        );
+        return;
+      }
+      const localSettings = readJsonFile(configPath);
+      if (!localSettings.prisma) {
+        console.error(
+          chalk.red(
+            "Install the 'Prisma PHP ORM' package by running the command 'npx php update project'."
+          )
+        );
+        return;
+      }
       const prismaClientPath = path.join(
         __dirname,
         "prisma-client-php",
@@ -63,7 +83,7 @@ const main = async () => {
       if (!fs.existsSync(prismaClientPath)) {
         console.error(
           chalk.red(
-            "The prisma-client-php/index.js file was not found in the current directory."
+            "The 'prisma-client-php' package was not found in the current directory."
           )
         );
         return;

@@ -1,5 +1,3 @@
-<?php require_once "../../bootstrap.php"; ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -15,12 +13,6 @@
 </head>
 
 <body>
-    <!-- don't place any HTML content here. This section is reserved to show the notFound content. -->
-    <?php if (isset($notFound)) {
-        echo $notFound;
-        exit;
-    } ?>
-
     <!-- Additional HTML content can go here. -->
     <?php echo $content; ?>
     <!-- Additional HTML content can go here. -->

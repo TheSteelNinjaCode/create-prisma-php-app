@@ -7,24 +7,25 @@ if (session_status() == PHP_SESSION_NONE) {
 require_once __DIR__ . '/settings/paths.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
-$metadata = require_once __DIR__ . '/src/app/metadata.php';
+use Lib\Middleware\AuthMiddleware;
+use Dotenv\Dotenv;
+
+$dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
+$dotenv->load();
 
 function determineContentToInclude()
 {
-    global $metadata;
-
     $subject = $_SERVER["SCRIPT_NAME"];
-    preg_match("/^(.*)\/src\/app\//", $subject, $matches);
-
+    $dirname = dirname($subject);
     $requestUri = explode('?', $_SERVER['REQUEST_URI'], 2)[0];
     $requestUri = rtrim($requestUri, '/');
-    $requestUri = str_replace($matches[1], '', $requestUri);
+    $requestUri = str_replace($dirname, '', $requestUri);
     $uri = trim($requestUri, '/');
-    $baseDir = __DIR__ . '/src/app';
+    $baseDir = APP_PATH;
     $includePath = '';
     $layoutsToInclude = [];
-    $metadata = $metadata[$uri] ?? $metadata['default'];
     writeRoutes();
+    AuthMiddleware::handle($uri);
 
     $isDirectAccessToPrivateRoute = preg_match('/^_/', $uri);
     if ($isDirectAccessToPrivateRoute) {
@@ -34,7 +35,7 @@ function determineContentToInclude()
     if ($uri) {
         $groupFolder = findGroupFolder($uri);
         if ($groupFolder) {
-            $path = $baseDir . $groupFolder;
+            $path = __DIR__ . $groupFolder;
             if (file_exists($path)) {
                 $includePath = $path;
             }
@@ -44,7 +45,7 @@ function determineContentToInclude()
         $getGroupFolder = getGroupFolder($groupFolder);
         $modifiedUri = $uri;
         if (!empty($getGroupFolder)) {
-            $modifiedUri = $getGroupFolder;
+            $modifiedUri = trim($getGroupFolder, "/src/app/");
         }
 
         foreach (explode('/', $modifiedUri) as $segment) {
@@ -98,7 +99,7 @@ function checkForDuplicateRoutes()
 
 function writeRoutes()
 {
-    $directory = './';
+    $directory = './src/app';
 
     if (is_dir($directory)) {
         $filesList = [];
@@ -146,14 +147,18 @@ function matchGroupFolder($constructedPath): ?string
     $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files-list.json"), true);
     $bestMatch = null;
     $normalizedConstructedPath = ltrim(str_replace('\\', '/', $constructedPath), './');
-    $normalizedConstructedPath = "/$normalizedConstructedPath/index.php";
+
+    $routeFile = "/src/app/$normalizedConstructedPath/route.php";
+    $indexFile = "/src/app/$normalizedConstructedPath/index.php";
 
     foreach ($routes as $route) {
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
         $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
-        if ($cleanedRoute === $normalizedConstructedPath) {
+        if ($cleanedRoute === $routeFile) {
             $bestMatch = $normalizedRoute;
             break;
+        } elseif ($cleanedRoute === $indexFile && !$bestMatch) {
+            $bestMatch = $normalizedRoute;
         }
     }
 
@@ -172,66 +177,134 @@ function getGroupFolder($uri): string
     return "";
 }
 
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-$domainName = $_SERVER['HTTP_HOST'];
-$scriptPath = dirname($_SERVER['SCRIPT_NAME']) . '/';
-$baseUrl = $protocol . $domainName . rtrim($scriptPath, '/') . '/';
-$pathname = "";
+function redirect(string $url): void
+{
+    header("Location: $url");
+    exit;
+}
+
+function setupErrorHandling(&$content)
+{
+    set_error_handler(function ($severity, $message, $file, $line) use (&$content) {
+        $content .= "<div class='error'>Error: {$severity} - {$message} in {$file} on line {$line}</div>";
+    });
+
+    set_exception_handler(function ($exception) use (&$content) {
+        $content .= "<div class='error'>Exception: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
+    });
+
+    register_shutdown_function(function () use (&$content) {
+        $error = error_get_last();
+        if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR])) {
+            $formattedError = "<div class='error'>Fatal Error: " . htmlspecialchars($error['message'], ENT_QUOTES, 'UTF-8') .
+                " in " . htmlspecialchars($error['file'], ENT_QUOTES, 'UTF-8') .
+                " on line " . $error['line'] . "</div>";
+            $content .= $formattedError;
+            modifyOutputLayoutForError($content);
+        }
+    });
+}
 
 ob_start();
+require_once SETTINGS_PATH . '/request-methods.php';
+$metadataArray = require_once APP_PATH . '/metadata.php';
+$metadata = "";
+$pathname = "";
+$content = "";
+$childContent = "";
 
-set_error_handler(function ($severity, $message, $file, $line) use (&$content) {
-    echo "<div class='error'>An error occurred: $severity - $message in $file on line $line</div>";
-    $content .= ob_get_clean();
-});
+function containsChildContent($filePath)
+{
+    $fileContent = file_get_contents($filePath);
+    $pattern = '/<\?(?:php)?[^?]*\$childContent[^?]*\?>/is';
 
-set_exception_handler(function ($exception) use (&$content) {
-    echo "<div class='error'>An error occurred: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
-    $content .= ob_get_clean();
-});
-
-register_shutdown_function(function () use (&$content) {
-    $error = error_get_last();
-    if ($error && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_CORE_ERROR || $error['type'] === E_COMPILE_ERROR)) {
-        echo "<div class='error'>An error occurred: " . $error['message'] . "</div>";
-        $content .= ob_get_clean();
+    if (preg_match($pattern, $fileContent)) {
+        return true;
+    } else {
+        return false;
     }
-});
+}
+
+function containsContent($filePath)
+{
+    $fileContent = file_get_contents($filePath);
+    $pattern = '/<\?(?:php\s+)?(?:=|echo|print)\s*\$content\s*;?\s*\?>/i';
+    if (preg_match($pattern, $fileContent)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function modifyOutputLayoutForError($contentToAdd)
+{
+    $layoutContent = file_get_contents(APP_PATH . '/layout.php');
+    if ($layoutContent !== false) {
+        $newBodyContent = "<body class=\"fatal-error\">$contentToAdd</body>";
+
+        $modifiedNotFoundContent = preg_replace('~<body.*?>.*?</body>~s', $newBodyContent, $layoutContent);
+
+        echo $modifiedNotFoundContent;
+        exit;
+    }
+}
 
 try {
     $result = determineContentToInclude();
     checkForDuplicateRoutes();
     $contentToInclude = $result['path'] ?? '';
     $layoutsToInclude = $result['layouts'] ?? [];
-    $pathname = $result['uri'] ? "/" . $result['uri'] : "/";
-    if (!empty($layoutsToInclude))
-        $isParentLayout = strpos($layoutsToInclude[0], 'src/app/layout.php') !== false;
-    else
-        $isParentLayout = false;
+    $uri = $result['uri'] ?? '';
+    $pathname = $uri ? "/" . $uri : "/";
+    $metadata = $metadataArray[$uri] ?? $metadataArray['default'];
+    if (!empty($contentToInclude) && basename($contentToInclude) === 'route.php') {
+        require_once SETTINGS_PATH . '/route-request.php';
+        require_once $contentToInclude;
+        exit;
+    }
+
+    $parentLayoutPath = APP_PATH . '/layout.php';
+    $isParentLayout = !empty($layoutsToInclude) && strpos($layoutsToInclude[0], 'src/app/layout.php') !== false;
+
+    if (!containsContent($parentLayoutPath)) {
+        $content .= "<div class='error'>The parent layout file does not contain &lt;?php echo \$content ?&gt; Or &lt;?= \$content ?&gt;<br>" . "<strong>$parentLayoutPath</strong></div>";
+    }
 
     ob_start();
     if (!empty($contentToInclude)) {
         if (!$isParentLayout) {
-            require_once $contentToInclude;
-        }
-        $childContent = ob_get_clean();
-        for ($i = count($layoutsToInclude) - 1; $i >= 0; $i--) {
-            $layoutPath = $layoutsToInclude[$i];
             ob_start();
-            require_once $layoutPath;
+            require_once $contentToInclude;
             $childContent = ob_get_clean();
         }
-
-        if ($isParentLayout) {
-            require_once $contentToInclude;
+        foreach (array_reverse($layoutsToInclude) as $layoutPath) {
+            ob_start();
+            if ($parentLayoutPath === $layoutPath) continue;
+            if (containsChildContent($layoutPath)) {
+                require_once $layoutPath;
+            } else {
+                $content .= "<div class='error'>The layout file does not contain &lt;?php echo \$childContent ?&gt; Or &lt;?= \$childContent ?&gt<br>" . "<strong>$layoutPath</strong></div>";
+            }
+            $childContent = ob_get_clean();
         }
-        $content = $childContent;
     } else {
-        require_once 'not-found.php';
-        $notFound = ob_get_clean();
+        ob_start();
+        require_once APP_PATH . '/not-found.php';
+        $childContent = ob_get_clean();
     }
-    $content .= ob_get_clean();
+
+    if ($isParentLayout && !empty($contentToInclude)) {
+        ob_start();
+        require_once $contentToInclude;
+        $childContent = ob_get_clean();
+    }
+
+    $content .= $childContent;
+
+    ob_start();
+    require_once APP_PATH . '/layout.php';
+    echo ob_get_clean();
 } catch (Throwable $e) {
-    echo "<div class='error'>An error occurred: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
-    $content .= ob_get_clean();
+    $content .=  "<div class='error'>Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
+    modifyOutputLayoutForError($content);
 }
