@@ -96,7 +96,8 @@ class StateManager
     /**
      * Resets the application state partially or completely.
      *
-     * @param string|null $key The key of the state to reset. If null, resets the entire state.
+     * @param string|array|null $key The key(s) of the state to reset. If null, resets the entire state.
+     *                                Can be a string for a single key or an array of strings for multiple keys.
      * @param bool $clearFromStorage Whether to clear the state from storage.
      */
     public function resetState($key = null, $clearFromStorage = false)
@@ -104,8 +105,13 @@ class StateManager
         if ($key === null) {
             // Reset the entire state
             $this->state = [];
+        } elseif (is_array($key)) {
+            // Reset only the parts of the state identified by the keys in the array
+            foreach ($key as $k) {
+                unset($this->state[$k]);
+            }
         } else {
-            // Reset only the part of the state identified by $key
+            // Reset only the part of the state identified by a single key
             unset($this->state[$key]);
         }
 
@@ -117,9 +123,9 @@ class StateManager
         if ($clearFromStorage) {
             // Save the updated state to the session or clear it
             if (empty($this->state)) {
-                unset($_SESSION[self::APP_STATE]);
+                unset($_SESSION['appState']);
             } else {
-                $_SESSION[self::APP_STATE] = json_encode($this->state);
+                $_SESSION['appState'] = json_encode($this->state);
             }
         }
     }
