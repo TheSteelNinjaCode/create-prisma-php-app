@@ -5,10 +5,6 @@ namespace Lib\PHPMailer;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use Lib\Validator;
-use Dotenv\Dotenv;
-
-$dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
-$dotenv->load();
 
 class Mailer
 {

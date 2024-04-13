@@ -77,14 +77,29 @@ function checkForDuplicateRoutes()
     foreach ($routes as $route) {
         $routeWithoutGroups = preg_replace('/\(.*?\)/', '', $route);
         $routeTrimmed = ltrim($routeWithoutGroups, '.\\/');
+        $routeTrimmed = preg_replace('#/{2,}#', '/', $routeTrimmed);
+        $routeTrimmed = preg_replace('#\\\\{2,}#', '\\', $routeTrimmed);
         $routeNormalized = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $routeTrimmed);
         $normalizedRoutesMap[$routeNormalized][] = $route;
     }
 
     $errorMessages = [];
     foreach ($normalizedRoutesMap as $normalizedRoute => $originalRoutes) {
+        $basename = basename($normalizedRoute);
+        if ($basename === 'layout.php') continue;
+
         if (count($originalRoutes) > 1 && strpos($normalizedRoute, DIRECTORY_SEPARATOR) !== false) {
+            $directGroupMatchFound = false;
+            foreach ($originalRoutes as $originalRoute) {
+                if (preg_match('#^\\.\\/src\\/app\\\\\\((.*?)\\)\\\\([^\\\\]+\\.php)$#', $originalRoute, $matches)) {
+                    $directGroupMatchFound = true;
+                }
+            }
+
+            if ($directGroupMatchFound) continue;
+
             $errorMessages[] = "Duplicate route found after normalization: " . $normalizedRoute;
+
             foreach ($originalRoutes as $originalRoute) {
                 $errorMessages[] = "- Grouped original route: " . $originalRoute;
             }
@@ -93,7 +108,7 @@ function checkForDuplicateRoutes()
 
     if (!empty($errorMessages)) {
         $errorMessageString = implode("<br>", $errorMessages);
-        throw new Exception($errorMessageString);
+        modifyOutputLayoutForError($errorMessageString);
     }
 }
 
