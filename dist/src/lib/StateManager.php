@@ -123,9 +123,9 @@ class StateManager
         if ($clearFromStorage) {
             // Save the updated state to the session or clear it
             if (empty($this->state)) {
-                unset($_SESSION['appState']);
+                unset($_SESSION[self::APP_STATE]);
             } else {
-                $_SESSION['appState'] = json_encode($this->state);
+                $_SESSION[self::APP_STATE] = json_encode($this->state);
             }
         }
     }
