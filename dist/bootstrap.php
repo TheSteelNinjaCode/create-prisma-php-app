@@ -91,7 +91,7 @@ function checkForDuplicateRoutes()
         if (count($originalRoutes) > 1 && strpos($normalizedRoute, DIRECTORY_SEPARATOR) !== false) {
             $directGroupMatchFound = false;
             foreach ($originalRoutes as $originalRoute) {
-                if (preg_match('#^\\.\\/src\\/app\\\\\\((.*?)\\)\\\\([^\\\\]+\\.php)$#', $originalRoute, $matches)) {
+                if (preg_match('~^\\.\\/src\\/app[\\/\\\\]\\(.*?\\)[\\/\\\\].*?\\.php$~', $originalRoute, $matches)) {
                     $directGroupMatchFound = true;
                 }
             }
@@ -320,6 +320,7 @@ try {
     require_once APP_PATH . '/layout.php';
     echo ob_get_clean();
 } catch (Throwable $e) {
+    $content = ob_get_clean();
     $content .=  "<div class='error'>Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
     modifyOutputLayoutForError($content);
 }

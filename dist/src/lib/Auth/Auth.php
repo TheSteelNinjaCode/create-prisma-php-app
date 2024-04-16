@@ -6,7 +6,6 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use DateInterval;
 use DateTime;
-use Psr\Log\LoggerInterface;
 
 class Auth
 {
@@ -16,12 +15,10 @@ class Auth
 
     private $secretKey;
     private $defaultTokenValidity = '1h'; // Default to 1 hour
-    private $logger;
 
-    public function __construct(LoggerInterface $logger = null)
+    public function __construct()
     {
         $this->secretKey = $_ENV['AUTH_SECRET'];
-        $this->logger = $logger;
     }
 
     /**
@@ -121,16 +118,8 @@ class Auth
     {
         try {
             return JWT::decode($jwt, new Key($this->secretKey, 'HS256'));
-        } catch (\Firebase\JWT\ExpiredException $e) {
-            if ($this->logger) {
-                $this->logger->error("JWT expired: " . $e->getMessage());
-            }
-            return false;
         } catch (\Exception $e) {
-            if ($this->logger) {
-                $this->logger->error("JWT verification failed: " . $e->getMessage());
-            }
-            return false;
+            throw new \InvalidArgumentException("Invalid token.");
         }
     }
 
