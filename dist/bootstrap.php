@@ -15,12 +15,9 @@ $dotenv->load();
 
 function determineContentToInclude()
 {
-    $subject = $_SERVER["SCRIPT_NAME"];
-    $dirname = dirname($subject);
-    $requestUri = explode('?', $_SERVER['REQUEST_URI'], 2)[0];
-    $requestUri = rtrim($requestUri, '/');
-    $requestUri = str_replace($dirname, '', $requestUri);
-    $uri = trim($requestUri, '/');
+    $scriptUrl = $_SERVER['REQUEST_URI'];
+    $scriptUrl = explode('?', $scriptUrl, 2)[0];
+    $uri = $_SERVER['SCRIPT_URL'] ?? uriExtractor($scriptUrl);
     $baseDir = APP_PATH;
     $includePath = '';
     $layoutsToInclude = [];
@@ -67,6 +64,27 @@ function determineContentToInclude()
     }
 
     return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri];
+}
+
+function uriExtractor(string $scriptUrl): string
+{
+    $prismaPHPSettings = json_decode(file_get_contents("prisma-php.json"), true);
+    $projectName = $prismaPHPSettings['projectName'] ?? '';
+    if (empty($projectName)) {
+        return "/";
+    }
+
+    $escapedIdentifier = preg_quote($projectName, '/');
+    $pattern = "/(?:.*$escapedIdentifier)(\/.*)$/";
+    if (preg_match($pattern, $scriptUrl, $matches)) {
+        if (!empty($matches[1])) {
+            $leftTrim = ltrim($matches[1], '/');
+            $rightTrim = rtrim($leftTrim, '/');
+            return "$rightTrim";
+        }
+    }
+
+    return "/";
 }
 
 function checkForDuplicateRoutes()
