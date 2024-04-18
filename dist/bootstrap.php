@@ -250,9 +250,12 @@ $childContent = "";
 function containsChildContent($filePath)
 {
     $fileContent = file_get_contents($filePath);
-    $pattern = '/<\?(?:php)?[^?]*\$childContent[^?]*\?>/is';
-
-    if (preg_match($pattern, $fileContent)) {
+    if (
+        (strpos($fileContent, 'echo $childContent') === false &&
+            strpos($fileContent, 'echo $childContent;') === false) &&
+        (strpos($fileContent, '<?= $childContent ?>') === false) &&
+        (strpos($fileContent, '<?= $childContent; ?>') === false)
+    ) {
         return true;
     } else {
         return false;
@@ -262,8 +265,12 @@ function containsChildContent($filePath)
 function containsContent($filePath)
 {
     $fileContent = file_get_contents($filePath);
-    $pattern = '/<\?(?:php\s+)?(?:=|echo|print)\s*\$content\s*;?\s*\?>/i';
-    if (preg_match($pattern, $fileContent)) {
+    if (
+        (strpos($fileContent, 'echo $content') === false &&
+            strpos($fileContent, 'echo $content;') === false) &&
+        (strpos($fileContent, '<?= $content ?>') === false) &&
+        (strpos($fileContent, '<?= $content; ?>') === false)
+    ) {
         return true;
     } else {
         return false;
@@ -300,8 +307,10 @@ try {
     $parentLayoutPath = APP_PATH . '/layout.php';
     $isParentLayout = !empty($layoutsToInclude) && strpos($layoutsToInclude[0], 'src/app/layout.php') !== false;
 
-    if (!containsContent($parentLayoutPath)) {
-        $content .= "<div class='error'>The parent layout file does not contain &lt;?php echo \$content ?&gt; Or &lt;?= \$content ?&gt;<br>" . "<strong>$parentLayoutPath</strong></div>";
+    $isContentIncluded = false;
+    $isChildContentIncluded = false;
+    if (containsContent($parentLayoutPath)) {
+        $isContentIncluded = true;
     }
 
     ob_start();
@@ -312,13 +321,16 @@ try {
             $childContent = ob_get_clean();
         }
         foreach (array_reverse($layoutsToInclude) as $layoutPath) {
-            ob_start();
-            if ($parentLayoutPath === $layoutPath) continue;
-            if (containsChildContent($layoutPath)) {
-                require_once $layoutPath;
-            } else {
-                $content .= "<div class='error'>The layout file does not contain &lt;?php echo \$childContent ?&gt; Or &lt;?= \$childContent ?&gt<br>" . "<strong>$layoutPath</strong></div>";
+            if ($parentLayoutPath === $layoutPath) {
+                continue;
             }
+
+            if (containsChildContent($layoutPath)) {
+                $isChildContentIncluded = true;
+            }
+
+            ob_start();
+            require_once $layoutPath;
             $childContent = ob_get_clean();
         }
     } else {
@@ -333,11 +345,19 @@ try {
         $childContent = ob_get_clean();
     }
 
-    $content .= $childContent;
-
-    ob_start();
-    require_once APP_PATH . '/layout.php';
-    echo ob_get_clean();
+    if (!$isContentIncluded && !$isChildContentIncluded) {
+        $content .= $childContent;
+        ob_start();
+        require_once APP_PATH . '/layout.php';
+    } else {
+        if ($isContentIncluded) {
+            $content .= "<div class='error'>The parent layout file does not contain &lt;?php echo \$content; ?&gt; Or &lt;?= \$content ?&gt;<br>" . "<strong>$parentLayoutPath</strong></div>";
+            modifyOutputLayoutForError($content);
+        } else {
+            $content .= "<div class='error'>The layout file does not contain &lt;?php echo \$childContent; ?&gt; or &lt;?= \$childContent ?&gt;<br><strong>$layoutPath</strong></div>";
+            modifyOutputLayoutForError($content);
+        }
+    }
 } catch (Throwable $e) {
     $content = ob_get_clean();
     $content .=  "<div class='error'>Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
