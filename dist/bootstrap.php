@@ -18,6 +18,7 @@ function determineContentToInclude()
     $scriptUrl = $_SERVER['REQUEST_URI'];
     $scriptUrl = explode('?', $scriptUrl, 2)[0];
     $uri = $_SERVER['SCRIPT_URL'] ?? uriExtractor($scriptUrl);
+    $uri = ltrim($uri, '/');
     $baseDir = APP_PATH;
     $includePath = '';
     $layoutsToInclude = [];
