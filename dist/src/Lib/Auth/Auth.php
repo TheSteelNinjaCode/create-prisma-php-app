@@ -10,6 +10,7 @@ use DateTime;
 class Auth
 {
     public const PAYLOAD_NAME = 'role';
+    public const ROLE_NAME = '';
     public const PAYLOAD = 'payload';
     public const COOKIE_NAME = 'auth_token';
 
