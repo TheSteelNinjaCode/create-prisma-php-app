@@ -167,8 +167,8 @@ function dynamicRoute($uri)
             $cleanedRoute = preg_replace('/\[\.\.\..*?\].*/', '', $normalizedRoute);
             if (strpos('/src/app/' . $normalizedUri, $cleanedRoute) === 0) {
                 if (strpos($normalizedRoute, 'route.php') !== false) {
-                    $normalizedUriEdited = "src/app/$normalizedUri";
-                    $trimNormalizedUriEdited = trim($normalizedUriEdited, $cleanedRoute);
+                    $normalizedUriEdited = "/src/app/$normalizedUri";
+                    $trimNormalizedUriEdited = str_replace($cleanedRoute, '', $normalizedUriEdited);
                     $explodedNormalizedUri = explode('/', $trimNormalizedUriEdited);
                     $pattern = '/\[\.\.\.(.*?)\]/';
                     if (preg_match($pattern, $normalizedRoute, $matches)) {
