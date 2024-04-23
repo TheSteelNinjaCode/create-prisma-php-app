@@ -251,14 +251,7 @@ function checkForDuplicateRoutes()
         if ($basename === 'layout.php') continue;
 
         if (count($originalRoutes) > 1 && strpos($normalizedRoute, DIRECTORY_SEPARATOR) !== false) {
-            $directGroupMatchFound = false;
-            foreach ($originalRoutes as $originalRoute) {
-                if (preg_match('~^\\.\\/src\\/app[\\/\\\\]\\(.*?\\)[\\/\\\\].*?\\.php$~', $originalRoute, $matches)) {
-                    $directGroupMatchFound = true;
-                }
-            }
-
-            if ($directGroupMatchFound) continue;
+            if ($basename !== 'route.php' && $basename !== 'index.php') continue;
 
             $errorMessages[] = "Duplicate route found after normalization: " . $normalizedRoute;
 
