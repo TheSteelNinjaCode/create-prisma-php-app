@@ -39,6 +39,16 @@ function determineContentToInclude()
             }
         }
 
+        if (empty($includePath)) {
+            $dynamicRoute = dynamicRoute($uri);
+            if ($dynamicRoute) {
+                $path = __DIR__ . $dynamicRoute;
+                if (file_exists($path)) {
+                    $includePath = $path;
+                }
+            }
+        }
+
         $currentPath = $baseDir;
         $getGroupFolder = getGroupFolder($groupFolder);
         $modifiedUri = $uri;
@@ -88,12 +98,145 @@ function uriExtractor(string $scriptUrl): string
     return "/";
 }
 
+function writeRoutes()
+{
+    global $filesListRoutes;
+    $directory = './src/app';
+
+    if (is_dir($directory)) {
+        $filesList = [];
+
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory));
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $filesList[] = $file->getPathname();
+            }
+        }
+
+        $jsonData = json_encode($filesList, JSON_PRETTY_PRINT);
+        $jsonFileName = SETTINGS_PATH . '/files-list.json';
+        @file_put_contents($jsonFileName, $jsonData);
+
+        if (file_exists($jsonFileName)) {
+            $filesListRoutes = json_decode(file_get_contents($jsonFileName), true);
+        }
+    }
+}
+
+function findGroupFolder($uri): string
+{
+    $uriSegments = explode('/', $uri);
+    foreach ($uriSegments as $segment) {
+        if (!empty($segment)) {
+            if (isGroupIdentifier($segment)) {
+                return $segment;
+            }
+        }
+    }
+
+    $matchedGroupFolder = matchGroupFolder($uri);
+    if ($matchedGroupFolder) {
+        return $matchedGroupFolder;
+    } else {
+        return '';
+    }
+}
+
+function dynamicRoute($uri)
+{
+    global $filesListRoutes;
+    $uriMatch = null;
+    $normalizedUri = ltrim(str_replace('\\', '/', $uri), './');
+    $normalizedUriEdited = "src/app/$normalizedUri/route.php";
+    $uriSegments = explode('/', $normalizedUriEdited);
+
+    foreach ($filesListRoutes as $route) {
+        $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
+        $routeSegments = explode('/', ltrim($normalizedRoute, '/'));
+        $singleDynamic = preg_match_all('/\[[^\]]+\]/', $normalizedRoute, $matches) === 1 && !strpos($normalizedRoute, '[...');
+        if ($singleDynamic) {
+            if (singleDynamicRoute($uriSegments, $routeSegments)) {
+                $uriMatch = $normalizedRoute;
+                break;
+            }
+        } elseif (strpos($normalizedRoute, '[...') !== false) {
+            $cleanedRoute = preg_replace('/\[\.\.\..*?\].*/', '', $normalizedRoute);
+            if (strpos('/src/app/' . $normalizedUri, $cleanedRoute) === 0) {
+                if (strpos($normalizedRoute, 'route.php') !== false) {
+                    $uriMatch = $normalizedRoute;
+                    break;
+                }
+            }
+        }
+    }
+
+    return $uriMatch;
+}
+
+function isGroupIdentifier($segment): bool
+{
+    return preg_match('/^\(.*\)$/', $segment);
+}
+
+function matchGroupFolder($constructedPath): ?string
+{
+    global $filesListRoutes;
+    $bestMatch = null;
+    $normalizedConstructedPath = ltrim(str_replace('\\', '/', $constructedPath), './');
+
+    $routeFile = "/src/app/$normalizedConstructedPath/route.php";
+    $indexFile = "/src/app/$normalizedConstructedPath/index.php";
+
+    foreach ($filesListRoutes as $route) {
+        $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
+
+        $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
+        if ($cleanedRoute === $routeFile) {
+            $bestMatch = $normalizedRoute;
+            break;
+        } elseif ($cleanedRoute === $indexFile && !$bestMatch) {
+            $bestMatch = $normalizedRoute;
+        }
+    }
+
+    return $bestMatch;
+}
+
+function getGroupFolder($uri): string
+{
+    $lastSlashPos = strrpos($uri, '/');
+    $pathWithoutFile = substr($uri, 0, $lastSlashPos);
+
+    if (preg_match('/\(([^)]+)\)[^()]*$/', $pathWithoutFile, $matches)) {
+        return $pathWithoutFile;
+    }
+
+    return "";
+}
+
+function singleDynamicRoute($uriSegments, $routeSegments)
+{
+    if (count($routeSegments) != count($uriSegments)) {
+        return false;
+    }
+
+    foreach ($routeSegments as $index => $segment) {
+        if (preg_match('/^\[[^\]]+\]$/', $segment)) {
+        } else {
+            if ($segment !== $uriSegments[$index]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 function checkForDuplicateRoutes()
 {
-    $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files-list.json"), true);
-
+    global $filesListRoutes;
     $normalizedRoutesMap = [];
-    foreach ($routes as $route) {
+    foreach ($filesListRoutes as $route) {
         $routeWithoutGroups = preg_replace('/\(.*?\)/', '', $route);
         $routeTrimmed = ltrim($routeWithoutGroups, '.\\/');
         $routeTrimmed = preg_replace('#/{2,}#', '/', $routeTrimmed);
@@ -131,92 +274,6 @@ function checkForDuplicateRoutes()
     }
 }
 
-function writeRoutes()
-{
-    $directory = './src/app';
-
-    if (is_dir($directory)) {
-        $filesList = [];
-
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory));
-
-        foreach ($iterator as $file) {
-            if ($file->isFile()) {
-                $filesList[] = $file->getPathname();
-            }
-        }
-
-        $jsonData = json_encode($filesList, JSON_PRETTY_PRINT);
-        $jsonFileName = SETTINGS_PATH . '/files-list.json';
-        @file_put_contents($jsonFileName, $jsonData);
-    }
-}
-
-function findGroupFolder($uri): string
-{
-    $uriSegments = explode('/', $uri);
-    foreach ($uriSegments as $segment) {
-        if (!empty($segment)) {
-            if (isGroupIdentifier($segment)) {
-                return $segment;
-            }
-        }
-    }
-
-    $matchedGroupFolder = matchGroupFolder($uri);
-    if ($matchedGroupFolder) {
-        return $matchedGroupFolder;
-    } else {
-        return '';
-    }
-}
-
-function isGroupIdentifier($segment): bool
-{
-    return preg_match('/^\(.*\)$/', $segment);
-}
-
-function matchGroupFolder($constructedPath): ?string
-{
-    $routes = json_decode(file_get_contents(SETTINGS_PATH . "/files-list.json"), true);
-    $bestMatch = null;
-    $normalizedConstructedPath = ltrim(str_replace('\\', '/', $constructedPath), './');
-
-    $routeFile = "/src/app/$normalizedConstructedPath/route.php";
-    $indexFile = "/src/app/$normalizedConstructedPath/index.php";
-
-    foreach ($routes as $route) {
-        $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
-        $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
-        if ($cleanedRoute === $routeFile) {
-            $bestMatch = $normalizedRoute;
-            break;
-        } elseif ($cleanedRoute === $indexFile && !$bestMatch) {
-            $bestMatch = $normalizedRoute;
-        }
-    }
-
-    return $bestMatch;
-}
-
-function getGroupFolder($uri): string
-{
-    $lastSlashPos = strrpos($uri, '/');
-    $pathWithoutFile = substr($uri, 0, $lastSlashPos);
-
-    if (preg_match('/\(([^)]+)\)[^()]*$/', $pathWithoutFile, $matches)) {
-        return $pathWithoutFile;
-    }
-
-    return "";
-}
-
-function redirect(string $url): void
-{
-    header("Location: $url");
-    exit;
-}
-
 function setupErrorHandling(&$content)
 {
     set_error_handler(function ($severity, $message, $file, $line) use (&$content) {
@@ -240,9 +297,12 @@ function setupErrorHandling(&$content)
 }
 
 ob_start();
+require_once SETTINGS_PATH . '/public-functions.php';
 require_once SETTINGS_PATH . '/request-methods.php';
 $metadataArray = require_once APP_PATH . '/metadata.php';
+$filesListRoutes = [];
 $metadata = "";
+$uri = "";
 $pathname = "";
 $content = "";
 $childContent = "";
