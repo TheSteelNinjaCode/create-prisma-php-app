@@ -146,17 +146,20 @@ function findGroupFolder($uri): string
 function dynamicRoute($uri)
 {
     global $filesListRoutes;
+    global $dynamicRouteParams;
     $uriMatch = null;
     $normalizedUri = ltrim(str_replace('\\', '/', $uri), './');
     $normalizedUriEdited = "src/app/$normalizedUri/route.php";
     $uriSegments = explode('/', $normalizedUriEdited);
-
     foreach ($filesListRoutes as $route) {
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
         $routeSegments = explode('/', ltrim($normalizedRoute, '/'));
         $singleDynamic = preg_match_all('/\[[^\]]+\]/', $normalizedRoute, $matches) === 1 && !strpos($normalizedRoute, '[...');
         if ($singleDynamic) {
-            if (singleDynamicRoute($uriSegments, $routeSegments)) {
+            $segmentMatch = singleDynamicRoute($uriSegments, $routeSegments);
+            if (!empty($segmentMatch)) {
+                $trimSegmentMatch = trim($segmentMatch, '[]');
+                $dynamicRouteParams = [$trimSegmentMatch => $uriSegments[array_search($segmentMatch, $routeSegments)]];
                 $uriMatch = $normalizedRoute;
                 break;
             }
@@ -164,6 +167,15 @@ function dynamicRoute($uri)
             $cleanedRoute = preg_replace('/\[\.\.\..*?\].*/', '', $normalizedRoute);
             if (strpos('/src/app/' . $normalizedUri, $cleanedRoute) === 0) {
                 if (strpos($normalizedRoute, 'route.php') !== false) {
+                    $normalizedUriEdited = "src/app/$normalizedUri";
+                    $trimNormalizedUriEdited = trim($normalizedUriEdited, $cleanedRoute);
+                    $explodedNormalizedUri = explode('/', $trimNormalizedUriEdited);
+                    $pattern = '/\[\.\.\.(.*?)\]/';
+                    if (preg_match($pattern, $normalizedRoute, $matches)) {
+                        $contentWithinBrackets = $matches[1];
+                        $dynamicRouteParams = [$contentWithinBrackets => $explodedNormalizedUri];
+                    }
+
                     $uriMatch = $normalizedRoute;
                     break;
                 }
@@ -217,19 +229,21 @@ function getGroupFolder($uri): string
 
 function singleDynamicRoute($uriSegments, $routeSegments)
 {
+    $segmentMatch = "";
     if (count($routeSegments) != count($uriSegments)) {
-        return false;
+        return $segmentMatch;
     }
 
     foreach ($routeSegments as $index => $segment) {
         if (preg_match('/^\[[^\]]+\]$/', $segment)) {
+            return "{$segment}";
         } else {
             if ($segment !== $uriSegments[$index]) {
-                return false;
+                return $segmentMatch;
             }
         }
     }
-    return true;
+    return $segmentMatch;
 }
 
 function checkForDuplicateRoutes()
@@ -297,6 +311,7 @@ $filesListRoutes = [];
 $metadata = "";
 $uri = "";
 $pathname = "";
+$dynamicRouteParams = [];
 $content = "";
 $childContent = "";
 
