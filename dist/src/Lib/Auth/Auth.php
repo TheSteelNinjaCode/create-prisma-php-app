@@ -9,7 +9,6 @@ use DateTime;
 use Lib\Validator;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Lib\Prisma\Classes\Prisma;
 
 class Auth
 {
@@ -209,6 +208,11 @@ class Auth
         }
     }
 
+    private function saveAuthInfo($responseInfo, $accountData)
+    {
+        // Save user data to the database
+    }
+
     public function authProviders(GithubProvider | null $githubProvider = null, GoogleProvider | null $googleProvider = null)
     {
         global $isGet, $dynamicRouteParams;
@@ -297,32 +301,7 @@ class Auth
                     'scope' => $tokenData->scope,
                 ];
 
-                $prisma = new Prisma();
-                $foundUser = $prisma->user->findUnique([
-                    'where' => [
-                        'email' => $primaryEmail,
-                    ],
-                ]);
-
-                if (!$foundUser) {
-                    $userData = [
-                        'name' => $responseInfo->login,
-                        'email' => $primaryEmail,
-                        'image' => $responseInfo->avatar_url,
-                        'emailVerified' => $primaryEmail ? date("Y-m-d H:i:s") : null,
-                        'Account' => [
-                            'create' => $accountData,
-                        ]
-                    ];
-
-                    $createUser = $prisma->user->create([
-                        'data' => $userData,
-                    ]);
-
-                    if (!$createUser) {
-                        exit("Error occurred. Please try again.");
-                    }
-                }
+                $this->saveAuthInfo($responseInfo, $accountData);
 
                 $userToAuthenticate = [
                     'name' => $responseInfo->login,
@@ -380,32 +359,7 @@ class Auth
                     'scope' => $tokenData->scope,
                 ];
 
-                $prisma = new Prisma();
-                $foundUser = $prisma->user->findUnique([
-                    'where' => [
-                        'email' => $responseInfo->email,
-                    ],
-                ]);
-
-                if (!$foundUser) {
-                    $userData = [
-                        'name' => $responseInfo->name,
-                        'email' => $responseInfo->email,
-                        'image' => $responseInfo->picture,
-                        'emailVerified' => $responseInfo->email ? date("Y-m-d H:i:s") : null,
-                        'Account' => [
-                            'create' => $accountData,
-                        ]
-                    ];
-
-                    $createUser = $prisma->user->create([
-                        'data' => $userData,
-                    ]);
-
-                    if (!$createUser) {
-                        exit("Error occurred. Please try again.");
-                    }
-                }
+                $this->saveAuthInfo($responseInfo, $accountData);
 
                 $userToAuthenticate = [
                     'name' => $responseInfo->name,
