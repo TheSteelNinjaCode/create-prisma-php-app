@@ -6,13 +6,18 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use DateInterval;
 use DateTime;
+use Lib\Validator;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+use Lib\Prisma\Classes\Prisma;
 
 class Auth
 {
     public const PAYLOAD_NAME = 'role';
     public const ROLE_NAME = '';
     public const PAYLOAD = 'payload';
-    public const COOKIE_NAME = 'auth_token';
+    public const COOKIE_NAME = 'pphp_aut_token';
+    private const PPHPAUTH = 'pphpauth';
 
     private $secretKey;
     private $defaultTokenValidity = '1h'; // Default to 1 hour
@@ -181,5 +186,258 @@ class Auth
         }
 
         return null;
+    }
+
+    private function exchangeCode($data, $apiUrl)
+    {
+        try {
+            $client = new Client();
+            $response = $client->post($apiUrl, [
+                'headers' => [
+                    'Accept' => 'application/json',
+                ],
+                'form_params' => $data,
+            ]);
+
+            if ($response->getStatusCode() === 200) {
+                return json_decode($response->getBody()->getContents());
+            }
+
+            return false;
+        } catch (RequestException) {
+            return false;
+        }
+    }
+
+    public function authProviders(GithubProvider | null $githubProvider = null, GoogleProvider | null $googleProvider = null)
+    {
+        global $isGet, $dynamicRouteParams;
+
+        if ($isGet && in_array('signin', $dynamicRouteParams[self::PPHPAUTH]) && in_array('github', $dynamicRouteParams[self::PPHPAUTH]) && $githubProvider) {
+            $githubAuthUrl = "https://github.com/login/oauth/authorize?scope=user:email%20read:user&client_id=$githubProvider->clientId";
+            redirect($githubAuthUrl);
+        } elseif ($isGet && in_array('signin', $dynamicRouteParams[self::PPHPAUTH]) && in_array('google', $dynamicRouteParams[self::PPHPAUTH]) && $googleProvider) {
+            $googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?"
+                . "scope=" . urlencode('email profile') . "&"
+                . "response_type=code&"
+                . "client_id=" . urlencode($googleProvider->clientId) . "&"
+                . "redirect_uri=" . urlencode($googleProvider->redirectUri);
+
+            redirect($googleAuthUrl);
+        }
+
+        $authCode = Validator::validateString($_GET['code'] ?? '');
+
+        if (
+            $isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) &&
+            in_array('github', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)
+        ) {
+            return $this->githubProvider($githubProvider, $authCode);
+        } elseif (
+            $isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) &&
+            in_array('google', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)
+        ) {
+            return $this->googleProvider($googleProvider, $authCode);
+        } else {
+            exit("Error occurred. Please try again.");
+        }
+    }
+
+    private function githubProvider(GithubProvider $githubProvider, string $authCode)
+    {
+        $gitToken = [
+            'client_id' => $githubProvider->clientId,
+            'client_secret' => $githubProvider->clientSecret,
+            'code' => $authCode,
+        ];
+
+        $apiUrl = 'https://github.com/login/oauth/access_token';
+        $tokenData = (object)$this->exchangeCode($gitToken, $apiUrl);
+
+        if (!$tokenData) {
+            exit("Error occurred. Please try again.");
+        }
+
+        if (isset($tokenData->error)) {
+            exit("Error occurred. Please try again.");
+        }
+
+        if (isset($tokenData->access_token)) {
+            $client = new Client();
+            $emailResponse = $client->get('https://api.github.com/user/emails', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $tokenData->access_token,
+                    'Accept' => 'application/json',
+                ],
+            ]);
+
+            $emails = json_decode($emailResponse->getBody()->getContents(), true);
+
+            $primaryEmail = array_reduce($emails, function ($carry, $item) {
+                return ($item['primary'] && $item['verified']) ? $item['email'] : $carry;
+            }, null);
+
+            $response = $client->get('https://api.github.com/user', [
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $tokenData->access_token,
+                ],
+            ]);
+
+            if ($response->getStatusCode() == 200) {
+                $responseInfo = json_decode($response->getBody()->getContents());
+
+                $accountData = [
+                    'provider' => 'github',
+                    'type' => 'oauth',
+                    'providerAccountId' => "$responseInfo->id",
+                    'access_token' => $tokenData->access_token,
+                    'expires_at' => $tokenData->expires_at ?? null,
+                    'token_type' => $tokenData->token_type,
+                    'scope' => $tokenData->scope,
+                ];
+
+                $prisma = new Prisma();
+                $foundUser = $prisma->user->findUnique([
+                    'where' => [
+                        'email' => $primaryEmail,
+                    ],
+                ]);
+
+                if (!$foundUser) {
+                    $userData = [
+                        'name' => $responseInfo->login,
+                        'email' => $primaryEmail,
+                        'image' => $responseInfo->avatar_url,
+                        'emailVerified' => $primaryEmail ? date("Y-m-d H:i:s") : null,
+                        'Account' => [
+                            'create' => $accountData,
+                        ]
+                    ];
+
+                    $createUser = $prisma->user->create([
+                        'data' => $userData,
+                    ]);
+
+                    if (!$createUser) {
+                        exit("Error occurred. Please try again.");
+                    }
+                }
+
+                $userToAuthenticate = [
+                    'name' => $responseInfo->login,
+                    'email' => $primaryEmail,
+                    'image' => $responseInfo->avatar_url,
+                    'Account' => (object)$accountData
+                ];
+                $userToAuthenticate = (object)$userToAuthenticate;
+
+                $this->authenticate($userToAuthenticate, $githubProvider->maxAge);
+            }
+        }
+    }
+
+    private function googleProvider(GoogleProvider $googleProvider, string $authCode)
+    {
+        $googleToken = [
+            'client_id' => $googleProvider->clientId,
+            'client_secret' => $googleProvider->clientSecret,
+            'code' => $authCode,
+            'grant_type' => 'authorization_code',
+            'redirect_uri' => $googleProvider->redirectUri
+        ];
+
+        $apiUrl = 'https://oauth2.googleapis.com/token';
+        $tokenData = (object)$this->exchangeCode($googleToken, $apiUrl);
+
+        if (!$tokenData) {
+            exit("Error occurred. Please try again.");
+        }
+
+        if (isset($tokenData->error)) {
+            exit("Error occurred. Please try again.");
+        }
+
+        if (isset($tokenData->access_token)) {
+            $client = new Client();
+            $response = $client->get('https://www.googleapis.com/oauth2/v1/userinfo', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $tokenData->access_token,
+                    'Accept' => 'application/json',
+                ],
+            ]);
+
+            if ($response->getStatusCode() == 200) {
+                $responseInfo = json_decode($response->getBody()->getContents());
+
+                $accountData = [
+                    'provider' => 'google',
+                    'type' => 'oauth',
+                    'providerAccountId' => "$responseInfo->id",
+                    'access_token' => $tokenData->access_token,
+                    'expires_at' => $tokenData->expires_at ?? null,
+                    'token_type' => $tokenData->token_type,
+                    'scope' => $tokenData->scope,
+                ];
+
+                $prisma = new Prisma();
+                $foundUser = $prisma->user->findUnique([
+                    'where' => [
+                        'email' => $responseInfo->email,
+                    ],
+                ]);
+
+                if (!$foundUser) {
+                    $userData = [
+                        'name' => $responseInfo->name,
+                        'email' => $responseInfo->email,
+                        'image' => $responseInfo->picture,
+                        'emailVerified' => $responseInfo->email ? date("Y-m-d H:i:s") : null,
+                        'Account' => [
+                            'create' => $accountData,
+                        ]
+                    ];
+
+                    $createUser = $prisma->user->create([
+                        'data' => $userData,
+                    ]);
+
+                    if (!$createUser) {
+                        exit("Error occurred. Please try again.");
+                    }
+                }
+
+                $userToAuthenticate = [
+                    'name' => $responseInfo->name,
+                    'email' => $responseInfo->email,
+                    'image' => $responseInfo->picture,
+                    'Account' => (object)$accountData
+                ];
+                $userToAuthenticate = (object)$userToAuthenticate;
+
+                $this->authenticate($userToAuthenticate, $googleProvider->maxAge);
+            }
+        }
+    }
+}
+
+class GoogleProvider
+{
+    public function __construct(
+        public string $clientId,
+        public string $clientSecret,
+        public string $redirectUri,
+        public string $maxAge = '30d'
+    ) {
+    }
+}
+
+class GithubProvider
+{
+    public function __construct(
+        public string $clientId,
+        public string $clientSecret,
+        public string $maxAge = '30d'
+    ) {
     }
 }

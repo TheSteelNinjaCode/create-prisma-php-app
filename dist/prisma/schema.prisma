@@ -17,6 +17,8 @@ model User {
   password      String?
   emailVerified DateTime?
   image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   roleId   Int?
   userRole UserRole? @relation(fields: [roleId], references: [id])
