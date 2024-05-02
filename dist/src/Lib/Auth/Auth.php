@@ -213,38 +213,59 @@ class Auth
         // Save user data to the database
     }
 
-    public function authProviders(GithubProvider | null $githubProvider = null, GoogleProvider | null $googleProvider = null)
+    private function findProvider(array $providers, string $type): ?object
+    {
+        foreach ($providers as $provider) {
+            if ($provider instanceof $type) {
+                return $provider;
+            }
+        }
+        return null;
+    }
+
+    public function authProviders(...$providers)
     {
         global $isGet, $dynamicRouteParams;
 
-        if ($isGet && in_array('signin', $dynamicRouteParams[self::PPHPAUTH]) && in_array('github', $dynamicRouteParams[self::PPHPAUTH]) && $githubProvider) {
-            $githubAuthUrl = "https://github.com/login/oauth/authorize?scope=user:email%20read:user&client_id=$githubProvider->clientId";
-            redirect($githubAuthUrl);
-        } elseif ($isGet && in_array('signin', $dynamicRouteParams[self::PPHPAUTH]) && in_array('google', $dynamicRouteParams[self::PPHPAUTH]) && $googleProvider) {
-            $googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?"
-                . "scope=" . urlencode('email profile') . "&"
-                . "response_type=code&"
-                . "client_id=" . urlencode($googleProvider->clientId) . "&"
-                . "redirect_uri=" . urlencode($googleProvider->redirectUri);
-
-            redirect($googleAuthUrl);
+        if ($isGet && in_array('signin', $dynamicRouteParams[self::PPHPAUTH])) {
+            foreach ($providers as $provider) {
+                if ($provider instanceof GithubProvider && in_array('github', $dynamicRouteParams[self::PPHPAUTH])) {
+                    $githubAuthUrl = "https://github.com/login/oauth/authorize?scope=user:email%20read:user&client_id={$provider->clientId}";
+                    redirect($githubAuthUrl);
+                } elseif ($provider instanceof GoogleProvider && in_array('google', $dynamicRouteParams[self::PPHPAUTH])) {
+                    $googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?"
+                        . "scope=" . urlencode('email profile') . "&"
+                        . "response_type=code&"
+                        . "client_id=" . urlencode($provider->clientId) . "&"
+                        . "redirect_uri=" . urlencode($provider->redirectUri);
+                    redirect($googleAuthUrl);
+                }
+            }
         }
 
         $authCode = Validator::validateString($_GET['code'] ?? '');
 
-        if (
-            $isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) &&
-            in_array('github', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)
-        ) {
-            return $this->githubProvider($githubProvider, $authCode);
-        } elseif (
-            $isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) &&
-            in_array('google', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)
-        ) {
-            return $this->googleProvider($googleProvider, $authCode);
-        } else {
-            exit("Error occurred. Please try again.");
+        if ($isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)) {
+            if (in_array('github', $dynamicRouteParams[self::PPHPAUTH])) {
+                $provider = $this->findProvider($providers, GithubProvider::class);
+
+                if (!$provider) {
+                    exit("Error occurred. Please try again.");
+                }
+
+                return $this->githubProvider($provider, $authCode);
+            } elseif (in_array('google', $dynamicRouteParams[self::PPHPAUTH])) {
+                $provider = $this->findProvider($providers, GoogleProvider::class);
+
+                if (!$provider) {
+                    exit("Error occurred. Please try again.");
+                }
+
+                return $this->googleProvider($provider, $authCode);
+            }
         }
+
+        exit("Error occurred. Please try again.");
     }
 
     private function githubProvider(GithubProvider $githubProvider, string $authCode)
