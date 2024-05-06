@@ -9,14 +9,11 @@ use Lib\Validator;
 class Mailer
 {
     private PHPMailer $mail;
-    private Validator $validator;
 
     public function __construct()
     {
         $this->mail = new PHPMailer(true);
         $this->setup();
-
-        $this->validator = new Validator();
     }
 
     private function setup(): void
@@ -67,11 +64,11 @@ class Mailer
     public function send(string $to, string $subject, string $body, string $name = '', string $altBody = ''): bool
     {
         try {
-            $this->validator->validateString($to);
-            $this->validator->validateString($subject);
-            $this->validator->validateString($body);
-            $this->validator->validateString($name);
-            $this->validator->validateString($altBody);
+            Validator::validateString($to);
+            Validator::validateString($subject);
+            Validator::validateString($body);
+            Validator::validateString($name);
+            Validator::validateString($altBody);
 
             $this->mail->addAddress($to, $name);
             $this->mail->isHTML(true);

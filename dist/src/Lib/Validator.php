@@ -77,6 +77,34 @@ class Validator
         return static::validateInt($value); // Placeholder
     }
 
+    public static function validateDate($value)
+    {
+        $date = \DateTime::createFromFormat('Y-m-d', $value);
+        if ($date && $date->format('Y-m-d') === $value) {
+            return $value;
+        } else {
+            return null;
+        }
+    }
+
+    public static function validateEmail($value)
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        return filter_var($value, FILTER_VALIDATE_EMAIL, FILTER_NULL_ON_FAILURE);
+    }
+
+    public static function validateUrl($value)
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        return filter_var($value, FILTER_VALIDATE_URL, FILTER_NULL_ON_FAILURE);
+    }
+
     public static function validateUnsupported($value)
     {
         // Placeholder for future data types

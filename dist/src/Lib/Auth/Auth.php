@@ -14,9 +14,9 @@ class Auth
 {
     public const PAYLOAD_NAME = 'role';
     public const ROLE_NAME = '';
-    public const PAYLOAD = 'payload';
-    public const COOKIE_NAME = 'pphp_aut_token';
-    private const PPHPAUTH = 'pphpauth';
+    public const PAYLOAD = 'payload_2183A';
+    public const COOKIE_NAME = 'pphp_aut_token_D36E5';
+    private const PPHPAUTH = 'pphpauth_9C5D5';
 
     private $secretKey;
     private $defaultTokenValidity = '1h'; // Default to 1 hour

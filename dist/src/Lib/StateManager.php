@@ -7,7 +7,7 @@ namespace Lib;
  */
 class StateManager
 {
-    private const APP_STATE = 'appState';
+    private const APP_STATE = 'app_state_F989A';
     private $state;
     private $listeners;
 
