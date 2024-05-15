@@ -25,9 +25,17 @@ function determineContentToInclude()
     writeRoutes();
     AuthMiddleware::handle($uri);
 
-    $isDirectAccessToPrivateRoute = preg_match('/^_/', $uri);
+    $isDirectAccessToPrivateRoute = preg_match('/\/_/', $uri);
     if ($isDirectAccessToPrivateRoute) {
-        return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri];
+        $sameSiteFetch = false;
+        $serverFetchSite = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
+        if (isset($serverFetchSite) && $serverFetchSite === 'same-origin') {
+            $sameSiteFetch = true;
+        }
+
+        if (!$sameSiteFetch) {
+            return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri];
+        }
     }
 
     if ($uri) {

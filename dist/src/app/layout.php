@@ -9,6 +9,7 @@
     <link rel="shortcut icon" href="<?php echo $baseUrl; ?>favicon.ico" type="image/x-icon">
     <script>
         const baseUrl = '<?php echo $baseUrl; ?>';
+        const pathname = '<?php echo $pathname; ?>';
     </script>
 </head>
 

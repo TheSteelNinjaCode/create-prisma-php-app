@@ -1,22 +1,31 @@
 /**
  * Debounces a function to limit the rate at which it is called.
  *
+ * The debounced function will postpone its execution until after the specified wait time
+ * has elapsed since the last time it was invoked. If `immediate` is `true`, the function
+ * will be called at the beginning of the wait period instead of at the end.
+ *
  * @param {Function} func - The function to debounce.
- * @param {number} wait - The number of milliseconds to wait before invoking the function.
- * @param {boolean} immediate - Whether to invoke the function immediately on the leading edge.
- * @returns {Function} - The debounced function.
+ * @param {number} [wait=300] - The number of milliseconds to wait before invoking the function.
+ * @param {boolean} [immediate=false] - If `true`, the function is invoked immediately on the leading edge.
+ * @returns {Function} - Returns the debounced version of the original function.
  */
-function debounce(func, wait, immediate) {
+function debounce(func, wait = 300, immediate = false) {
   let timeout;
+
   return function () {
-    const context = this,
-      args = arguments;
+    const context = this;
+    const args = arguments;
     clearTimeout(timeout);
+
     timeout = setTimeout(() => {
       timeout = null;
       if (!immediate) func.apply(context, args);
     }, wait);
-    if (immediate && !timeout) func.apply(context, args);
+
+    if (immediate && !timeout) {
+      func.apply(context, args);
+    }
   };
 }
 
