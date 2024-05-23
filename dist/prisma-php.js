@@ -35,6 +35,7 @@ const main = async () => {
       if (localSettings.tailwindcss) commandArgs.push("--tailwindcss");
       if (localSettings.websocket) commandArgs.push("--websocket");
       if (localSettings.prisma) commandArgs.push("--prisma");
+      if (localSettings.prisma) commandArgs.push("--htmx");
       if (localSettings.docker) commandArgs.push("--docker");
       console.log("Executing command...\n");
       await executeCommand("npx", [

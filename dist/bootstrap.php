@@ -375,7 +375,7 @@ try {
     $pathname = $uri ? "/" . $uri : "/";
     $metadata = $metadataArray[$uri] ?? $metadataArray['default'];
     if (!empty($contentToInclude) && basename($contentToInclude) === 'route.php') {
-        require_once SETTINGS_PATH . '/route-request.php';
+        header('Content-Type: application/json');
         require_once $contentToInclude;
         exit;
     }

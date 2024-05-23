@@ -320,5 +320,208 @@ class StateManager {
   }
 }
 
-const store = StateManager.getInstance();
-const api = RequestApi.getInstance();
+class HXConnector {
+  // Static property to hold the single instance
+  static instance = null;
+
+  // Private constructor to prevent direct instantiation
+  constructor() {
+    if (HXConnector.instance) {
+      return HXConnector.instance;
+    }
+
+    this.init();
+    HXConnector.instance = this;
+  }
+
+  // Static method to get the single instance
+  static getInstance() {
+    if (!HXConnector.instance) {
+      HXConnector.instance = new HXConnector();
+    }
+    return HXConnector.instance;
+  }
+
+  // Initializes the HXConnector by connecting attributes of elements with
+  // `hx-trigger` and `hx-vals` attributes, and sets up an event listener to handle
+  // new elements added after HTMX swaps.
+  init() {
+    this.connectAttributes(document.querySelectorAll("[hx-trigger][hx-vals]"));
+    this.handleFormEvents(document.querySelectorAll("[hx-form]"));
+
+    document.body.addEventListener("htmx:afterSwap", (event) => {
+      this.connectAttributes(
+        event.detail.target.querySelectorAll("[hx-trigger][hx-vals]")
+      );
+      this.handleFormEvents(event.detail.target.querySelectorAll("[hx-form]"));
+    });
+  }
+
+  // Connects attributes of the provided elements based on the values specified
+  // in their `hx-vals` attributes and attaches event listeners based on `hx-trigger`.
+  connectAttributes(elements) {
+    elements.forEach((element) => {
+      const event = element.getAttribute("hx-trigger");
+      element.addEventListener(event, (el) => {
+        const targetElement = el.target.closest("[hx-trigger]");
+        if (targetElement) {
+          const values = JSON.parse(targetElement.getAttribute("hx-vals"));
+
+          // Process targets
+          if (values.targets) {
+            values.targets.forEach((target) => {
+              const targetElem = document.getElementById(target.id);
+              if (targetElem) {
+                this.updateElementValues(targetElem, target.value);
+              }
+            });
+          }
+
+          // Process attributes
+          if (values.attributes) {
+            values.attributes.forEach((attributeSet) => {
+              const element = document.getElementById(attributeSet.id);
+              if (element) {
+                Object.keys(attributeSet.attributes).forEach((attr) => {
+                  if (attr === "class") {
+                    this.updateClassAttribute(
+                      element,
+                      attributeSet.attributes[attr]
+                    );
+                  } else {
+                    element.setAttribute(attr, attributeSet.attributes[attr]);
+                  }
+                });
+              }
+            });
+          }
+
+          // Register swaps to be processed after the htmx request completes
+          if (values.swaps) {
+            document.addEventListener(
+              "htmx:afterRequest",
+              () => {
+                values.swaps.forEach((swap) => {
+                  const element = document.getElementById(swap.id);
+                  if (element) {
+                    Object.keys(swap.attributes).forEach((attr) => {
+                      if (attr === "class") {
+                        this.updateClassAttribute(
+                          element,
+                          swap.attributes[attr]
+                        );
+                      } else {
+                        element.setAttribute(attr, swap.attributes[attr]);
+                      }
+                    });
+                  }
+                });
+              },
+              {
+                once: true,
+              }
+            );
+          }
+        }
+      });
+    });
+  }
+
+  // Handles form events for the provided forms based on their `hx-form` attribute.
+  handleFormEvents(forms) {
+    forms.forEach((form) => {
+      const eventAttr = form.getAttribute("hx-form");
+      if (eventAttr) {
+        const [eventType, functionName] = eventAttr.split(":");
+
+        form.addEventListener(`htmx:${eventType}`, (event) => {
+          switch (functionName) {
+            case "reset":
+              if (event.detail.successful) {
+                form.reset();
+              }
+              break;
+
+            case "clear":
+              if (event.detail.successful) {
+                this.clearForm(form);
+              }
+              break;
+
+            case "disable":
+              this.toggleForm(form, true);
+              break;
+
+            case "enable":
+              this.toggleForm(form, false);
+              break;
+
+            // Add more cases as needed
+
+            default:
+              console.warn(`Unhandled function name: ${functionName}`);
+              break;
+          }
+        });
+      }
+    });
+  }
+
+  // Clears the input values of the specified form.
+  clearForm(form) {
+    const inputs = form.querySelectorAll("input, textarea, select");
+    inputs.forEach((input) => {
+      if (input.type === "checkbox" || input.type === "radio") {
+        input.checked = false;
+      } else {
+        input.value = "";
+      }
+    });
+  }
+
+  // Toggles the disabled state of the specified form's inputs.
+  toggleForm(form, state) {
+    const inputs = form.querySelectorAll("input, textarea, select, button");
+    inputs.forEach((input) => {
+      input.disabled = state;
+    });
+  }
+
+  // Updates the values of the specified element based on its tag name and type.
+  updateElementValues(element, value) {
+    const tagName = element.tagName;
+    const inputType = element.type;
+
+    if (tagName === "INPUT" || tagName === "TEXTAREA") {
+      if (inputType === "checkbox") {
+        element.checked = value;
+      } else {
+        element.value = value;
+      }
+    } else {
+      element.textContent = value;
+    }
+  }
+
+  // Updates the class attribute of the specified element. Class names starting
+  // with a hyphen (`-`) are removed, others are added.
+  updateClassAttribute(element, className) {
+    const classNames = className.split(" ");
+    classNames.forEach((name) => {
+      if (name.startsWith("-")) {
+        element.classList.remove(name.substring(1));
+      } else {
+        element.classList.add(name);
+      }
+    });
+  }
+}
+
+let store = null;
+let api = null;
+let hxConnector = null;
+document.addEventListener("DOMContentLoaded", function () {
+  store = StateManager.getInstance();
+  api = RequestApi.getInstance();
+  hxConnector = HXConnector.getInstance();
+});

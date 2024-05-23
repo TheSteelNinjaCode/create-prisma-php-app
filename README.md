@@ -22,7 +22,7 @@ You will be asked for the project name, and then if you want to include Tailwind
 
 Select "Yes" to include Tailwind CSS in your project.
 
-## Complete documentation is available at [Prisma PHP](https://prismaphp.tsnc.tech/) website.
+## Complete documentation is available at [Prisma PHP](https://prismaphp.tsnc.tech/) website
 
 ## Video Tutorial
 
