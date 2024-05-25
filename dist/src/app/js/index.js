@@ -383,13 +383,19 @@ class HXConnector {
               const element = document.getElementById(attributeSet.id);
               if (element) {
                 Object.keys(attributeSet.attributes).forEach((attr) => {
-                  if (attr === "class") {
-                    this.updateClassAttribute(
-                      element,
-                      attributeSet.attributes[attr]
-                    );
-                  } else {
-                    element.setAttribute(attr, attributeSet.attributes[attr]);
+                  const value = attributeSet.attributes[attr];
+                  switch (attr) {
+                    case "class":
+                      this.updateClassAttribute(element, value);
+                      break;
+                    case "add":
+                      element.setAttribute(value, "");
+                      break;
+                    case "remove":
+                      element.removeAttribute(value);
+                      break;
+                    default:
+                      element.setAttribute(attr, value);
                   }
                 });
               }
@@ -405,13 +411,19 @@ class HXConnector {
                   const element = document.getElementById(swap.id);
                   if (element) {
                     Object.keys(swap.attributes).forEach((attr) => {
-                      if (attr === "class") {
-                        this.updateClassAttribute(
-                          element,
-                          swap.attributes[attr]
-                        );
-                      } else {
-                        element.setAttribute(attr, swap.attributes[attr]);
+                      const value = swap.attributes[attr];
+                      switch (attr) {
+                        case "class":
+                          this.updateClassAttribute(element, value);
+                          break;
+                        case "add":
+                          element.setAttribute(value, "");
+                          break;
+                        case "remove":
+                          element.removeAttribute(value);
+                          break;
+                        default:
+                          element.setAttribute(attr, value);
                       }
                     });
                   }
