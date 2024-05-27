@@ -181,9 +181,9 @@ function dynamicRoute($uri)
             $segmentMatch = singleDynamicRoute($uriSegments, $routeSegments);
             if (!empty($segmentMatch)) {
                 $trimSegmentMatch = trim($segmentMatch, '[]');
-                $dynamicRouteParams = [$trimSegmentMatch => $uriSegments[array_search($segmentMatch, $routeSegments)]];
+                $dynamicRouteParams = new \ArrayObject([$trimSegmentMatch => $uriSegments[array_search($segmentMatch, $routeSegments)]], \ArrayObject::ARRAY_AS_PROPS);
 
-                $dynamicRouteUri = str_replace($segmentMatch, $dynamicRouteParams[array_search($segmentMatch, $routeSegments)], $normalizedRoute);
+                $dynamicRouteUri = str_replace($segmentMatch, $uriSegments[array_search($segmentMatch, $routeSegments)], $normalizedRoute);
                 $dynamicRouteUriDirname = dirname($dynamicRouteUri);
                 $dynamicRouteUriDirname = rtrim($dynamicRouteUriDirname, '/');
 
@@ -207,7 +207,7 @@ function dynamicRoute($uri)
                 $pattern = '/\[\.\.\.(.*?)\]/';
                 if (preg_match($pattern, $normalizedRoute, $matches)) {
                     $contentWithinBrackets = $matches[1];
-                    $dynamicRouteParams = [$contentWithinBrackets => $explodedNormalizedUri];
+                    $dynamicRouteParams = new \ArrayObject([$contentWithinBrackets => $explodedNormalizedUri], \ArrayObject::ARRAY_AS_PROPS);
                 }
                 if (strpos($normalizedRoute, 'route.php') !== false) {
                     $uriMatch = $normalizedRoute;
@@ -279,10 +279,6 @@ function getGroupFolder($uri): string
 function singleDynamicRoute($uriSegments, $routeSegments)
 {
     $segmentMatch = "";
-    if (count($routeSegments) != count($uriSegments)) {
-        return $segmentMatch;
-    }
-
     foreach ($routeSegments as $index => $segment) {
         if (preg_match('/^\[[^\]]+\]$/', $segment)) {
             return "{$segment}";
