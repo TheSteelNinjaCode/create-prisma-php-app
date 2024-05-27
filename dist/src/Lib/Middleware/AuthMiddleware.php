@@ -85,7 +85,7 @@ class AuthMiddleware
     {
         $pattern = strtolower($pattern);
         $requestUri = strtolower(trim($requestUri));
-        $regex = "#^/?" . preg_quote($pattern, '#') . "$#";
+        $regex = "#^/?" . preg_quote($pattern, '#') . "(/.*)?$#";
         return preg_match($regex, $requestUri);
     }
 }

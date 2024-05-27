@@ -65,13 +65,27 @@ function determineContentToInclude()
         }
 
         foreach (explode('/', $modifiedUri) as $segment) {
-            if (empty($segment)) {
-                continue;
-            }
+            if (empty($segment)) continue;
+
             $currentPath .= '/' . $segment;
             $potentialLayoutPath = $currentPath . '/layout.php';
-            if (file_exists($potentialLayoutPath)) {
+            if (file_exists($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude)) {
                 $layoutsToInclude[] = $potentialLayoutPath;
+            }
+        }
+
+        if (isset($dynamicRoute)) {
+            $currentDynamicPath = $baseDir;
+            foreach (explode('/', $dynamicRoute) as $segment) {
+                if (empty($segment)) continue;
+
+                if ($segment === 'src' || $segment === 'app') continue;
+
+                $currentDynamicPath .= '/' . $segment;
+                $potentialDynamicRoute = $currentDynamicPath . '/layout.php';
+                if (file_exists($potentialDynamicRoute) && !in_array($potentialDynamicRoute, $layoutsToInclude)) {
+                    $layoutsToInclude[] = $potentialDynamicRoute;
+                }
             }
         }
 
@@ -108,7 +122,7 @@ function uriExtractor(string $scriptUrl): string
 
 function writeRoutes()
 {
-    global $filesListRoutes;
+    global $_filesListRoutes;
     $directory = './src/app';
 
     if (is_dir($directory)) {
@@ -127,7 +141,7 @@ function writeRoutes()
         @file_put_contents($jsonFileName, $jsonData);
 
         if (file_exists($jsonFileName)) {
-            $filesListRoutes = json_decode(file_get_contents($jsonFileName), true);
+            $_filesListRoutes = json_decode(file_get_contents($jsonFileName), true);
         }
     }
 }
@@ -153,13 +167,13 @@ function findGroupFolder($uri): string
 
 function dynamicRoute($uri)
 {
-    global $filesListRoutes;
+    global $_filesListRoutes;
     global $dynamicRouteParams;
     $uriMatch = null;
     $normalizedUri = ltrim(str_replace('\\', '/', $uri), './');
-    $normalizedUriEdited = "src/app/$normalizedUri/route.php";
+    $normalizedUriEdited = "src/app/$normalizedUri";
     $uriSegments = explode('/', $normalizedUriEdited);
-    foreach ($filesListRoutes as $route) {
+    foreach ($_filesListRoutes as $route) {
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
         $routeSegments = explode('/', ltrim($normalizedRoute, '/'));
         $singleDynamic = preg_match_all('/\[[^\]]+\]/', $normalizedRoute, $matches) === 1 && !strpos($normalizedRoute, '[...');
@@ -168,24 +182,51 @@ function dynamicRoute($uri)
             if (!empty($segmentMatch)) {
                 $trimSegmentMatch = trim($segmentMatch, '[]');
                 $dynamicRouteParams = [$trimSegmentMatch => $uriSegments[array_search($segmentMatch, $routeSegments)]];
-                $uriMatch = $normalizedRoute;
-                break;
+
+                $dynamicRouteUri = str_replace($segmentMatch, $dynamicRouteParams[array_search($segmentMatch, $routeSegments)], $normalizedRoute);
+                $dynamicRouteUriDirname = dirname($dynamicRouteUri);
+                $dynamicRouteUriDirname = rtrim($dynamicRouteUriDirname, '/');
+
+                $expectedUri = '/src/app/' . $normalizedUri;
+                $expectedUri = rtrim($expectedUri, '/');
+
+                if (strpos($normalizedRoute, 'route.php') !== false || strpos($normalizedRoute, 'index.php') !== false) {
+                    if ($expectedUri === $dynamicRouteUriDirname) {
+                        $uriMatch = $normalizedRoute;
+                        break;
+                    }
+                }
             }
         } elseif (strpos($normalizedRoute, '[...') !== false) {
             $cleanedRoute = preg_replace('/\[\.\.\..*?\].*/', '', $normalizedRoute);
             if (strpos('/src/app/' . $normalizedUri, $cleanedRoute) === 0) {
-                if (strpos($normalizedRoute, 'route.php') !== false) {
-                    $normalizedUriEdited = "/src/app/$normalizedUri";
-                    $trimNormalizedUriEdited = str_replace($cleanedRoute, '', $normalizedUriEdited);
-                    $explodedNormalizedUri = explode('/', $trimNormalizedUriEdited);
-                    $pattern = '/\[\.\.\.(.*?)\]/';
-                    if (preg_match($pattern, $normalizedRoute, $matches)) {
-                        $contentWithinBrackets = $matches[1];
-                        $dynamicRouteParams = [$contentWithinBrackets => $explodedNormalizedUri];
-                    }
 
+                $normalizedUriEdited = "/src/app/$normalizedUri";
+                $trimNormalizedUriEdited = str_replace($cleanedRoute, '', $normalizedUriEdited);
+                $explodedNormalizedUri = explode('/', $trimNormalizedUriEdited);
+                $pattern = '/\[\.\.\.(.*?)\]/';
+                if (preg_match($pattern, $normalizedRoute, $matches)) {
+                    $contentWithinBrackets = $matches[1];
+                    $dynamicRouteParams = [$contentWithinBrackets => $explodedNormalizedUri];
+                }
+                if (strpos($normalizedRoute, 'route.php') !== false) {
                     $uriMatch = $normalizedRoute;
                     break;
+                } else {
+                    if (strpos($normalizedRoute, 'index.php') !== false) {
+                        $segmentMatch = "[...$contentWithinBrackets]";
+                        $dynamicRouteUri = str_replace($segmentMatch, $uriSegments[array_search($segmentMatch, $routeSegments)], $normalizedRoute);
+                        $dynamicRouteUriDirname = dirname($dynamicRouteUri);
+                        $dynamicRouteUriDirname = rtrim($dynamicRouteUriDirname, '/');
+
+                        $expectedUri = '/src/app/' . $normalizedUri;
+                        $expectedUri = rtrim($expectedUri, '/');
+
+                        if ($expectedUri === $dynamicRouteUriDirname) {
+                            $uriMatch = $normalizedRoute;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -201,14 +242,14 @@ function isGroupIdentifier($segment): bool
 
 function matchGroupFolder($constructedPath): ?string
 {
-    global $filesListRoutes;
+    global $_filesListRoutes;
     $bestMatch = null;
     $normalizedConstructedPath = ltrim(str_replace('\\', '/', $constructedPath), './');
 
     $routeFile = "/src/app/$normalizedConstructedPath/route.php";
     $indexFile = "/src/app/$normalizedConstructedPath/index.php";
 
-    foreach ($filesListRoutes as $route) {
+    foreach ($_filesListRoutes as $route) {
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
 
         $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
@@ -256,9 +297,9 @@ function singleDynamicRoute($uriSegments, $routeSegments)
 
 function checkForDuplicateRoutes()
 {
-    global $filesListRoutes;
+    global $_filesListRoutes;
     $normalizedRoutesMap = [];
-    foreach ($filesListRoutes as $route) {
+    foreach ($_filesListRoutes as $route) {
         $routeWithoutGroups = preg_replace('/\(.*?\)/', '', $route);
         $routeTrimmed = ltrim($routeWithoutGroups, '.\\/');
         $routeTrimmed = preg_replace('#/{2,}#', '/', $routeTrimmed);
@@ -314,8 +355,8 @@ function setupErrorHandling(&$content)
 ob_start();
 require_once SETTINGS_PATH . '/public-functions.php';
 require_once SETTINGS_PATH . '/request-methods.php';
-$metadataArray = require_once APP_PATH . '/metadata.php';
-$filesListRoutes = [];
+$_metadataArray = require_once APP_PATH . '/metadata.php';
+$_filesListRoutes = [];
 $metadata = "";
 $uri = "";
 $pathname = "";
@@ -367,42 +408,42 @@ function modifyOutputLayoutForError($contentToAdd)
 }
 
 try {
-    $result = determineContentToInclude();
+    $_determineContentToInclude = determineContentToInclude();
     checkForDuplicateRoutes();
-    $contentToInclude = $result['path'] ?? '';
-    $layoutsToInclude = $result['layouts'] ?? [];
-    $uri = $result['uri'] ?? '';
+    $_contentToInclude = $_determineContentToInclude['path'] ?? '';
+    $_layoutsToInclude = $_determineContentToInclude['layouts'] ?? [];
+    $uri = $_determineContentToInclude['uri'] ?? '';
     $pathname = $uri ? "/" . $uri : "/";
-    $metadata = $metadataArray[$uri] ?? $metadataArray['default'];
-    if (!empty($contentToInclude) && basename($contentToInclude) === 'route.php') {
+    $metadata = $_metadataArray[$uri] ?? $_metadataArray['default'];
+    if (!empty($_contentToInclude) && basename($_contentToInclude) === 'route.php') {
         header('Content-Type: application/json');
-        require_once $contentToInclude;
+        require_once $_contentToInclude;
         exit;
     }
 
-    $parentLayoutPath = APP_PATH . '/layout.php';
-    $isParentLayout = !empty($layoutsToInclude) && strpos($layoutsToInclude[0], 'src/app/layout.php') !== false;
+    $_parentLayoutPath = APP_PATH . '/layout.php';
+    $_isParentLayout = !empty($_layoutsToInclude) && strpos($_layoutsToInclude[0], 'src/app/layout.php') !== false;
 
-    $isContentIncluded = false;
-    $isChildContentIncluded = false;
-    if (containsContent($parentLayoutPath)) {
-        $isContentIncluded = true;
+    $_isContentIncluded = false;
+    $_isChildContentIncluded = false;
+    if (containsContent($_parentLayoutPath)) {
+        $_isContentIncluded = true;
     }
 
     ob_start();
-    if (!empty($contentToInclude)) {
-        if (!$isParentLayout) {
+    if (!empty($_contentToInclude)) {
+        if (!$_isParentLayout) {
             ob_start();
-            require_once $contentToInclude;
+            require_once $_contentToInclude;
             $childContent = ob_get_clean();
         }
-        foreach (array_reverse($layoutsToInclude) as $layoutPath) {
-            if ($parentLayoutPath === $layoutPath) {
+        foreach (array_reverse($_layoutsToInclude) as $layoutPath) {
+            if ($_parentLayoutPath === $layoutPath) {
                 continue;
             }
 
             if (containsChildContent($layoutPath)) {
-                $isChildContentIncluded = true;
+                $_isChildContentIncluded = true;
             }
 
             ob_start();
@@ -415,19 +456,19 @@ try {
         $childContent = ob_get_clean();
     }
 
-    if ($isParentLayout && !empty($contentToInclude)) {
+    if ($_isParentLayout && !empty($_contentToInclude)) {
         ob_start();
-        require_once $contentToInclude;
+        require_once $_contentToInclude;
         $childContent = ob_get_clean();
     }
 
-    if (!$isContentIncluded && !$isChildContentIncluded) {
+    if (!$_isContentIncluded && !$_isChildContentIncluded) {
         $content .= $childContent;
         ob_start();
         require_once APP_PATH . '/layout.php';
     } else {
-        if ($isContentIncluded) {
-            $content .= "<div class='error'>The parent layout file does not contain &lt;?php echo \$content; ?&gt; Or &lt;?= \$content ?&gt;<br>" . "<strong>$parentLayoutPath</strong></div>";
+        if ($_isContentIncluded) {
+            $content .= "<div class='error'>The parent layout file does not contain &lt;?php echo \$content; ?&gt; Or &lt;?= \$content ?&gt;<br>" . "<strong>$_parentLayoutPath</strong></div>";
             modifyOutputLayoutForError($content);
         } else {
             $content .= "<div class='error'>The layout file does not contain &lt;?php echo \$childContent; ?&gt; or &lt;?= \$childContent ?&gt;<br><strong>$layoutPath</strong></div>";
