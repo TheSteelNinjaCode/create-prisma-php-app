@@ -189,6 +189,11 @@ class FormHandler
     public function validateField($field, $rules)
     {
         $value = Validator::validateString($this->data[$field] ?? null);
+
+        if (!isset($rules['required']) && empty($value)) {
+            return;
+        }
+
         foreach ($rules as $rule => $options) {
             $ruleValue = $options;
             $customMessage = null;
@@ -415,177 +420,190 @@ class FormHandler
 ?>
 
 <script>
-    class FormHandler {
-        constructor() {
-            this.errors = [];
-            this.dataRulesElements = document.querySelectorAll('[data-rules]');
-            this.init();
-        }
-
-        init() {
-            this.dataRulesElements.forEach(fieldElement => {
-                this.initializeFieldFromDOM(fieldElement);
-            });
-        }
-
-        initializeFieldFromDOM(fieldElement) {
-            if (!fieldElement) {
-                // console.error('Element not found for field:', fieldElement);
-                return;
+    if (typeof FormHandler === 'undefined') {
+        class FormHandler {
+            constructor() {
+                this.errors = [];
+                this.dataRulesElements = document.querySelectorAll('[data-rules]');
+                this.init();
             }
 
-            const fieldName = fieldElement.name;
-            const rules = JSON.parse(fieldElement.getAttribute('data-rules') || '{}');
+            init() {
+                this.dataRulesElements.forEach(fieldElement => {
+                    this.initializeFieldFromDOM(fieldElement);
+                });
+            }
 
-            const immediateObserver = (e) => {
-                const target = e.target;
-                this.watch(target);
+            initializeFieldFromDOM(fieldElement) {
+                if (!fieldElement) return;
 
-                const errors = this.validateField(target, target.value, rules);
-                const errorContainer = document.getElementById(`fh-error-${target.name}`);
+                const fieldName = fieldElement.name;
+                const rules = JSON.parse(fieldElement.getAttribute('data-rules') || '{}');
+
+                const errors = this.validateField(fieldElement, fieldElement.value, rules);
+                const errorContainer = document.getElementById(`fh-error-${fieldElement.name}`);
                 if (errorContainer) {
-                    errorContainer.textContent = errors.join(', ');
+                    if (errorContainer.dataset.errorMessage) {
+                        errorContainer.textContent = errors.join(', ');
+                    }
                 }
-            };
 
-            fieldElement.addEventListener('input', immediateObserver);
-        }
+                const immediateObserver = (e) => {
+                    const target = e.target;
+                    this.watch(target);
 
-        updateElementDisplay(displayElement, field) {
-            const tagName = field.tagName.toUpperCase();
-            if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
-                if (displayElement.tagName === 'INPUT' || displayElement.tagName === 'TEXTAREA') {
-                    displayElement.value = field.value;
+                    const errors = this.validateField(target, target.value, rules);
+                    const errorContainer = document.getElementById(`fh-error-${target.name}`);
+                    if (errorContainer) {
+                        errorContainer.textContent = errors.join(', ');
+                    }
+                };
+
+                fieldElement.addEventListener('input', immediateObserver);
+            }
+
+            updateElementDisplay(displayElement, field) {
+                const tagName = field.tagName.toUpperCase();
+                if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+                    if (displayElement.tagName === 'INPUT' || displayElement.tagName === 'TEXTAREA') {
+                        displayElement.value = field.value;
+                    } else {
+                        displayElement.dataset.watchValue = field.value;
+                        displayElement.textContent = field.value;
+                    }
                 } else {
-                    displayElement.dataset.watchValue = field.value;
-                    displayElement.textContent = field.value;
+                    displayElement.textContent = field.textContent;
                 }
-            } else {
-                displayElement.textContent = field.textContent;
             }
-        }
 
-        watch(field) {
-            if (!field) return;
+            watch(field) {
+                if (!field) return;
 
-            const watchElement = document.getElementById(`fh-watch-${field.name}`);
-            if (watchElement) {
-                this.updateElementDisplay(watchElement, field);
+                const watchElement = document.getElementById(`fh-watch-${field.name}`);
+                if (watchElement) {
+                    this.updateElementDisplay(watchElement, field);
+                }
             }
-        }
 
-        clearErrors() {
-            const errorElements = document.querySelectorAll('[id^="fh-error-"]');
-            errorElements.forEach(element => {
-                element.textContent = '';
-            });
+            clearErrors() {
+                const errorElements = document.querySelectorAll('[id^="fh-error-"]');
+                errorElements.forEach(element => {
+                    element.textContent = '';
+                });
 
-            this.errors = [];
-        }
+                this.errors = [];
+            }
 
-        getErrors(field) {
-            if (field) {
-                return document.getElementById(`fh-error-${field}`).textContent;
-            } else {
+            getErrors(field) {
+                if (field) {
+                    return document.getElementById(`fh-error-${field}`).textContent;
+                } else {
+                    return this.errors;
+                }
+            }
+
+            validateField(field, value, rules) {
+                if (!rules) return [];
+                this.errors = [];
+
+                for (const [rule, options] of Object.entries(rules)) {
+                    let ruleValue = options;
+                    let customMessage = null;
+
+                    if (typeof options === 'object') {
+                        ruleValue = options.value;
+                        customMessage = options.message || null;
+                    }
+
+                    switch (rule) {
+                        case 'text':
+                        case 'search':
+                            if (typeof value !== 'string') {
+                                this.errors.push(customMessage || 'Must be a string.');
+                            }
+                            break;
+                        case 'email':
+                            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                                this.errors.push(customMessage || 'Invalid email format.');
+                            }
+                            break;
+                        case 'number':
+                            if (isNaN(value)) {
+                                this.errors.push(customMessage || 'Must be a number.');
+                            }
+                            break;
+                        case 'date':
+                            if (isNaN(Date.parse(value))) {
+                                this.errors.push(customMessage || 'Invalid date format.');
+                            }
+                            break;
+                        case 'range':
+                            const [min, max] = ruleValue;
+                            if (isNaN(value) || value < min || value > max) {
+                                this.errors.push(customMessage || `Must be between ${min} and ${max}.`);
+                            }
+                            break;
+                        case 'url':
+                            try {
+                                new URL(value);
+                            } catch (e) {
+                                this.errors.push(customMessage || 'Invalid URL format.');
+                            }
+                            break;
+                        case 'required':
+                            if (!value) {
+                                this.errors.push(customMessage || 'This field is required.');
+                            }
+                            break;
+                        case 'min':
+                            if (Number(value) < ruleValue) {
+                                this.errors.push(customMessage || `Must be at least ${ruleValue}.`);
+                            }
+                            break;
+                        case 'max':
+                            if (Number(value) > ruleValue) {
+                                this.errors.push(customMessage || `Must be at most ${ruleValue}.`);
+                            }
+                            break;
+                        case 'minLength':
+                            if (value.length < ruleValue) {
+                                this.errors.push(customMessage || `Must be at least ${ruleValue} characters.`);
+                            }
+                            break;
+                        case 'maxLength':
+                            if (value.length > ruleValue) {
+                                this.errors.push(customMessage || `Must be at most ${ruleValue} characters.`);
+                            }
+                            break;
+                        case 'pattern':
+                            if (!new RegExp(ruleValue).test(value)) {
+                                this.errors.push(customMessage || 'Invalid format.');
+                            }
+                            break;
+                        case 'accept':
+                            if (!ruleValue.split(',').includes(value)) {
+                                this.errors.push(customMessage || 'Invalid file format.');
+                            }
+                            break;
+                        default:
+                            // Optionally handle unknown rules or log them
+                            break;
+                    }
+                }
+
                 return this.errors;
             }
         }
 
-        validateField(field, value, rules) {
-            if (!rules) return [];
-            this.errors = [];
+        let formHandler = null;
+        // Initialize FormHandler on initial page load
+        document.addEventListener('DOMContentLoaded', function() {
+            formHandler = new FormHandler();
+        });
 
-            for (const [rule, options] of Object.entries(rules)) {
-                let ruleValue = options;
-                let customMessage = null;
-
-                if (typeof options === 'object') {
-                    ruleValue = options.value;
-                    customMessage = options.message || null;
-                }
-
-                switch (rule) {
-                    case 'text':
-                    case 'search':
-                        if (typeof value !== 'string') {
-                            this.errors.push(customMessage || 'Must be a string.');
-                        }
-                        break;
-                    case 'email':
-                        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-                            this.errors.push(customMessage || 'Invalid email format.');
-                        }
-                        break;
-                    case 'number':
-                        if (isNaN(value)) {
-                            this.errors.push(customMessage || 'Must be a number.');
-                        }
-                        break;
-                    case 'date':
-                        if (isNaN(Date.parse(value))) {
-                            this.errors.push(customMessage || 'Invalid date format.');
-                        }
-                        break;
-                    case 'range':
-                        const [min, max] = ruleValue;
-                        if (isNaN(value) || value < min || value > max) {
-                            this.errors.push(customMessage || `Must be between ${min} and ${max}.`);
-                        }
-                        break;
-                    case 'url':
-                        try {
-                            new URL(value);
-                        } catch (e) {
-                            this.errors.push(customMessage || 'Invalid URL format.');
-                        }
-                        break;
-                    case 'required':
-                        if (!value) {
-                            this.errors.push(customMessage || 'This field is required.');
-                        }
-                        break;
-                    case 'min':
-                        if (Number(value) < ruleValue) {
-                            this.errors.push(customMessage || `Must be at least ${ruleValue}.`);
-                        }
-                        break;
-                    case 'max':
-                        if (Number(value) > ruleValue) {
-                            this.errors.push(customMessage || `Must be at most ${ruleValue}.`);
-                        }
-                        break;
-                    case 'minLength':
-                        if (value.length < ruleValue) {
-                            this.errors.push(customMessage || `Must be at least ${ruleValue} characters.`);
-                        }
-                        break;
-                    case 'maxLength':
-                        if (value.length > ruleValue) {
-                            this.errors.push(customMessage || `Must be at most ${ruleValue} characters.`);
-                        }
-                        break;
-                    case 'pattern':
-                        if (!new RegExp(ruleValue).test(value)) {
-                            this.errors.push(customMessage || 'Invalid format.');
-                        }
-                        break;
-                    case 'accept':
-                        if (!ruleValue.split(',').includes(value)) {
-                            this.errors.push(customMessage || 'Invalid file format.');
-                        }
-                        break;
-                    default:
-                        // Optionally handle unknown rules or log them
-                        break;
-                }
-            }
-
-            return this.errors;
-        }
+        // Reinitialize FormHandler when HTMX swaps content
+        document.body.addEventListener('htmx:afterOnLoad', function() {
+            formHandler = new FormHandler();
+        });
     }
-
-    let formHandler = null;
-    document.addEventListener('DOMContentLoaded', function() {
-        formHandler = new FormHandler();
-    });
 </script>

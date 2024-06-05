@@ -22,6 +22,8 @@ $isDelete = $requestMethod === 'DELETE';
 $isPatch = $requestMethod === 'PATCH';
 $isHead = $requestMethod === 'HEAD';
 $isOptions = $requestMethod === 'OPTIONS';
+$isAjax = isAjaxRequest();
+$isHtmx = !empty($_SERVER['HTTP_HX_REQUEST']) && strtolower($_SERVER['HTTP_HX_REQUEST']) === 'true';
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 $requestedWith = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
