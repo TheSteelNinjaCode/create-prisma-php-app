@@ -8,8 +8,8 @@
     <title><?php echo htmlspecialchars($metadata['title']); ?></title>
     <link rel="shortcut icon" href="<?php echo $baseUrl; ?>favicon.ico" type="image/x-icon">
     <script>
-        const baseUrl = '<?php echo $baseUrl; ?>';
-        const pathname = '<?php echo $pathname; ?>';
+        var baseUrl = '<?php echo $baseUrl; ?>';
+        var pathname = '<?php echo $pathname; ?>';
     </script>
 </head>
 

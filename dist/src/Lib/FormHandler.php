@@ -595,7 +595,7 @@ class FormHandler
             }
         }
 
-        let formHandler = null;
+        let formHandler = FormHandler ? new FormHandler() : null;
         // Initialize FormHandler on initial page load
         document.addEventListener('DOMContentLoaded', function() {
             formHandler = new FormHandler();
