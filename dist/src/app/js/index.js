@@ -75,8 +75,7 @@ function copyCode(btnElement) {
 
 if (
   typeof RequestApi === "undefined" &&
-  typeof StateManager === "undefined" &&
-  typeof HXConnector === "undefined"
+  typeof StateManager === "undefined"
 ) {
   /**
    * Represents a HTTP request.
@@ -325,241 +324,19 @@ if (
     }
   }
 
-  /**
-   * Connects elements with `hx-trigger` and `hx-vals` attributes to update
-   * their values and attributes based on the specified triggers.
-   * Also handles form events based on the `hx-form` attribute.
-   * This class is a singleton.
-   **/
-  class HXConnector {
-    // Static property to hold the single instance
-    static instance = null;
-
-    // Private constructor to prevent direct instantiation
-    constructor() {
-      if (HXConnector.instance) {
-        return HXConnector.instance;
-      }
-
-      this.init();
-      HXConnector.instance = this;
-    }
-
-    // Static method to get the single instance
-    static getInstance() {
-      if (!HXConnector.instance) {
-        HXConnector.instance = new HXConnector();
-      }
-      return HXConnector.instance;
-    }
-
-    // Initializes the HXConnector by connecting attributes of elements with
-    // `hx-trigger` and `hx-vals` attributes, and sets up an event listener to handle
-    // new elements added after HTMX swaps.
-    init() {
-      this.connectAttributes(document.querySelectorAll("[hx-trigger][hx-vals]"));
-      this.handleFormEvents(document.querySelectorAll("[hx-form]"));
-
-      document.body.addEventListener("htmx:afterSwap", (event) => {
-        this.connectAttributes(
-          event.detail.target.querySelectorAll("[hx-trigger][hx-vals]")
-        );
-        this.handleFormEvents(event.detail.target.querySelectorAll("[hx-form]"));
-      });
-    }
-
-    // Connects attributes of the provided elements based on the values specified
-    // in their `hx-vals` attributes and attaches event listeners based on `hx-trigger`.
-    connectAttributes(elements) {
-      elements.forEach((element) => {
-        const event = element.getAttribute("hx-trigger");
-        element.addEventListener(event, (el) => {
-          const targetElement = el.target.closest("[hx-trigger]");
-          if (targetElement) {
-            const values = JSON.parse(targetElement.getAttribute("hx-vals"));
-
-            // Process targets
-            if (values.targets) {
-              values.targets.forEach((target) => {
-                const targetElem = document.getElementById(target.id);
-                if (targetElem) {
-                  this.updateElementValues(targetElem, target.value);
-                }
-              });
-            }
-
-            // Process attributes
-            if (values.attributes) {
-              values.attributes.forEach((attributeSet) => {
-                const element = document.getElementById(attributeSet.id);
-                if (element) {
-                  Object.keys(attributeSet.attributes).forEach((attr) => {
-                    const value = attributeSet.attributes[attr];
-                    switch (attr) {
-                      case "class":
-                        this.updateClassAttribute(element, value);
-                        break;
-                      case "add":
-                        element.setAttribute(value, "");
-                        break;
-                      case "remove":
-                        element.removeAttribute(value);
-                        break;
-                      default:
-                        element.setAttribute(attr, value);
-                    }
-                  });
-                }
-              });
-            }
-
-            // Register swaps to be processed after the htmx request completes
-            if (values.swaps) {
-              document.addEventListener(
-                "htmx:afterRequest",
-                () => {
-                  values.swaps.forEach((swap) => {
-                    const element = document.getElementById(swap.id);
-                    if (element) {
-                      Object.keys(swap.attributes).forEach((attr) => {
-                        const value = swap.attributes[attr];
-                        switch (attr) {
-                          case "class":
-                            this.updateClassAttribute(element, value);
-                            break;
-                          case "add":
-                            element.setAttribute(value, "");
-                            break;
-                          case "remove":
-                            element.removeAttribute(value);
-                            break;
-                          default:
-                            element.setAttribute(attr, value);
-                        }
-                      });
-                    }
-                  });
-                },
-                {
-                  once: true,
-                }
-              );
-            }
-          }
-        });
-      });
-    }
-
-    // Handles form events for the provided forms based on their `hx-form` attribute.
-    handleFormEvents(forms) {
-      forms.forEach((form) => {
-        const eventAttr = form.getAttribute("hx-form");
-        if (eventAttr) {
-          const [eventType, functionName] = eventAttr.split(":");
-
-          form.addEventListener(`htmx:${eventType}`, (event) => {
-            switch (functionName) {
-              case "reset":
-                if (event.detail.successful) {
-                  form.reset();
-                }
-                break;
-
-              case "clear":
-                if (event.detail.successful) {
-                  this.clearForm(form);
-                }
-                break;
-
-              case "disable":
-                this.toggleForm(form, true);
-                break;
-
-              case "enable":
-                this.toggleForm(form, false);
-                break;
-
-              // Add more cases as needed
-
-              default:
-                console.warn(`Unhandled function name: ${functionName}`);
-                break;
-            }
-          });
-        }
-      });
-    }
-
-    // Clears the input values of the specified form.
-    clearForm(form) {
-      const inputs = form.querySelectorAll("input, textarea, select");
-      inputs.forEach((input) => {
-        if (input.type === "checkbox" || input.type === "radio") {
-          input.checked = false;
-        } else {
-          input.value = "";
-        }
-      });
-    }
-
-    // Toggles the disabled state of the specified form's inputs.
-    toggleForm(form, state) {
-      const inputs = form.querySelectorAll("input, textarea, select, button");
-      inputs.forEach((input) => {
-        input.disabled = state;
-      });
-    }
-
-    // Updates the values of the specified element based on its tag name and type.
-    updateElementValues(element, value) {
-      const tagName = element.tagName;
-      const inputType = element.type;
-
-      if (tagName === "INPUT" || tagName === "TEXTAREA") {
-        if (inputType === "checkbox") {
-          element.checked = value;
-        } else {
-          element.value = value;
-        }
-      } else {
-        element.textContent = value;
-      }
-    }
-
-    // Updates the class attribute of the specified element. Class names starting
-    // with a hyphen (`-`) are removed, others are added.
-    updateClassAttribute(element, className) {
-      const classNames = className.split(" ");
-      classNames.forEach((name) => {
-        if (name.startsWith("-")) {
-          element.classList.remove(name.substring(1));
-        } else {
-          element.classList.add(name);
-        }
-      });
-    }
-  }
-
   let store = null;
   let api = null;
-  let hxConnector = null;
 
   // Function to initialize instances
   function initializeInstances() {
     store = StateManager.getInstance();
     api = RequestApi.getInstance();
-    hxConnector = HXConnector.getInstance();
   }
 
   // Initialize instances on initial page load
   document.addEventListener("DOMContentLoaded", function () {
     initializeInstances();
-
-    // Ensure document.body exists before attaching the event listener
-    if (document.body) {
-      document.body.addEventListener("htmx:afterOnLoad", function () {
-        initializeInstances();
-      });
-    }
   });
 }
+
+"use strict";var eventAttributes=["onclick","ondblclick","onmousedown","onmouseup","onmouseover","onmousemove","onmouseout","onwheel","onkeypress","onkeydown","onkeyup","onfocus","onblur","onchange","oninput","onselect","onsubmit","onreset","onresize","onscroll","onload","onunload","onabort","onerror","onbeforeunload","oncopy","oncut","onpaste","ondrag","ondragstart","ondragend","ondragover","ondragenter","ondragleave","ondrop","oncontextmenu","ontouchstart","ontouchmove","ontouchend","ontouchcancel","onpointerdown","onpointerup","onpointermove","onpointerover","onpointerout","onpointerenter","onpointerleave","onpointercancel"];function attachWireFunctionEvents(){document.querySelectorAll("button, input, select, textarea, a, form, label, div, span").forEach((t=>{t instanceof HTMLAnchorElement&&t.addEventListener("click",handleAnchorTag),eventAttributes.forEach((e=>{const n=t.getAttribute(e),o=e.slice(2);n&&(t.removeAttribute(e),t.addEventListener(o,(e=>{e.preventDefault();const{funcName:o,data:r}=parseCallback(t,n);if(o){const t=window[o];if("function"==typeof t)try{t(...r)}catch(t){}else handleUndefinedFunction(o,r)}})))}))}))}async function handleAnchorTag(t){const e=t.currentTarget,n=e.getAttribute("href"),o=e.getAttribute("target");if(!n||"_blank"===o||t.metaKey||t.ctrlKey)return;t.preventDefault();if(/^(https?:)?\/\//i.test(n)&&!n.startsWith(window.location.origin))window.location.href=n;else try{history.pushState(null,"",n),window.dispatchEvent(new PopStateEvent("popstate",{state:null}))}catch(t){}}function updateDocumentContent(t){t.includes("<!DOCTYPE html>")?document.documentElement.innerHTML=t:document.body.innerHTML=t,attachWireFunctionEvents()}function parseCallback(t,e){let n={};if(t instanceof HTMLFormElement){const e=new FormData(t);n=Object.fromEntries(e.entries())}else t instanceof HTMLInputElement&&(t.name?"checkbox"===t.type||"radio"===t.type?n[t.name]=t.checked:n[t.name]=t.value:"checkbox"===t.type||"radio"===t.type?n.value=t.checked:n.value=t.value);const o=e.match(/(\w+)\(([^)]*)\)/);if(o){const t=o[1];let e=[];return o[2]&&(e=o[2].split(/,(?=(?:[^'"]*['"][^'"]*['"])*[^'"]*$)/).map((t=>t.trim())),e=e.map((t=>{try{const e=t.replace(/'/g,'"');return JSON.parse(e)}catch{return t}}))),e.forEach((t=>{n="object"==typeof t&&null!==t?{...n,...t}:{...n,args:e}})),{funcName:t,data:n}}return{funcName:e,data:n}}function handleUndefinedFunction(t,e){const n={callback:t,...e},o={method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"XMLHttpRequest",HTTP_PPHP_WIRE_REQUEST:"true"},body:JSON.stringify(n)},r={method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"XMLHttpRequest",HTTP_PPHP_WIRE_REQUEST:"true"}},c=async t=>{const e=await fetch(window.location.pathname,t);return await e.text()};let a="";c(o).then((t=>(""===a&&(a=t),c(r)))).then((t=>{updateDocumentContent(mergeAndReplaceDuplicates(a,t))})).catch((t=>{}))}function mergeAndReplaceDuplicates(t,e){const{html:n,scripts:o}=extractScripts(t),{html:r,scripts:c}=extractScripts(e),a=(new DOMParser).parseFromString(r,"text/html"),i=document.createElement("div");i.innerHTML=n,mergeElements(i,a.body);const s=i.innerHTML;return mergeScripts(o,c)+s}function mergeElements(t,e){for(const n of e.attributes)t.setAttribute(n.name,n.value);e.textContent&&!e.children.length&&(t.textContent=e.textContent);const n=Array.from(t.children),o=Array.from(e.children);for(let e=0;e<o.length;e++)n[e]?mergeElements(n[e],o[e]):t.appendChild(o[e].cloneNode(!0));for(;n.length>o.length;)t.removeChild(n.pop())}function extractScripts(t){let e="",n=t;return n=n.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,(t=>(e+=t,""))),{html:n,scripts:e}}function mergeScripts(t,e){const n=new Set([...t.match(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi)||[],...e.match(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi)||[]]);return Array.from(n).join("\n")}document.addEventListener("DOMContentLoaded",(()=>{attachWireFunctionEvents()})),window.addEventListener("popstate",(async()=>{try{const t=await fetch(window.location.href,{headers:{"X-Requested-With":"XMLHttpRequest"}});updateDocumentContent(await t.text())}catch(t){}}));

@@ -1,5 +1,6 @@
 {
   "name": "tsnc/create-prisma-php-app",
+  "version": "1.0.0",
   "license": "MIT",
   "description": "Prisma-PHP: A Revolutionary Library Bridging PHP with Prisma ORM",
   "autoload": {

@@ -600,10 +600,5 @@ class FormHandler
         document.addEventListener('DOMContentLoaded', function() {
             formHandler = new FormHandler();
         });
-
-        // Reinitialize FormHandler when HTMX swaps content
-        document.body.addEventListener('htmx:afterOnLoad', function() {
-            formHandler = new FormHandler();
-        });
     }
 </script>

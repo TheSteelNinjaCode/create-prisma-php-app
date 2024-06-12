@@ -1,6 +1,6 @@
 {
   "name": "create-prisma-php-app",
-  "version": "1.13.4",
+  "version": "1.13.502",
   "description": "Prisma-PHP: A Revolutionary Library Bridging PHP with Prisma ORM",
   "main": "dist/index.js",
   "type": "module",

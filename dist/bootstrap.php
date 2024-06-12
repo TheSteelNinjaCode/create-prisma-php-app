@@ -403,6 +403,53 @@ function modifyOutputLayoutForError($contentToAdd)
     }
 }
 
+function wireCallback($content)
+{
+    global $isWire;
+
+    if ($isWire) {
+
+        // Read input data
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+
+        // Initialize response
+        $response = [
+            'success' => false,
+            'error' => 'Callback not provided',
+            'data' => $data
+        ];
+
+        // Validate and call the dynamic function
+        if (isset($data['callback'])) {
+            // Sanitize and create a dynamic function name
+            $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']); // Sanitize
+
+            // Check if the dynamic function is defined and callable
+            if (function_exists($callbackName) && is_callable($callbackName)) {
+                $dataObject = new \ArrayObject($data, \ArrayObject::ARRAY_AS_PROPS);
+
+                // Call the anonymous function dynamically
+                $callbackResponse = call_user_func($callbackName, $dataObject);
+
+                // Prepare success response
+                $response = [
+                    'success' => true,
+                    'response' => $callbackResponse
+                ];
+            } else {
+                // Invalid callback provided
+                $response['error'] = 'Invalid callback';
+            }
+        }
+
+        if (!empty($response['response'])) echo json_encode($response);
+
+        echo $content;
+        exit;
+    }
+}
+
 try {
     $_determineContentToInclude = determineContentToInclude();
     checkForDuplicateRoutes();
@@ -460,6 +507,7 @@ try {
 
     if (!$_isContentIncluded && !$_isChildContentIncluded) {
         $content .= $childContent;
+        wireCallback($content);
         ob_start();
         require_once APP_PATH . '/layout.php';
     } else {

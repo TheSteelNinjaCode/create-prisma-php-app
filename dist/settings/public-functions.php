@@ -1,8 +1,8 @@
 <?php
 
-function redirect(string $url): void
+function redirect(string $url, bool $replace = true, int $response_code = 0): void
 {
-    header("Location: $url");
+    header("Location: $url", $replace, $response_code);
     exit;
 }
 
@@ -12,11 +12,6 @@ function isAjaxRequest()
 
     // Check for standard AJAX header
     if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-        $isAjax = true;
-    }
-
-    // Check for HTMX request header
-    if (!empty($_SERVER['HTTP_HX_REQUEST'])) {
         $isAjax = true;
     }
 
@@ -43,4 +38,10 @@ function isAjaxRequest()
     }
 
     return $isAjax;
+}
+
+function isWireRequest(): bool
+{
+    $headers = getallheaders();
+    return isset($headers['http_pphp_wire_request']) && strtolower($headers['http_pphp_wire_request']) === 'true';
 }

@@ -15,12 +15,17 @@ class StateManager
      * Constructs a new StateManager instance.
      *
      * @param array $initialState The initial state of the application.
+     * @param string|array|null $keepState The keys of the state to retain if resetting.
      */
-    public function __construct($initialState = [])
+    public function __construct($initialState = [], $keepState = null)
     {
+        global $isWire;
+
         $this->state = $initialState;
         $this->listeners = [];
         $this->loadState();
+
+        if (!$isWire) $this->resetState($keepState);
     }
 
     /**
@@ -32,27 +37,31 @@ class StateManager
     public function getState($key = null)
     {
         if ($key === null) {
-            return $this->state;
+            return new \ArrayObject($this->state, \ArrayObject::ARRAY_AS_PROPS);
         }
 
-        return $this->state[$key] ?? null;
+        if (array_key_exists($key, $this->state)) {
+            $value = $this->state[$key];
+            return is_array($value) ? new \ArrayObject($value, \ArrayObject::ARRAY_AS_PROPS) : $value;
+        }
+
+        return null;
     }
 
     /**
      * Updates the application state with the given update.
      *
-     * @param array $update The state update to apply.
-     * @param bool $saveToStorage Whether to save the updated state to storage.
+     * @param string|array $key The key of the state value to update, or an array of key-value pairs to update multiple values.
      */
-    public function setState($update, $saveToStorage = false)
+    public function setState($key, $value = null)
     {
+        $update = is_array($key) ? $key : [$key => $value];
         $this->state = array_merge($this->state, $update);
         foreach ($this->listeners as $listener) {
             call_user_func($listener, $this->state);
         }
-        if ($saveToStorage) {
-            $this->saveState();
-        }
+
+        $this->saveState();
     }
 
     /**
@@ -96,23 +105,30 @@ class StateManager
     /**
      * Resets the application state partially or completely.
      *
-     * @param string|array|null $key The key(s) of the state to reset. If null, resets the entire state.
-     *                                Can be a string for a single key or an array of strings for multiple keys.
-     * @param bool $clearFromStorage Whether to clear the state from storage.
+     * @param string|array|null $keepKeys The key(s) of the state to retain. If null, resets the entire state.
+     *                                    Can be a string for a single key or an array of strings for multiple keys.
      */
-    public function resetState($key = null, $clearFromStorage = false)
+    public function resetState($keepKeys = null)
     {
-        if ($key === null) {
+        if ($keepKeys === null) {
             // Reset the entire state
             $this->state = [];
-        } elseif (is_array($key)) {
-            // Reset only the parts of the state identified by the keys in the array
-            foreach ($key as $k) {
-                unset($this->state[$k]);
+        } elseif (is_array($keepKeys)) {
+            // Retain only the parts of the state identified by the keys in the array
+            $retainedState = [];
+            foreach ($keepKeys as $key) {
+                if (array_key_exists($key, $this->state)) {
+                    $retainedState[$key] = $this->state[$key];
+                }
             }
+            $this->state = $retainedState;
         } else {
-            // Reset only the part of the state identified by a single key
-            unset($this->state[$key]);
+            // Retain only the part of the state identified by a single key
+            if (array_key_exists($keepKeys, $this->state)) {
+                $this->state = [$keepKeys => $this->state[$keepKeys]];
+            } else {
+                $this->state = [];
+            }
         }
 
         // Notify all listeners about the state change
@@ -120,13 +136,11 @@ class StateManager
             call_user_func($listener, $this->state);
         }
 
-        if ($clearFromStorage) {
-            // Save the updated state to the session or clear it
-            if (empty($this->state)) {
-                unset($_SESSION[self::APP_STATE]);
-            } else {
-                $_SESSION[self::APP_STATE] = json_encode($this->state);
-            }
+        // Save the updated state to the session or clear it
+        if (empty($this->state)) {
+            unset($_SESSION[self::APP_STATE]);
+        } else {
+            $_SESSION[self::APP_STATE] = json_encode($this->state);
         }
     }
 }
