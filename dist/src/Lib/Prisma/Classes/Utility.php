@@ -236,7 +236,7 @@ abstract class Utility
                     case 'endsWith':
                     case 'equals':
                     case 'not':
-                        $validatedValue = Validator::validateString($val);
+                        $validatedValue = Validator::string($val);
                         $likeOperator = $condition === 'contains' ? ($dbType == 'pgsql' ? 'ILIKE' : 'LIKE') : '=';
                         if ($condition === 'startsWith') $validatedValue .= '%';
                         if ($condition === 'endsWith') $validatedValue = '%' . $validatedValue;
@@ -248,7 +248,7 @@ abstract class Utility
                     case 'gte':
                     case 'lt':
                     case 'lte':
-                        $validatedValue = is_float($val) ? Validator::validateFloat($val) : Validator::validateInt($val);
+                        $validatedValue = is_float($val) ? Validator::float($val) : Validator::int($val);
                         $operator = $condition === 'gt' ? '>' : ($condition === 'gte' ? '>=' : ($condition === 'lt' ? '<' : '<='));
                         $sqlConditions[] = "$fieldQuoted $operator $bindingKey";
                         $bindings[$bindingKey] = $validatedValue;
@@ -259,7 +259,7 @@ abstract class Utility
                         foreach ($val as $i => $inVal) {
                             $inKey = $bindingKey . "_" . $i;
                             // Assuming the values are strings; adjust validation as necessary.
-                            $validatedValue = Validator::validateString($inVal);
+                            $validatedValue = Validator::string($inVal);
                             $inPlaceholders[] = $inKey;
                             $bindings[$inKey] = $validatedValue;
                         }
@@ -276,7 +276,7 @@ abstract class Utility
             // For scalar non-array values; direct equals condition assumed
             $bindingKey = ":" . $prefix . $key . $level;
             // Use appropriate validation based on expected type; assuming string for simplicity
-            $validatedValue = Validator::validateString($value);
+            $validatedValue = Validator::string($value);
             $sqlConditions[] = "$fieldQuoted = $bindingKey";
             $bindings[$bindingKey] = $validatedValue;
         }

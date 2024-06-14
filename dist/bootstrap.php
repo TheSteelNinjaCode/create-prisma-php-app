@@ -408,44 +408,59 @@ function wireCallback($content)
     global $isWire;
 
     if ($isWire) {
+        try {
+            // Read input data
+            $input = file_get_contents('php://input');
+            $data = json_decode($input, true);
 
-        // Read input data
-        $input = file_get_contents('php://input');
-        $data = json_decode($input, true);
+            // Initialize response
+            $response = [
+                'success' => false,
+                'error' => 'Callback not provided',
+                'data' => $data
+            ];
 
-        // Initialize response
-        $response = [
-            'success' => false,
-            'error' => 'Callback not provided',
-            'data' => $data
-        ];
+            // Validate and call the dynamic function
+            if (isset($data['callback'])) {
+                // Sanitize and create a dynamic function name
+                $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']); // Sanitize
 
-        // Validate and call the dynamic function
-        if (isset($data['callback'])) {
-            // Sanitize and create a dynamic function name
-            $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']); // Sanitize
+                // Check if the dynamic function is defined and callable
+                if (function_exists($callbackName) && is_callable($callbackName)) {
+                    $dataObject = new \ArrayObject($data, \ArrayObject::ARRAY_AS_PROPS);
 
-            // Check if the dynamic function is defined and callable
-            if (function_exists($callbackName) && is_callable($callbackName)) {
-                $dataObject = new \ArrayObject($data, \ArrayObject::ARRAY_AS_PROPS);
+                    // Call the anonymous function dynamically
+                    $callbackResponse = call_user_func($callbackName, $dataObject);
 
-                // Call the anonymous function dynamically
-                $callbackResponse = call_user_func($callbackName, $dataObject);
-
-                // Prepare success response
-                $response = [
-                    'success' => true,
-                    'response' => $callbackResponse
-                ];
-            } else {
-                // Invalid callback provided
-                $response['error'] = 'Invalid callback';
+                    // Prepare success response
+                    $response = [
+                        'success' => true,
+                        'response' => $callbackResponse
+                    ];
+                } else {
+                    // Invalid callback provided
+                    $response['error'] = 'Invalid callback';
+                }
             }
+
+            if (!empty($response['response'])) echo json_encode($response);
+
+            if (isset($data['secondRequest']) && $data['secondRequest'] === true)
+                echo $content;
+        } catch (Throwable $e) {
+            // Handle any exceptions and prepare error response
+            $response = [
+                'success' => false,
+                'error' => 'Exception occurred',
+                'message' => htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'),
+                'file' => htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8'),
+                'line' => $e->getLine()
+            ];
+
+            // Output the error response
+            echo json_encode($response);
         }
 
-        if (!empty($response['response'])) echo json_encode($response);
-
-        echo $content;
         exit;
     }
 }
@@ -521,6 +536,9 @@ try {
     }
 } catch (Throwable $e) {
     $content = ob_get_clean();
-    $content .=  "<div class='error'>Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
+    $errorDetails = "Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+    $errorDetails .= "<br>File: " . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
+    $errorDetails .= "<br>Line: " . htmlspecialchars($e->getLine(), ENT_QUOTES, 'UTF-8');
+    $content .= "<div class='error'>" . $errorDetails . "</div>";
     modifyOutputLayoutForError($content);
 }
