@@ -42,6 +42,11 @@ function isAjaxRequest()
 
 function isWireRequest(): bool
 {
-    $headers = getallheaders();
-    return isset($headers['http_pphp_wire_request']) && strtolower($headers['http_pphp_wire_request']) === 'true';
+    $serverFetchSite = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
+    if (isset($serverFetchSite) && $serverFetchSite === 'same-origin') {
+        $headers = getallheaders();
+        return isset($headers['http_pphp_wire_request']) && strtolower($headers['http_pphp_wire_request']) === 'true';
+    }
+
+    return false;
 }

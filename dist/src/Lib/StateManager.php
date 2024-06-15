@@ -12,12 +12,11 @@ class StateManager
     private $listeners;
 
     /**
-     * Constructs a new StateManager instance.
+     * Initializes a new instance of the StateManager class.
      *
      * @param array $initialState The initial state of the application.
-     * @param string|array|null $keepState The keys of the state to retain if resetting.
      */
-    public function __construct($initialState = [], $keepState = null)
+    public function __construct(array $initialState = [])
     {
         global $isWire;
 
@@ -25,7 +24,7 @@ class StateManager
         $this->listeners = [];
         $this->loadState();
 
-        if (!$isWire) $this->resetState($keepState);
+        if (!$isWire) $this->resetState();
     }
 
     /**
@@ -34,33 +33,27 @@ class StateManager
      * @param string|null $key The key of the state value to retrieve. If null, returns the entire state.
      * @return mixed|null The state value corresponding to the given key, or null if the key is not found.
      */
-    public function getState($key = null)
+    public function getState($key = null): mixed
     {
         if ($key === null) {
             return new \ArrayObject($this->state, \ArrayObject::ARRAY_AS_PROPS);
         }
 
-        if (array_key_exists($key, $this->state)) {
-            $value = $this->state[$key];
-            return is_array($value) ? new \ArrayObject($value, \ArrayObject::ARRAY_AS_PROPS) : $value;
-        }
-
-        return null;
+        $value = $this->state[$key] ?? null;
+        return is_array($value) ? new \ArrayObject($value, \ArrayObject::ARRAY_AS_PROPS) : $value;
     }
 
     /**
      * Updates the application state with the given update.
      *
      * @param string|array $key The key of the state value to update, or an array of key-value pairs to update multiple values.
+     * @param mixed|null $value The value to update the state with, ignored if $key is an array.
      */
-    public function setState($key, $value = null)
+    public function setState($key, $value = null): void
     {
         $update = is_array($key) ? $key : [$key => $value];
         $this->state = array_merge($this->state, $update);
-        foreach ($this->listeners as $listener) {
-            call_user_func($listener, $this->state);
-        }
-
+        $this->notifyListeners();
         $this->saveState();
     }
 
@@ -70,21 +63,19 @@ class StateManager
      * @param callable $listener The listener function to subscribe.
      * @return callable A function that can be called to unsubscribe the listener.
      */
-    public function subscribe($listener)
+    public function subscribe(callable $listener): callable
     {
         $this->listeners[] = $listener;
-        call_user_func($listener, $this->state);
+        $listener($this->state); // Immediate call with current state
         return function () use ($listener) {
-            $this->listeners = array_filter($this->listeners, function ($l) use ($listener) {
-                return $l !== $listener;
-            });
+            $this->listeners = array_filter($this->listeners, fn ($l) => $l !== $listener);
         };
     }
 
     /**
      * Saves the current state to storage.
      */
-    private function saveState()
+    private function saveState(): void
     {
         $_SESSION[self::APP_STATE] = json_encode($this->state);
     }
@@ -92,55 +83,34 @@ class StateManager
     /**
      * Loads the state from storage, if available.
      */
-    private function loadState()
+    private function loadState(): void
     {
         if (isset($_SESSION[self::APP_STATE])) {
-            $this->state = json_decode($_SESSION[self::APP_STATE], true);
-            foreach ($this->listeners as $listener) {
-                call_user_func($listener, $this->state);
+            $loadedState = json_decode($_SESSION[self::APP_STATE], true);
+            if ($loadedState !== null) {
+                $this->state = $loadedState;
+                $this->notifyListeners();
             }
         }
     }
 
     /**
-     * Resets the application state partially or completely.
-     *
-     * @param string|array|null $keepKeys The key(s) of the state to retain. If null, resets the entire state.
-     *                                    Can be a string for a single key or an array of strings for multiple keys.
+     * Resets the application state to an empty array.
      */
-    public function resetState($keepKeys = null)
+    public function resetState(): void
     {
-        if ($keepKeys === null) {
-            // Reset the entire state
-            $this->state = [];
-        } elseif (is_array($keepKeys)) {
-            // Retain only the parts of the state identified by the keys in the array
-            $retainedState = [];
-            foreach ($keepKeys as $key) {
-                if (array_key_exists($key, $this->state)) {
-                    $retainedState[$key] = $this->state[$key];
-                }
-            }
-            $this->state = $retainedState;
-        } else {
-            // Retain only the part of the state identified by a single key
-            if (array_key_exists($keepKeys, $this->state)) {
-                $this->state = [$keepKeys => $this->state[$keepKeys]];
-            } else {
-                $this->state = [];
-            }
-        }
+        $this->state = [];
+        $this->notifyListeners();
+        $this->saveState();
+    }
 
-        // Notify all listeners about the state change
+    /**
+     * Notifies all listeners of state changes.
+     */
+    private function notifyListeners(): void
+    {
         foreach ($this->listeners as $listener) {
-            call_user_func($listener, $this->state);
-        }
-
-        // Save the updated state to the session or clear it
-        if (empty($this->state)) {
-            unset($_SESSION[self::APP_STATE]);
-        } else {
-            $_SESSION[self::APP_STATE] = json_encode($this->state);
+            $listener($this->state);
         }
     }
 }
