@@ -64,11 +64,11 @@ class Mailer
     public function send(string $to, string $subject, string $body, string $name = '', string $altBody = ''): bool
     {
         try {
-            Validator::validateString($to);
-            Validator::validateString($subject);
-            Validator::validateString($body);
-            Validator::validateString($name);
-            Validator::validateString($altBody);
+            Validator::string($to);
+            Validator::string($subject);
+            Validator::string($body);
+            Validator::string($name);
+            Validator::string($altBody);
 
             $this->mail->addAddress($to, $name);
             $this->mail->isHTML(true);

@@ -59,7 +59,7 @@ class FormHandler
         if ($this->isPost) {
             if ($inputField = $this->stateManager->getState(self::FORM_INPUT_REGISTER)) {
                 foreach ($inputField as $field => $fieldData) {
-                    $this->data[$field] = Validator::validateString($this->data[$field] ?? '');
+                    $this->data[$field] = Validator::string($this->data[$field] ?? '');
                     $this->validateField($field, $fieldData['rules']);
                 }
             }
@@ -134,7 +134,7 @@ class FormHandler
             return "id='fh-error-$field' data-error-message='$message'";
         };
 
-        $field = Validator::validateString($field);
+        $field = Validator::string($field);
         $state = $this->stateManager->getState(self::FORM_INPUT_ERRORS);
 
         if ($this->validated && $state) {
@@ -188,7 +188,7 @@ class FormHandler
      */
     public function validateField($field, $rules)
     {
-        $value = Validator::validateString($this->data[$field] ?? null);
+        $value = Validator::string($this->data[$field] ?? null);
 
         if (!isset($rules['required']) && empty($value)) {
             return;
@@ -269,7 +269,7 @@ class FormHandler
      */
     public function register($fieldName, $rules = []): string
     {
-        $value = Validator::validateString($this->data[$fieldName] ?? '');
+        $value = Validator::string($this->data[$fieldName] ?? '');
 
         $isTypeButton = array_key_exists('button', $rules);
         $attributes = "";
@@ -411,7 +411,7 @@ class FormHandler
      */
     public function watch(string $field)
     {
-        $field = Validator::validateString($field);
+        $field = Validator::string($field);
         $fieldData = $this->data[$field] ?? '';
         return "id='fh-watch-$field' data-watch-value='$fieldData' data-type='watch'";
     }

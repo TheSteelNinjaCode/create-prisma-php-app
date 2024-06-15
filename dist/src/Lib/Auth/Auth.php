@@ -243,7 +243,7 @@ class Auth
             }
         }
 
-        $authCode = Validator::validateString($_GET['code'] ?? '');
+        $authCode = Validator::string($_GET['code'] ?? '');
 
         if ($isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)) {
             if (in_array('github', $dynamicRouteParams[self::PPHPAUTH])) {
