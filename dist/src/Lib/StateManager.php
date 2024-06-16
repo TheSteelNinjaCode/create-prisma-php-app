@@ -8,51 +8,59 @@ namespace Lib;
 class StateManager
 {
     private const APP_STATE = 'app_state_F989A';
-    private $state;
-    private $listeners;
+    private array $state = [];
+    private array $listeners = [];
 
     /**
      * Initializes a new instance of the StateManager class.
-     *
-     * @param array $initialState The initial state of the application.
      */
-    public function __construct(array $initialState = [])
+    public function __construct()
     {
         global $isWire;
 
-        $this->state = $initialState;
-        $this->listeners = [];
         $this->loadState();
 
-        if (!$isWire) $this->resetState();
+        if (!$isWire) {
+            $this->resetState();
+        }
     }
 
     /**
-     * Retrieves the current state of the application.
+     * Gets the state value for the specified key.
      *
-     * @param string|null $key The key of the state value to retrieve. If null, returns the entire state.
-     * @return mixed|null The state value corresponding to the given key, or null if the key is not found.
+     * @param string|null $key The key of the state value to get.
+     * @param mixed $initialValue The initial value to set if the key does not exist.
+     * @return mixed The state value for the specified key.
      */
-    public function getState($key = null): mixed
+    public function getState(string $key = null, mixed $initialValue = null): mixed
     {
         if ($key === null) {
             return new \ArrayObject($this->state, \ArrayObject::ARRAY_AS_PROPS);
         }
 
-        $value = $this->state[$key] ?? null;
+        if (!array_key_exists($key, $this->state)) {
+            if ($initialValue !== null) {
+                $this->setState($key, $initialValue);
+            }
+        } elseif ($initialValue !== null && $this->state[$key] !== $initialValue) {
+            $this->setState($key, $this->state[$key]);
+        }
+
+        $value = $this->state[$key] ?? $initialValue;
+
         return is_array($value) ? new \ArrayObject($value, \ArrayObject::ARRAY_AS_PROPS) : $value;
     }
 
     /**
-     * Updates the application state with the given update.
+     * Sets the state value for the specified key.
      *
-     * @param string|array $key The key of the state value to update, or an array of key-value pairs to update multiple values.
-     * @param mixed|null $value The value to update the state with, ignored if $key is an array.
+     * @param string $key The key of the state value to set.
+     * @param mixed $value The value to set.
      */
-    public function setState($key, $value = null): void
+    public function setState(string $key, mixed $value = null): void
     {
-        $update = is_array($key) ? $key : [$key => $value];
-        $this->state = array_merge($this->state, $update);
+        $this->state[$key] = $value;
+
         $this->notifyListeners();
         $this->saveState();
     }
@@ -66,10 +74,8 @@ class StateManager
     public function subscribe(callable $listener): callable
     {
         $this->listeners[] = $listener;
-        $listener($this->state); // Immediate call with current state
-        return function () use ($listener) {
-            $this->listeners = array_filter($this->listeners, fn ($l) => $l !== $listener);
-        };
+        $listener($this->state);
+        return fn () => $this->listeners = array_filter($this->listeners, fn ($l) => $l !== $listener);
     }
 
     /**
@@ -77,7 +83,7 @@ class StateManager
      */
     private function saveState(): void
     {
-        $_SESSION[self::APP_STATE] = json_encode($this->state);
+        $_SESSION[self::APP_STATE] = json_encode($this->state, JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -86,8 +92,8 @@ class StateManager
     private function loadState(): void
     {
         if (isset($_SESSION[self::APP_STATE])) {
-            $loadedState = json_decode($_SESSION[self::APP_STATE], true);
-            if ($loadedState !== null) {
+            $loadedState = json_decode($_SESSION[self::APP_STATE], true, 512, JSON_THROW_ON_ERROR);
+            if (is_array($loadedState)) {
                 $this->state = $loadedState;
                 $this->notifyListeners();
             }
