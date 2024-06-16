@@ -1,9 +1,14 @@
 <?php
 
-function redirect(string $url, bool $replace = true, int $response_code = 0): void
+function redirect(string $url, bool $replace = true, int $response_code = 0)
 {
-    header("Location: $url", $replace, $response_code);
-    exit;
+    global $isWire;
+    if ($isWire) {
+        echo "redirect_7F834=$url";
+    } else {
+        header("Location: $url", $replace, $response_code);
+        exit;
+    }
 }
 
 function isAjaxRequest()
