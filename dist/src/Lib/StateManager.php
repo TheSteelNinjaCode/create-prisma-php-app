@@ -38,14 +38,6 @@ class StateManager
             return new \ArrayObject($this->state, \ArrayObject::ARRAY_AS_PROPS);
         }
 
-        if (!array_key_exists($key, $this->state)) {
-            if ($initialValue !== null) {
-                $this->setState($key, $initialValue);
-            }
-        } elseif ($initialValue !== null && $this->state[$key] !== $initialValue) {
-            $this->setState($key, $this->state[$key]);
-        }
-
         $value = $this->state[$key] ?? $initialValue;
 
         return is_array($value) ? new \ArrayObject($value, \ArrayObject::ARRAY_AS_PROPS) : $value;
@@ -59,6 +51,10 @@ class StateManager
      */
     public function setState(string $key, mixed $value = null): void
     {
+        if (array_key_exists($key, $GLOBALS)) {
+            $GLOBALS[$key] = $value;
+        }
+
         $this->state[$key] = $value;
 
         $this->notifyListeners();
