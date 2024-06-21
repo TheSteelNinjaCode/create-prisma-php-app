@@ -435,7 +435,7 @@ function wireCallback($content)
                     // Prepare success response
                     $response = [
                         'success' => true,
-                        'response' => $callbackResponse
+                        'response' => htmlspecialchars($callbackResponse)
                     ];
                 } else {
                     // Invalid callback provided
@@ -445,7 +445,7 @@ function wireCallback($content)
 
             if (!empty($response['response'])) echo json_encode($response);
 
-            if (isset($data['secondRequest']) && $data['secondRequest'] === true)
+            if (isset($data['secondRequestC69CD']) && $data['secondRequestC69CD'] === true)
                 echo $content;
         } catch (Throwable $e) {
             // Handle any exceptions and prepare error response
