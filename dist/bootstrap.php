@@ -432,11 +432,20 @@ function wireCallback($content)
                     // Call the anonymous function dynamically
                     $callbackResponse = call_user_func($callbackName, $dataObject);
 
-                    // Prepare success response
-                    $response = [
-                        'success' => true,
-                        'response' => htmlspecialchars($callbackResponse)
-                    ];
+                    // Ensure the callback response is a string
+                    if (is_string($callbackResponse)) {
+                        // Prepare success response
+                        $response = [
+                            'success' => true,
+                            'response' => htmlspecialchars($callbackResponse)
+                        ];
+                    } else {
+                        // Handle non-string responses
+                        $response = [
+                            'success' => true,
+                            'response' => $callbackResponse
+                        ];
+                    }
                 } else {
                     // Invalid callback provided
                     $response['error'] = 'Invalid callback';
