@@ -403,6 +403,18 @@ function modifyOutputLayoutForError($contentToAdd)
     }
 }
 
+function convertToArrayObject($data)
+{
+    if (is_array($data)) {
+        $arrayObject = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
+        foreach ($data as $key => $value) {
+            $arrayObject[$key] = convertToArrayObject($value);
+        }
+        return $arrayObject;
+    }
+    return $data;
+}
+
 function wireCallback($content)
 {
     global $isWire;
@@ -427,7 +439,7 @@ function wireCallback($content)
 
                 // Check if the dynamic function is defined and callable
                 if (function_exists($callbackName) && is_callable($callbackName)) {
-                    $dataObject = new \ArrayObject($data, \ArrayObject::ARRAY_AS_PROPS);
+                    $dataObject = convertToArrayObject($data);
 
                     // Call the anonymous function dynamically
                     $callbackResponse = call_user_func($callbackName, $dataObject);
