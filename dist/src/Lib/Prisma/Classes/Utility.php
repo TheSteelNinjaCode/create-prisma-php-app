@@ -24,9 +24,7 @@ abstract class Utility
     ) {
         if (isset($select) && is_array($select)) {
             foreach ($select as $key => $value) {
-                if ($key === $timestamp) {
-                    continue;
-                }
+                if ($key === $timestamp) continue;
 
                 if (is_numeric($key) && is_string($value)) {
                     if (array_key_exists($value, $fields))
@@ -62,10 +60,10 @@ abstract class Utility
                     }
                 } else {
                     foreach (explode(',', $key) as $fieldName) {
+                        if ($key === $timestamp) continue;
                         $fieldName = trim($fieldName);
 
                         if (!array_key_exists($fieldName, $fields)) {
-                            // Additional debug information
                             $availableFields = implode(', ', array_keys($fields));
                             throw new \Exception("The field '$fieldName' does not exist in the $modelName model. Available fields are: $availableFields");
                         }
