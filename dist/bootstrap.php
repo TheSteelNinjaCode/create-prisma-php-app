@@ -415,75 +415,68 @@ function convertToArrayObject($data)
     return $data;
 }
 
-function wireCallback($content)
+function wireCallback()
 {
-    global $isWire;
+    try {
+        // Read input data
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
 
-    if ($isWire) {
-        try {
-            // Read input data
-            $input = file_get_contents('php://input');
-            $data = json_decode($input, true);
+        // Initialize response
+        $response = [
+            'success' => false,
+            'error' => 'Callback not provided',
+            'data' => $data
+        ];
 
-            // Initialize response
-            $response = [
-                'success' => false,
-                'error' => 'Callback not provided',
-                'data' => $data
-            ];
+        // Validate and call the dynamic function
+        if (isset($data['callback'])) {
+            // Sanitize and create a dynamic function name
+            $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']); // Sanitize
 
-            // Validate and call the dynamic function
-            if (isset($data['callback'])) {
-                // Sanitize and create a dynamic function name
-                $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']); // Sanitize
+            // Check if the dynamic function is defined and callable
+            if (function_exists($callbackName) && is_callable($callbackName)) {
+                $dataObject = convertToArrayObject($data);
 
-                // Check if the dynamic function is defined and callable
-                if (function_exists($callbackName) && is_callable($callbackName)) {
-                    $dataObject = convertToArrayObject($data);
+                // Call the anonymous function dynamically
+                $callbackResponse = call_user_func($callbackName, $dataObject);
 
-                    // Call the anonymous function dynamically
-                    $callbackResponse = call_user_func($callbackName, $dataObject);
-
-                    // Ensure the callback response is a string
-                    if (is_string($callbackResponse)) {
-                        // Prepare success response
-                        $response = [
-                            'success' => true,
-                            'response' => htmlspecialchars($callbackResponse)
-                        ];
-                    } else {
-                        // Handle non-string responses
-                        $response = [
-                            'success' => true,
-                            'response' => $callbackResponse
-                        ];
-                    }
+                // Ensure the callback response is a string
+                if (is_string($callbackResponse)) {
+                    // Prepare success response
+                    $response = [
+                        'success' => true,
+                        'response' => htmlspecialchars($callbackResponse)
+                    ];
                 } else {
-                    // Invalid callback provided
-                    $response['error'] = 'Invalid callback';
+                    // Handle non-string responses
+                    $response = [
+                        'success' => true,
+                        'response' => $callbackResponse
+                    ];
                 }
+            } else {
+                // Invalid callback provided
+                $response['error'] = 'Invalid callback';
             }
-
-            if (!empty($response['response'])) echo json_encode($response);
-
-            if (isset($data['secondRequestC69CD']) && $data['secondRequestC69CD'] === true)
-                echo $content;
-        } catch (Throwable $e) {
-            // Handle any exceptions and prepare error response
-            $response = [
-                'success' => false,
-                'error' => 'Exception occurred',
-                'message' => htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'),
-                'file' => htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8'),
-                'line' => $e->getLine()
-            ];
-
-            // Output the error response
-            echo json_encode($response);
         }
 
-        exit;
+        if (!empty($response['response'])) echo json_encode($response);
+    } catch (Throwable $e) {
+        // Handle any exceptions and prepare error response
+        $response = [
+            'success' => false,
+            'error' => 'Exception occurred',
+            'message' => htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'),
+            'file' => htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8'),
+            'line' => $e->getLine()
+        ];
+
+        // Output the error response
+        echo json_encode($response);
     }
+
+    exit;
 }
 
 try {
@@ -543,7 +536,8 @@ try {
 
     if (!$_isContentIncluded && !$_isChildContentIncluded) {
         $content .= $childContent;
-        wireCallback($content);
+        if ($isWire && !isset($data['secondRequestC69CD']))
+            wireCallback();
         ob_start();
         require_once APP_PATH . '/layout.php';
     } else {

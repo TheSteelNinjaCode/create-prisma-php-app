@@ -65,7 +65,9 @@ abstract class Utility
                         $fieldName = trim($fieldName);
 
                         if (!array_key_exists($fieldName, $fields)) {
-                            throw new \Exception("The field '$fieldName' does not exist in the $modelName model.");
+                            // Additional debug information
+                            $availableFields = implode(', ', array_keys($fields));
+                            throw new \Exception("The field '$fieldName' does not exist in the $modelName model. Available fields are: $availableFields");
                         }
 
                         if (
@@ -162,17 +164,7 @@ abstract class Utility
     {
         if (isset($include) && is_array($include)) {
             foreach ($include as $key => $value) {
-                if (isset($value['select'])) {
-                    $relatedEntityFields[$key] = $value['select'];
-                } else {
-                    if (is_array($value) && empty($value)) {
-                        $relatedEntityFields[$key] = [$key];
-                    } else {
-                        if (!is_bool($value) || empty($value)) {
-                            throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true] or ['$value' => ['select' => ['field1' => true, 'field2' => true]]]");
-                        }
-                    }
-                }
+                self::processIncludeValue($key, $value, $relatedEntityFields, $fields, $modelName, $key);
 
                 if (is_numeric($key) && is_string($value)) {
                     throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true]");
@@ -187,6 +179,29 @@ abstract class Utility
                 }
 
                 $includes[$key] = $value;
+            }
+        }
+    }
+
+    private static function processIncludeValue($key, $value, &$relatedEntityFields, $fields, $modelName, $parentKey)
+    {
+        if (isset($value['select'])) {
+            $relatedEntityFields[$parentKey] = $value;
+        } elseif (is_array($value)) {
+            if (empty($value)) {
+                $relatedEntityFields[$parentKey] = [$parentKey];
+            } else {
+                foreach ($value as $k => $v) {
+                    if (is_string($k) && (is_bool($v) || empty($v))) {
+                        $relatedEntityFields[$parentKey]['include'] = [$k => $v];
+                    } else {
+                        self::processIncludeValue($k, $v, $relatedEntityFields, $fields, $modelName, $parentKey);
+                    }
+                }
+            }
+        } else {
+            if (!is_bool($value) || empty($value)) {
+                throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true] or ['$value' => ['select' => ['field1' => true, 'field2' => true]]]");
             }
         }
     }
