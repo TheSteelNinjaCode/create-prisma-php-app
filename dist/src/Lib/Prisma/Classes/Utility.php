@@ -60,7 +60,7 @@ abstract class Utility
                     }
                 } else {
                     foreach (explode(',', $key) as $fieldName) {
-                        if ($key === $timestamp) continue;
+                        if ($key === $timestamp || $fieldName === $timestamp) continue;
                         $fieldName = trim($fieldName);
 
                         if (!array_key_exists($fieldName, $fields)) {
