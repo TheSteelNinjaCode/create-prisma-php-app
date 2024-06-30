@@ -536,10 +536,13 @@ try {
 
     if (!$_isContentIncluded && !$_isChildContentIncluded) {
         $content .= $childContent;
-        if ($isWire && !isset($data['secondRequestC69CD']))
-            wireCallback();
         ob_start();
         require_once APP_PATH . '/layout.php';
+
+        if ($isWire && !isset($data['secondRequestC69CD'])) {
+            ob_end_clean();
+            wireCallback();
+        }
     } else {
         if ($_isContentIncluded) {
             $content .= "<div class='error'>The parent layout file does not contain &lt;?php echo \$content; ?&gt; Or &lt;?= \$content ?&gt;<br>" . "<strong>$_parentLayoutPath</strong></div>";
