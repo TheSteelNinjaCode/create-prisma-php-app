@@ -212,6 +212,11 @@ abstract class Utility
                 $groupedConditions = [];
                 if ($key === 'NOT') {
                     self::processNotCondition($value, $groupedConditions, $bindings, $dbType, $prefix . $key . '_', $level);
+                    if (!empty($groupedConditions)) {
+                        $conditionGroup = '(' . implode(" $key ", $groupedConditions) . ')';
+                        $conditionGroup = 'NOT ' . $conditionGroup;
+                        $sqlConditions[] = $conditionGroup;
+                    }
                 } else {
                     foreach ($value as $conditionKey => $subCondition) {
                         if (is_numeric($conditionKey)) {
