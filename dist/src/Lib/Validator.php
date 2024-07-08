@@ -2,6 +2,9 @@
 
 namespace Lib;
 
+use HTMLPurifier;
+use HTMLPurifier_Config;
+
 class Validator
 {
     // String Validation
@@ -193,5 +196,18 @@ class Validator
     public static function enum($value, array $allowedValues): bool
     {
         return in_array($value, $allowedValues, true);
+    }
+
+    /**
+     * Purify and sanitize HTML content.
+     *
+     * @param string $html The HTML content to purify.
+     * @return string The purified HTML content.
+     */
+    public static function html(string $html): string
+    {
+        $config = HTMLPurifier_Config::createDefault();
+        $purifier = new HTMLPurifier($config);
+        return $purifier->purify($html);
     }
 }

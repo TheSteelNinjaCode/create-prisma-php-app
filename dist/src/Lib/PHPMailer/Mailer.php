@@ -45,20 +45,20 @@ class Mailer
     {
         try {
             // Validate and sanitize inputs
-            if (!Validator::email($to)) {
+            $to = Validator::email($to);
+            if (!$to) {
                 throw new \Exception('Invalid email address for the main recipient');
             }
 
             $subject = Validator::string($subject);
-            $body = Validator::string($body);
+            $body = Validator::html($body);
+            $altBody = $this->convertToPlainText($body);
 
             $name = $options['name'] ?? '';
-            $altBody = $options['altBody'] ?? '';
             $addCC = $options['addCC'] ?? [];
             $addBCC = $options['addBCC'] ?? [];
 
             $name = Validator::string($name);
-            $altBody = Validator::string($altBody);
 
             // Handle CC recipients
             $this->handleRecipients($addCC, 'CC');
@@ -110,5 +110,16 @@ class Mailer
                 }
             }
         }
+    }
+
+    /**
+     * Convert HTML content to plain text.
+     *
+     * @param string $html The HTML content to convert.
+     * @return string The plain text content.
+     */
+    private function convertToPlainText(string $html): string
+    {
+        return strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>'], "\n", $html));
     }
 }
