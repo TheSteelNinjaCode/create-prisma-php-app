@@ -1,4 +1,4 @@
-<div class="flex flex-col min-h-[100vh]">
+<div class="flex flex-col min-h-[100vh] bg-gradient-to-b from-[#a1b8c2] to-white dark:from-[#334455] dark:to-black">
     <header class="px-4 lg:px-6 h-14 flex items-center">
         <a class="flex items-center justify-center" href="/">
             <img class="h-10 w-10" src="<?= $baseUrl ?>assets/images/prisma-php.png" alt="Prisma PHP">
