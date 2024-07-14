@@ -27,12 +27,12 @@ class Auth
     }
 
     /**
-     * Authenticates a user and generates a JWT (JSON Web Token) based on the specified user role
+     * Authenticates a user and generates a JWT (JSON Web Token) based on the specified user data
      * and token validity duration. The method first checks if the secret key is set, calculates
      * the token's expiration time, sets the necessary payload, and encodes it into a JWT.
      * If possible (HTTP headers not yet sent), it also sets cookies with the JWT for client-side storage.
      *
-     * @param mixed $role A role identifier which can be a simple string or an instance of AuthRole.
+     * @param mixed $data User data which can be a simple string or an instance of AuthRole.
      *                    If an instance of AuthRole is provided, its `value` property will be used as the role in the token.
      * @param string|null $tokenValidity Optional parameter specifying the duration the token is valid for (e.g., '10m', '1h').
      *                                   If null, the default validity period set in the class property is used.
@@ -53,7 +53,7 @@ class Auth
      *       echo "Error: " . $e->getMessage();
      *   }
      */
-    public function authenticate($role, string $tokenValidity = null): string
+    public function authenticate($data, string $tokenValidity = null): string
     {
         if (!$this->secretKey) {
             throw new \InvalidArgumentException("Secret key is required for authentication.");
@@ -61,12 +61,12 @@ class Auth
 
         $expirationTime = $this->calculateExpirationTime($tokenValidity ?? $this->defaultTokenValidity);
 
-        if ($role instanceof AuthRole) {
-            $role = $role->value;
+        if ($data instanceof AuthRole) {
+            $data = $data->value;
         }
 
         $payload = [
-            self::PAYLOAD_NAME => $role,
+            self::PAYLOAD_NAME => $data,
             'exp' => $expirationTime,
         ];
 
@@ -83,6 +83,12 @@ class Auth
         return $jwt;
     }
 
+    /**
+     * Checks if the user is authenticated based on the presence of the payload in the session.
+     * Returns true if the user is authenticated, false otherwise.
+     * 
+     * @return bool Returns true if the user is authenticated, false otherwise.
+     */
     public function isAuthenticated(): bool
     {
         return isset($_SESSION[self::PAYLOAD]);
@@ -119,6 +125,13 @@ class Auth
         throw new \InvalidArgumentException("Invalid duration format: {$duration}");
     }
 
+    /**
+     * Verifies the JWT token and returns the decoded payload if the token is valid.
+     * If the token is invalid, an exception is thrown.
+     * 
+     * @param string $jwt The JWT token to verify.
+     * @return object Returns the decoded payload if the token is valid.
+     */
     public function verifyToken(string $jwt)
     {
         try {
@@ -128,6 +141,21 @@ class Auth
         }
     }
 
+    /**
+     * Refreshes the JWT token by updating the expiration time and encoding the new payload into a JWT.
+     * If the token validity duration is not specified, the default token validity period is used.
+     * If possible (HTTP headers not yet sent), it also sets cookies with the new JWT for client-side storage.
+     * 
+     * @param string $jwt The JWT token to refresh.
+     * @param string|null $tokenValidity Optional parameter specifying the duration the token is valid for (e.g., '10m', '1h').
+     *                                   If null, the default validity period set in the class property is used.
+     *                                   The format should be a number followed by a time unit ('s' for seconds, 'm' for minutes,
+     *                                   'h' for hours, 'd' for days), and this is parsed to calculate the exact expiration time.
+     * 
+     * @return string Returns the refreshed JWT as a string.
+     * 
+     * @throws InvalidArgumentException Thrown if the token is invalid.
+     */
     public function refreshToken(string $jwt, string $tokenValidity = null): string
     {
         $decodedToken = $this->verifyToken($jwt);
@@ -162,6 +190,18 @@ class Auth
         }
     }
 
+    /**
+     * Logs out the user by unsetting the session payload and deleting the authentication cookie.
+     * If a redirect URL is provided, the user is redirected to that URL after logging out.
+     * 
+     * @param string|null $redirect Optional parameter specifying the URL to redirect to after logging out.
+     * 
+     * Example:
+     *  $auth = new Authentication();
+     * $auth->logout('/login');
+     * 
+     * @return void
+     */
     public function logout(string $redirect = null)
     {
         if (isset($_COOKIE[self::COOKIE_NAME])) {
@@ -178,6 +218,12 @@ class Auth
         }
     }
 
+    /**
+     * Returns the role of the authenticated user based on the payload stored in the session.
+     * If the user is not authenticated, null is returned.
+     * 
+     * @return string|null Returns the role of the authenticated user or null if the user is not authenticated.
+     */
     public function getPayload()
     {
         if (isset($_SESSION[self::PAYLOAD])) {
@@ -223,6 +269,18 @@ class Auth
         return null;
     }
 
+    /**
+     * Authenticates a user using OAuth providers such as Google or GitHub.
+     * The method first checks if the request is a GET request and if the route is a sign-in route.
+     * It then processes the authentication code received from the provider and retrieves the user's data.
+     * The user data is saved to the database, and the user is authenticated using the authenticate method.
+     * 
+     * @param mixed ...$providers An array of provider objects such as GoogleProvider or GithubProvider.
+     * 
+     * Example:
+     *   $auth = new Auth();
+     *   $auth->authProviders(new GoogleProvider('client_id', 'client_secret', 'redirect_uri'));
+     */
     public function authProviders(...$providers)
     {
         global $isGet, $dynamicRouteParams;

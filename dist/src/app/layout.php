@@ -7,16 +7,10 @@
     <meta name="description" content="<?php echo htmlspecialchars($metadata['description']); ?>">
     <title><?php echo htmlspecialchars($metadata['title']); ?></title>
     <link rel="shortcut icon" href="<?php echo $baseUrl; ?>favicon.ico" type="image/x-icon">
-    <script>
-        var baseUrl = '<?php echo $baseUrl; ?>';
-        var pathname = '<?php echo $pathname; ?>';
-    </script>
 </head>
 
 <body>
-    <!-- Additional HTML content can go here. -->
     <?php echo $content; ?>
-    <!-- Additional HTML content can go here. -->
 </body>
 
 </html>
