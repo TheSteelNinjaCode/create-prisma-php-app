@@ -9,7 +9,6 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Lib\Middleware\AuthMiddleware;
 use Dotenv\Dotenv;
-use Lib\StateManager;
 
 $dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
 $dotenv->load();
@@ -442,21 +441,18 @@ function wireCallback()
                 // Call the anonymous function dynamically
                 $callbackResponse = call_user_func($callbackName, $dataObject);
 
-                $state = new StateManager();
                 // Ensure the callback response is a string
                 if (is_string($callbackResponse)) {
                     // Prepare success response
                     $response = [
                         'success' => true,
-                        'response' => htmlspecialchars($callbackResponse),
-                        'stateManager_7BB9D' => ['state' => $state->getState()]
+                        'response' => htmlspecialchars($callbackResponse)
                     ];
                 } else {
                     // Handle non-string responses
                     $response = [
                         'success' => true,
-                        'response' => $callbackResponse,
-                        'stateManager_7BB9D' => ['state' => $state->getState()]
+                        'response' => $callbackResponse
                     ];
                 }
             } else {
@@ -466,7 +462,6 @@ function wireCallback()
         }
 
         if (!empty($response['response'])) echo json_encode($response);
-        else echo json_encode(['stateManager_7BB9D' => ['state' => $state->getState(), 'onlyStateManager_A597C' => true]]);
     } catch (Throwable $e) {
         // Handle any exceptions and prepare error response
         $response = [
