@@ -1,13 +1,14 @@
 <?php
 
-function redirect(string $url, bool $replace = true, int $response_code = 0)
+/**
+ * Redirects the user to the specified URL.
+ *
+ * @param string $url The URL to redirect to.
+ * @return void
+ */
+function redirect(string $url)
 {
-    global $isWire;
-    if ($isWire) {
-        echo "redirect_7F834=$url";
-    } else {
-        header("Location: $url", $replace, $response_code);
-    }
+    echo "redirect_7F834=$url";
     exit;
 }
 
