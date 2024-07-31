@@ -392,6 +392,8 @@ function containsContent($filePath)
 
 function modifyOutputLayoutForError($contentToAdd)
 {
+    if ($_ENV['SHOW_ERRORS'] === "false") exit;
+
     $layoutContent = file_get_contents(APP_PATH . '/layout.php');
     if ($layoutContent !== false) {
         $newBodyContent = "<body class=\"fatal-error\">$contentToAdd</body>";
