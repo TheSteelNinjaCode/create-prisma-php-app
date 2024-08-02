@@ -4,11 +4,17 @@
  * Redirects the user to the specified URL.
  *
  * @param string $url The URL to redirect to.
+ * @param bool $replace Optional. Whether to replace the previous header. Default is true.
+ * @param int $responseCode Optional. The HTTP response status code. Default is 0 (no status code).
  * @return void
  */
-function redirect(string $url)
+function redirect(string $url, bool $replace = true, int $responseCode = 0)
 {
+    global $isWire, $isAjax;
+
     echo "redirect_7F834=$url";
+    if (!$isWire && !$isAjax)
+        header("Location: $url", $replace, $responseCode);
     exit;
 }
 

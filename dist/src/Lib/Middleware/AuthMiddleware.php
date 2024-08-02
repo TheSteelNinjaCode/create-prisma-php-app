@@ -85,6 +85,12 @@ class AuthMiddleware
     {
         $pattern = strtolower($pattern);
         $requestUri = strtolower(trim($requestUri));
+
+        // Handle the case where the requestUri is empty, which means home or "/"
+        if (empty($requestUri) || $requestUri === '/') {
+            $requestUri = '/';
+        }
+
         $regex = "#^/?" . preg_quote($pattern, '#') . "(/.*)?$#";
         return preg_match($regex, $requestUri);
     }
