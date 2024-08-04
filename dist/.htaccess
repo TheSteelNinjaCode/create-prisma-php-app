@@ -14,6 +14,11 @@ RewriteEngine On
     Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
 </IfModule>
 
+# Set X-Forwarded-Proto header
+<IfModule mod_headers.c>
+    RequestHeader set X-Forwarded-Proto "https"
+</IfModule>
+
 # Exclude static files from being redirected
 RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot|ico|pdf)$ [NC]
 RewriteCond %{REQUEST_URI} !^/bootstrap.php
