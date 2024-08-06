@@ -248,13 +248,17 @@ abstract class Utility
                     case 'endsWith':
                     case 'equals':
                     case 'not':
-                        $validatedValue = Validator::string($val);
-                        $likeOperator = $condition === 'contains' ? ($dbType == 'pgsql' ? 'ILIKE' : 'LIKE') : '=';
-                        if ($condition === 'startsWith') $validatedValue .= '%';
-                        if ($condition === 'endsWith') $validatedValue = '%' . $validatedValue;
-                        if ($condition === 'contains') $validatedValue = '%' . $validatedValue . '%';
-                        $sqlConditions[] = $condition === 'not' ? "$fieldQuoted != $bindingKey" : "$fieldQuoted $likeOperator $bindingKey";
-                        $bindings[$bindingKey] = $validatedValue;
+                        if ($val === null || $val === '') {
+                            $sqlConditions[] = $condition === 'not' ? "$fieldQuoted IS NOT NULL" : "$fieldQuoted IS NULL";
+                        } else {
+                            $validatedValue = Validator::string($val);
+                            $likeOperator = $condition === 'contains' ? ($dbType == 'pgsql' ? 'ILIKE' : 'LIKE') : '=';
+                            if ($condition === 'startsWith') $validatedValue .= '%';
+                            if ($condition === 'endsWith') $validatedValue = '%' . $validatedValue;
+                            if ($condition === 'contains') $validatedValue = '%' . $validatedValue . '%';
+                            $sqlConditions[] = $condition === 'not' ? "$fieldQuoted != $bindingKey" : "$fieldQuoted $likeOperator $bindingKey";
+                            $bindings[$bindingKey] = $validatedValue;
+                        }
                         break;
                     case 'gt':
                     case 'gte':
