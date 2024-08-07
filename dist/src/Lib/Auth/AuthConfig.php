@@ -19,25 +19,35 @@ class AuthConfig
     public const IS_ROLE_BASE = false;
     public const IS_TOKEN_AUTO_REFRESH = false;
 
-    // An array listing the public routes that do not require authentication.
-    // Example: public static $publicRoutes = ['/'];
+    /**
+     * An array listing the public routes that do not require authentication.
+     * Routes should be listed as string paths.
+     * By default, all routes are public.
+     * Example: public static $publicRoutes = ['/']; // This means the home page and others are public and do not require authentication.
+     * NOTE: This $publicRoutes = ['/']; is the default setting and does not need to be modified.
+     */
     public static $publicRoutes = ['/'];
 
-    // An array of private routes that are accessible to all authenticated users
-    // without specific role-based access control. Routes should be listed as string paths.
-    // Example: public static $privateRoutes = ['profile', 'dashboard/settings'];
+    /**
+     * An array of private routes that are accessible to all authenticated users
+     * without specific role-based access control. Routes should be listed as string paths.
+     * Example: public static $privateRoutes = ['/']; // This makes the home page private
+     * Example: public static $privateRoutes = ['profile', 'dashboard/settings']; // These routes are private
+     */
     public static $privateRoutes = [];
 
-    // An associative array mapping specific routes to required user roles for access control.
-    // Each route is a key with an array of roles that are allowed access.
-    // Format:
-    // 'route_path' => [self::ROLE_IDENTIFIER => [AuthRole::Role1, AuthRole::Role2, ...]],
-    // Example:
-    // public static $roleBasedRoutes = [
-    //     'dashboard' => [self::ROLE_IDENTIFIER => [AuthRole::Admin, AuthRole::User]],
-    //     'dashboard/users' => [self::ROLE_IDENTIFIER => [AuthRole::Admin]],
-    //     'sales' => [self::ROLE_IDENTIFIER => [AuthRole::Admin, AuthRole::User]]
-    // ];
+    /**
+     * An associative array mapping specific routes to required user roles for access control.
+     * Each route is a key with an array of roles that are allowed access.
+     * Format:
+     * 'route_path' => [self::ROLE_IDENTIFIER => [AuthRole::Role1, AuthRole::Role2, ...]],
+     * Example:
+     * public static $roleBasedRoutes = [
+     *     'dashboard' => [self::ROLE_IDENTIFIER => [AuthRole::Admin, AuthRole::User]],
+     *     'dashboard/users' => [self::ROLE_IDENTIFIER => [AuthRole::Admin]],
+     *     'sales' => [self::ROLE_IDENTIFIER => [AuthRole::Admin, AuthRole::User]]
+     * ];
+     */
     public static $roleBasedRoutes = [];
 
     /**
