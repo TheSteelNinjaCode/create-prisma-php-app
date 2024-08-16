@@ -12,12 +12,20 @@ class Validator
     /**
      * Validate and sanitize a string.
      *
-     * @param mixed $value The value to validate.
-     * @return string The sanitized string.
+     * This function ensures that the input is a valid string, trims any leading 
+     * or trailing whitespace, and converts special characters to HTML entities 
+     * to prevent XSS attacks. If the input is not a string, an empty string is returned.
+     *
+     * @param mixed $value The value to validate and sanitize.
+     * @return string The sanitized string or an empty string if the input is not a string.
      */
     public static function string($value): string
     {
-        return $value !== null ? htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8') : '';
+        if (is_string($value)) {
+            return htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8');
+        }
+
+        return '';
     }
 
     /**
@@ -209,5 +217,128 @@ class Validator
         $config = HTMLPurifier_Config::createDefault();
         $purifier = new HTMLPurifier($config);
         return $purifier->purify($html);
+    }
+
+    /**
+     * Converts emojis or special characters in the message content to appropriate HTML entities or format.
+     *
+     * @param string $content The content to process.
+     * @return string The processed content.
+     */
+    public static function emojis($content): string
+    {
+        static $emojiMap = [
+            ':)' => '😊',
+            ':-)' => '😊',
+            ':(' => '☹️',
+            ':-(' => '☹️',
+            ':D' => '😄',
+            ':-D' => '😄',
+            ':P' => '😛',
+            ':-P' => '😛',
+            ';)' => '😉',
+            ';-)' => '😉',
+            ':o' => '😮',
+            ':-o' => '😮',
+            ':O' => '😮',
+            ':-O' => '😮',
+            'B)' => '😎',
+            'B-)' => '😎',
+            ':|' => '😐',
+            ':-|' => '😐',
+            ':/' => '😕',
+            ':-/' => '😕',
+            ':\\' => '😕',
+            ':-\\' => '😕',
+            ':*' => '😘',
+            ':-*' => '😘',
+            '<3' => '❤️',
+            '</3' => '💔',
+            ':@' => '😡',
+            ':-@' => '😡',
+            ':S' => '😖',
+            ':-S' => '😖',
+            ':$' => '😳',
+            ':-$' => '😳',
+            ':X' => '🤐',
+            ':-X' => '🤐',
+            ':#' => '🤐',
+            ':-#' => '🤐',
+            ':^)' => '😊',
+            ':v' => '😋',
+            ':3' => '😺',
+            'O:)' => '😇',
+            'O:-)' => '😇',
+            '>:)' => '😈',
+            '>:-)' => '😈',
+            'D:' => '😧',
+            'D-:' => '😧',
+            ':-o' => '😯',
+            ':p' => '😋',
+            ':-p' => '😋',
+            ':b' => '😋',
+            ':-b' => '😋',
+            ':^/' => '😕',
+            ':-^/' => '😕',
+            '>_<' => '😣',
+            '-_-' => '😑',
+            '^_^' => '😊',
+            'T_T' => '😢',
+            'TT_TT' => '😭',
+            'xD' => '😆',
+            'XD' => '😆',
+            'xP' => '😝',
+            'XP' => '😝',
+            ':wave:' => '👋',
+            ':thumbsup:' => '👍',
+            ':thumbsdown:' => '👎',
+            ':clap:' => '👏',
+            ':fire:' => '🔥',
+            ':100:' => '💯',
+            ':poop:' => '💩',
+            ':smile:' => '😄',
+            ':smirk:' => '😏',
+            ':sob:' => '😭',
+            ':heart:' => '❤️',
+            ':broken_heart:' => '💔',
+            ':grin:' => '😁',
+            ':joy:' => '😂',
+            ':cry:' => '😢',
+            ':angry:' => '😠',
+            ':sunglasses:' => '😎',
+            ':kiss:' => '😘',
+            ':thinking:' => '🤔',
+            ':shocked:' => '😲',
+            ':shhh:' => '🤫',
+            ':nerd:' => '🤓',
+            ':cool:' => '😎',
+            ':scream:' => '😱',
+            ':zzz:' => '💤',
+            ':celebrate:' => '🎉',
+            ':ok_hand:' => '👌',
+            ':pray:' => '🙏',
+            ':muscle:' => '💪',
+            ':tada:' => '🎉',
+            ':eyes:' => '👀',
+            ':star:' => '⭐',
+            ':bulb:' => '💡',
+            ':chicken:' => '🐔',
+            ':cow:' => '🐮',
+            ':dog:' => '🐶',
+            ':cat:' => '🐱',
+            ':fox:' => '🦊',
+            ':lion:' => '🦁',
+            ':penguin:' => '🐧',
+            ':pig:' => '🐷',
+            ':rabbit:' => '🐰',
+            ':tiger:' => '🐯',
+            ':unicorn:' => '🦄',
+            ':bear:' => '🐻',
+            ':elephant:' => '🐘',
+            ':monkey:' => '🐒',
+            ':panda:' => '🐼',
+        ];
+
+        return strtr($content, $emojiMap);
     }
 }

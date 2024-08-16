@@ -448,7 +448,7 @@ function wireCallback()
                     // Prepare success response
                     $response = [
                         'success' => true,
-                        'response' => htmlspecialchars($callbackResponse)
+                        'response' => $callbackResponse
                     ];
                 } else {
                     // Handle non-string responses
