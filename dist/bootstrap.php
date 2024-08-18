@@ -442,16 +442,16 @@ function wireCallback()
 
                 // Call the anonymous function dynamically
                 $callbackResponse = call_user_func($callbackName, $dataObject);
-
-                // Ensure the callback response is a string
-                if (is_string($callbackResponse)) {
+                
+                // Handle different types of responses
+                if (is_string($callbackResponse) || is_bool($callbackResponse)) {
                     // Prepare success response
                     $response = [
                         'success' => true,
                         'response' => $callbackResponse
                     ];
                 } else {
-                    // Handle non-string responses
+                    // Handle non-string, non-boolean responses
                     $response = [
                         'success' => true,
                         'response' => $callbackResponse
@@ -463,7 +463,10 @@ function wireCallback()
             }
         }
 
-        if (!empty($response['response'])) echo json_encode($response);
+        // Output the JSON response only if the callbackResponse is not null
+        if ($callbackResponse !== null) {
+            echo json_encode($response);
+        }
     } catch (Throwable $e) {
         // Handle any exceptions and prepare error response
         $response = [

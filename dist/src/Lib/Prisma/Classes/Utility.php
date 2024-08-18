@@ -238,7 +238,7 @@ abstract class Utility
 
     private static function processSingleCondition($key, $value, &$sqlConditions, &$bindings, $dbType, $prefix, $level)
     {
-        $fieldQuoted = $dbType == 'pgsql' ? "\"$key\"" : "`$key`";
+        $fieldQuoted = ($dbType == 'pgsql' || $dbType == 'sqlite') ? "\"$key\"" : "`$key`";
         if (is_array($value)) {
             foreach ($value as $condition => $val) {
                 $bindingKey = ":" . $prefix . $key . "_" . $condition . $level;
@@ -254,7 +254,7 @@ abstract class Utility
                             $sqlConditions[] = "$fieldQuoted != ''";
                         } else {
                             $validatedValue = Validator::string($val);
-                            $likeOperator = $condition === 'contains' ? ($dbType == 'pgsql' ? 'ILIKE' : 'LIKE') : '=';
+                            $likeOperator = $condition === 'contains' ? (($dbType == 'pgsql' || $dbType == 'sqlite') ? 'ILIKE' : 'LIKE') : '=';
                             if ($condition === 'startsWith') $validatedValue .= '%';
                             if ($condition === 'endsWith') $validatedValue = '%' . $validatedValue;
                             if ($condition === 'contains') $validatedValue = '%' . $validatedValue . '%';
