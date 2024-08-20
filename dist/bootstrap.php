@@ -442,7 +442,7 @@ function wireCallback()
 
                 // Call the anonymous function dynamically
                 $callbackResponse = call_user_func($callbackName, $dataObject);
-                
+
                 // Handle different types of responses
                 if (is_string($callbackResponse) || is_bool($callbackResponse)) {
                     // Prepare success response
@@ -482,6 +482,34 @@ function wireCallback()
     }
 
     exit;
+}
+
+function getLoadingsFiles()
+{
+    global $_filesListRoutes;
+
+    $loadingFiles = array_filter($_filesListRoutes, function ($route) {
+        return strpos($route, 'loading.php') !== false;
+    });
+
+    $haveLoadingFileContent = array_reduce($loadingFiles, function ($carry, $route) {
+        $normalizeUri = str_replace('\\', '/', $route);
+        $fileUrl = str_replace('./src/app', '', $normalizeUri);
+        $content = @file_get_contents($route);
+
+        if ($content !== false) {
+            $url = $fileUrl === '/loading.php' ? '/' : str_replace('/loading.php', '', $fileUrl);
+            $carry .= '<div pp-loading-url="' . $url . '">' . $content . '</div>';
+        }
+
+        return $carry;
+    }, '');
+
+    if ($haveLoadingFileContent) {
+        return '<div style="display: none;" id="loading-file-1B87E">' . $haveLoadingFileContent . '</div>';
+    }
+
+    return '';
 }
 
 try {
@@ -541,6 +569,8 @@ try {
 
     if (!$_isContentIncluded && !$_isChildContentIncluded) {
         $content .= $childContent;
+        $content .= getLoadingsFiles();
+
         ob_start();
         require_once APP_PATH . '/layout.php';
 
