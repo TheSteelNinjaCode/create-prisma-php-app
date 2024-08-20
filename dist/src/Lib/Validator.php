@@ -12,20 +12,19 @@ class Validator
     /**
      * Validate and sanitize a string.
      *
-     * This function ensures that the input is a valid string, trims any leading 
-     * or trailing whitespace, and converts special characters to HTML entities 
-     * to prevent XSS attacks. If the input is not a string, an empty string is returned.
+     * This function converts the input to a string, trims any leading or trailing 
+     * whitespace, and converts special characters to HTML entities to prevent 
+     * XSS attacks. If the input is null, an empty string is returned.
      *
-     * @param mixed $value The value to validate and sanitize.
-     * @return string The sanitized string or an empty string if the input is not a string.
+     * @param mixed $value The value to validate and sanitize. This can be of any type.
+     * @return string The sanitized string. If the input is not a string or null, it is converted to its string representation before sanitization. If the input is null, an empty string is returned.
      */
     public static function string($value): string
     {
-        if (is_string($value)) {
-            return htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8');
-        }
-
-        return '';
+        // Convert the value to a string if it's not null
+        $stringValue = $value !== null ? (string)$value : '';
+        // Return the HTML-escaped string
+        return htmlspecialchars(trim($stringValue), ENT_QUOTES, 'UTF-8');
     }
 
     /**
