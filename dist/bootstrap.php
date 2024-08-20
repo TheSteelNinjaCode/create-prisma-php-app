@@ -489,7 +489,9 @@ function getLoadingsFiles()
     global $_filesListRoutes;
 
     $loadingFiles = array_filter($_filesListRoutes, function ($route) {
-        return strpos($route, 'loading.php') !== false;
+        $normalizedRoute = str_replace('\\', '/', $route);
+        $isLoadingFile = preg_match('/\/loading\.php$/', $normalizedRoute);
+        return $isLoadingFile;
     });
 
     $haveLoadingFileContent = array_reduce($loadingFiles, function ($carry, $route) {
