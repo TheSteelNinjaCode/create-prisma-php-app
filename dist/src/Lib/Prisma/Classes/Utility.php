@@ -254,7 +254,7 @@ abstract class Utility
                             $sqlConditions[] = "$fieldQuoted != ''";
                         } else {
                             $validatedValue = Validator::string($val);
-                            $likeOperator = $condition === 'contains' ? (($dbType == 'pgsql' || $dbType == 'sqlite') ? 'ILIKE' : 'LIKE') : '=';
+                            $likeOperator = $condition === 'contains' ? ($dbType == 'pgsql' ? 'ILIKE' : 'LIKE') : '=';
                             if ($condition === 'startsWith') $validatedValue .= '%';
                             if ($condition === 'endsWith') $validatedValue = '%' . $validatedValue;
                             if ($condition === 'contains') $validatedValue = '%' . $validatedValue . '%';
@@ -266,7 +266,15 @@ abstract class Utility
                     case 'gte':
                     case 'lt':
                     case 'lte':
-                        $validatedValue = is_float($val) ? Validator::float($val) : Validator::int($val);
+                        if (is_float($val)) {
+                            $validatedValue = Validator::float($val);
+                        } elseif (is_int($val)) {
+                            $validatedValue = Validator::int($val);
+                        } elseif (strtotime($val) !== false) {
+                            $validatedValue = date('Y-m-d H:i:s', strtotime($val));
+                        } else {
+                            $validatedValue = Validator::string($val);
+                        }
                         $operator = $condition === 'gt' ? '>' : ($condition === 'gte' ? '>=' : ($condition === 'lt' ? '<' : '<='));
                         $sqlConditions[] = "$fieldQuoted $operator $bindingKey";
                         $bindings[$bindingKey] = $validatedValue;
@@ -316,6 +324,23 @@ abstract class Utility
             if (!empty($key) && !in_array($key, $fields)) {
                 throw new \Exception("The field '$key' does not exist in the $modelName model. Accepted fields: " . implode(', ', $fields));
             }
+        }
+    }
+
+    public static function queryOptions(array $criteria, string &$sql)
+    {
+        if (isset($criteria['orderBy'])) {
+            $orderByParts = [];
+            foreach ($criteria['orderBy'] as $column => $direction) {
+                $orderByParts[] = "$column $direction";
+            }
+            $sql .= " ORDER BY " . implode(', ', $orderByParts);
+        }
+        if (isset($criteria['take'])) {
+            $sql .= " LIMIT " . intval($criteria['take']);
+        }
+        if (isset($criteria['skip'])) {
+            $sql .= " OFFSET " . intval($criteria['skip']);
         }
     }
 }

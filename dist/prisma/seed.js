@@ -63,18 +63,6 @@ async function main() {
   // await prisma.user.deleteMany();
   // await prisma.user.createMany({ data: userData });
   // ========================================
-  // Code for MongoDB
-  // ----------------------------------------
-  // UserRole
-  // ----------------------------------------
-  // await prisma.userRole.deleteMany();
-  // await prisma.userRole.createMany({ data: userRoleData });
-  // ----------------------------------------
-  // User
-  // ----------------------------------------
-  // await prisma.user.deleteMany();
-  // await prisma.user.createMany({ data: userData });
-  // ========================================
 }
 
 main()

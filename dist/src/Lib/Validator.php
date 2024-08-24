@@ -72,6 +72,17 @@ class Validator
     }
 
     /**
+     * Validate a CUID.
+     * 
+     * @param mixed $value The value to validate.
+     * @return string|null The valid CUID or null if invalid.
+     */
+    public static function cuid($value): ?string
+    {
+        return preg_match('/^c[0-9a-z]{8,}$/', $value) ? $value : null;
+    }
+
+    /**
      * Validate a size string (e.g., "10MB").
      *
      * @param mixed $value The value to validate.
