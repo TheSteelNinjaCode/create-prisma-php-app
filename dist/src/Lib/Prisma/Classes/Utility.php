@@ -331,9 +331,21 @@ abstract class Utility
     {
         if (isset($criteria['orderBy'])) {
             $orderByParts = [];
-            foreach ($criteria['orderBy'] as $column => $direction) {
-                $orderByParts[] = "$column $direction";
+
+            // Check if orderBy is an associative array with directions or a list of columns
+            if (array_values($criteria['orderBy']) === $criteria['orderBy']) {
+                // If it's a list of columns, default to 'asc'
+                foreach ($criteria['orderBy'] as $column) {
+                    $orderByParts[] = "$column asc";
+                }
+            } else {
+                // If it's an associative array with directions
+                foreach ($criteria['orderBy'] as $column => $direction) {
+                    $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
+                    $orderByParts[] = "$column $direction";
+                }
             }
+
             $sql .= " ORDER BY " . implode(', ', $orderByParts);
         }
         if (isset($criteria['take'])) {
