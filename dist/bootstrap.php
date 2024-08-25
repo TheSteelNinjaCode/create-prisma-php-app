@@ -93,10 +93,43 @@ function determineContentToInclude()
             $layoutsToInclude[] = $baseDir . '/layout.php';
         }
     } else {
-        $includePath = $baseDir . '/index.php';
+        $includePath = $baseDir . getFilePrecedence();
     }
 
     return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri];
+}
+
+function getFilePrecedence()
+{
+    global $_filesListRoutes;
+
+    // Normalize the file paths for consistent comparison
+    $_filesListRoutes = array_map(function ($route) {
+        return str_replace('\\', '/', $route);
+    }, $_filesListRoutes);
+
+    // Look for route.php in the /src/app/ directory
+    $routeFile = array_filter($_filesListRoutes, function ($route) {
+        return preg_match('/^\.\/src\/app\/route\.php$/', $route);
+    });
+
+    // If route.php is found, return just the file name
+    if (!empty($routeFile)) {
+        return '/route.php';
+    }
+
+    // If route.php is not found, look for index.php in the /src/app/ directory
+    $indexFile = array_filter($_filesListRoutes, function ($route) {
+        return preg_match('/^\.\/src\/app\/index\.php$/', $route);
+    });
+
+    // If index.php is found, return just the file name
+    if (!empty($indexFile)) {
+        return '/index.php';
+    }
+
+    // If neither file is found, return null or handle the case as needed
+    return null;
 }
 
 function uriExtractor(string $scriptUrl): string
@@ -430,6 +463,8 @@ function wireCallback()
             'error' => 'Callback not provided',
             'data' => $data
         ];
+
+        $callbackResponse = null;
 
         // Validate and call the dynamic function
         if (isset($data['callback'])) {

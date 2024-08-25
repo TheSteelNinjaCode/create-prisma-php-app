@@ -329,6 +329,50 @@ abstract class Utility
 
     public static function queryOptions(array $criteria, string &$sql)
     {
+        // Handle _max, _min, _count, _avg, and _sum
+        $selectParts = [];
+        if (isset($criteria['_max'])) {
+            foreach ($criteria['_max'] as $column => $enabled) {
+                if ($enabled) {
+                    $selectParts[] = "MAX($column) AS max_$column";
+                }
+            }
+        }
+        if (isset($criteria['_min'])) {
+            foreach ($criteria['_min'] as $column => $enabled) {
+                if ($enabled) {
+                    $selectParts[] = "MIN($column) AS min_$column";
+                }
+            }
+        }
+        if (isset($criteria['_count'])) {
+            foreach ($criteria['_count'] as $column => $enabled) {
+                if ($enabled) {
+                    $selectParts[] = "COUNT($column) AS count_$column";
+                }
+            }
+        }
+        if (isset($criteria['_avg'])) {
+            foreach ($criteria['_avg'] as $column => $enabled) {
+                if ($enabled) {
+                    $selectParts[] = "AVG($column) AS avg_$column";
+                }
+            }
+        }
+        if (isset($criteria['_sum'])) {
+            foreach ($criteria['_sum'] as $column => $enabled) {
+                if ($enabled) {
+                    $selectParts[] = "SUM($column) AS sum_$column";
+                }
+            }
+        }
+
+        // Prepend to SELECT if _max, _min, _count, _avg, or _sum is specified
+        if (!empty($selectParts)) {
+            $sql = str_replace('SELECT', 'SELECT ' . implode(', ', $selectParts) . ',', $sql);
+        }
+
+        // Handle ORDER BY
         if (isset($criteria['orderBy'])) {
             $orderByParts = [];
 
@@ -348,9 +392,13 @@ abstract class Utility
 
             $sql .= " ORDER BY " . implode(', ', $orderByParts);
         }
+
+        // Handle LIMIT (take)
         if (isset($criteria['take'])) {
             $sql .= " LIMIT " . intval($criteria['take']);
         }
+
+        // Handle OFFSET (skip)
         if (isset($criteria['skip'])) {
             $sql .= " OFFSET " . intval($criteria['skip']);
         }
