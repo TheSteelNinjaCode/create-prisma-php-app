@@ -40,11 +40,11 @@ if ($requestMethod == 'GET') {
 }
 
 if (stripos($contentType, 'application/json') !== false) {
-    $jsonInput = file_get_contents('php://input');
-    if (!empty($jsonInput)) {
-        $data = json_decode($jsonInput, true);
+    $_jsonInputA9117 = file_get_contents('php://input');
+    if (!empty($_jsonInputA9117)) {
+        $_data53C84 = json_decode($_jsonInputA9117, true);
         if (json_last_error() === JSON_ERROR_NONE) {
-            $params = new \ArrayObject($data, \ArrayObject::ARRAY_AS_PROPS);
+            $params = new \ArrayObject($_data53C84, \ArrayObject::ARRAY_AS_PROPS);
         } else {
             header('HTTP/1.1 400 Bad Request');
             echo json_encode(['error' => 'Invalid JSON body']);
@@ -55,8 +55,8 @@ if (stripos($contentType, 'application/json') !== false) {
 
 if (stripos($contentType, 'application/x-www-form-urlencoded') !== false) {
     if (in_array($requestMethod, ['POST', 'PUT', 'PATCH', 'DELETE'])) {
-        $rawInput = file_get_contents('php://input');
-        parse_str($rawInput, $parsedParams);
+        $_rawInput3127C = file_get_contents('php://input');
+        parse_str($_rawInput3127C, $parsedParams);
         $params = new \ArrayObject($parsedParams, \ArrayObject::ARRAY_AS_PROPS);
     } else {
         $params = new \ArrayObject($_POST, \ArrayObject::ARRAY_AS_PROPS);

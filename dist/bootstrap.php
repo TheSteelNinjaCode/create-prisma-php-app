@@ -611,7 +611,7 @@ try {
         ob_start();
         require_once APP_PATH . '/layout.php';
 
-        if ($isWire && !isset($data['secondRequestC69CD'])) {
+        if ($isWire && !isset($_data53C84['secondRequestC69CD'])) {
             ob_end_clean();
             wireCallback();
         }
