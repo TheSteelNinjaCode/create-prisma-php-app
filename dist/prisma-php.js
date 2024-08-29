@@ -32,6 +32,7 @@ const main = async () => {
       }
       const localSettings = readJsonFile(configPath);
       const commandArgs = [localSettings.projectName];
+      if (localSettings.backendOnly) commandArgs.push("--backend-only");
       if (localSettings.tailwindcss) commandArgs.push("--tailwindcss");
       if (localSettings.websocket) commandArgs.push("--websocket");
       if (localSettings.prisma) commandArgs.push("--prisma");

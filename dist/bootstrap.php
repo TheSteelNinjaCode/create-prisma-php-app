@@ -384,7 +384,8 @@ function setupErrorHandling(&$content)
 ob_start();
 require_once SETTINGS_PATH . '/public-functions.php';
 require_once SETTINGS_PATH . '/request-methods.php';
-$_metadataArray = require_once APP_PATH . '/metadata.php';
+$metadataFile = APP_PATH . '/metadata.php';
+$_metadataArray = file_exists($metadataFile) ? require_once $metadataFile : [];
 $_filesListRoutes = [];
 $metadata = "";
 $uri = "";
@@ -556,13 +557,13 @@ try {
     $_layoutsToInclude = $_determineContentToInclude['layouts'] ?? [];
     $uri = $_determineContentToInclude['uri'] ?? '';
     $pathname = $uri ? "/" . $uri : "/";
-    $metadata = $_metadataArray[$uri] ?? $_metadataArray['default'];
     if (!empty($_contentToInclude) && basename($_contentToInclude) === 'route.php') {
         header('Content-Type: application/json');
         require_once $_contentToInclude;
         exit;
     }
 
+    $metadata = $_metadataArray[$uri] ?? ($_metadataArray['default'] ?? null);
     $_parentLayoutPath = APP_PATH . '/layout.php';
     $_isParentLayout = !empty($_layoutsToInclude) && strpos($_layoutsToInclude[0], 'src/app/layout.php') !== false;
 
