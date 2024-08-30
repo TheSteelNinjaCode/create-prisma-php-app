@@ -200,8 +200,8 @@ function findGroupFolder($uri): string
 
 function dynamicRoute($uri)
 {
-    global $_filesListRoutes;
-    global $dynamicRouteParams;
+    global $_filesListRoutes, $dynamicRouteParams;
+
     $uriMatch = null;
     $normalizedUri = ltrim(str_replace('\\', '/', $uri), './');
     $normalizedUriEdited = "src/app/$normalizedUri";
@@ -522,18 +522,20 @@ function wireCallback()
 
 function getLoadingsFiles()
 {
-    global $_filesListRoutes;
+    global $_filesListRoutes, $uri, $pathname, $dynamicRouteParams, $params;
 
     $loadingFiles = array_filter($_filesListRoutes, function ($route) {
         $normalizedRoute = str_replace('\\', '/', $route);
-        $isLoadingFile = preg_match('/\/loading\.php$/', $normalizedRoute);
-        return $isLoadingFile;
+        return preg_match('/\/loading\.php$/', $normalizedRoute);
     });
 
-    $haveLoadingFileContent = array_reduce($loadingFiles, function ($carry, $route) {
+    $haveLoadingFileContent = array_reduce($loadingFiles, function ($carry, $route) use ($uri, $pathname, $dynamicRouteParams, $params) {
         $normalizeUri = str_replace('\\', '/', $route);
         $fileUrl = str_replace('./src/app', '', $normalizeUri);
-        $content = @file_get_contents($route);
+
+        ob_start();
+        include($route); // This will execute the PHP code in loading.php
+        $content = ob_get_clean();
 
         if ($content !== false) {
             $url = $fileUrl === '/loading.php' ? '/' : str_replace('/loading.php', '', $fileUrl);
