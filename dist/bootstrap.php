@@ -522,14 +522,14 @@ function wireCallback()
 
 function getLoadingsFiles()
 {
-    global $_filesListRoutes, $uri, $pathname, $dynamicRouteParams, $params;
+    global $_filesListRoutes, $uri, $pathname, $dynamicRouteParams, $params, $referer;
 
     $loadingFiles = array_filter($_filesListRoutes, function ($route) {
         $normalizedRoute = str_replace('\\', '/', $route);
         return preg_match('/\/loading\.php$/', $normalizedRoute);
     });
 
-    $haveLoadingFileContent = array_reduce($loadingFiles, function ($carry, $route) use ($uri, $pathname, $dynamicRouteParams, $params) {
+    $haveLoadingFileContent = array_reduce($loadingFiles, function ($carry, $route) use ($uri, $pathname, $dynamicRouteParams, $params, $referer) {
         $normalizeUri = str_replace('\\', '/', $route);
         $fileUrl = str_replace('./src/app', '', $normalizeUri);
 

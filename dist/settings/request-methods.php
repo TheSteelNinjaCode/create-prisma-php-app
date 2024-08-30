@@ -32,6 +32,7 @@ $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
 $domainName = $_SERVER['HTTP_HOST'];
 $scriptName = dirname($_SERVER['SCRIPT_NAME']) . '/';
 $baseUrl = $protocol . $domainName . rtrim($scriptName, '/') . '/src/app/';
+$referer = $_SERVER['HTTP_REFERER'] ?? 'Unknown';
 
 $params = [];
 
