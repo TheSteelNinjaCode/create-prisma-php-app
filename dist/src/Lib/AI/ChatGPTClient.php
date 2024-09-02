@@ -14,14 +14,15 @@ class ChatGPTClient
     private $client;
     private $apiUrl;
     private $apiKey;
+    private $cache = [];
 
     /**
      * Constructor initializes the Guzzle HTTP client and sets up API configuration.
      */
-    public function __construct()
+    public function __construct(Client $client = null)
     {
-        // Initialize the Guzzle HTTP client
-        $this->client = new Client();
+        // Initialize the Guzzle HTTP client, allowing for dependency injection
+        $this->client = $client ?: new Client();
 
         // API URL for chat completions
         $this->apiUrl = 'https://api.openai.com/v1/chat/completions';
@@ -36,9 +37,8 @@ class ChatGPTClient
      * @param array $conversationHistory The conversation history array.
      * @return string The model name to be used.
      */
-    private function determineModel(array $conversationHistory)
+    protected function determineModel(array $conversationHistory): string
     {
-        // Example logic for model selection
         $messageCount = count($conversationHistory);
         $totalTokens = array_reduce($conversationHistory, function ($carry, $item) {
             return $carry + str_word_count($item['content'] ?? '');
@@ -54,6 +54,25 @@ class ChatGPTClient
     }
 
     /**
+     * Formats the conversation history to ensure it is valid.
+     *
+     * @param array $conversationHistory The conversation history array.
+     * @return array The formatted conversation history.
+     */
+    protected function formatConversationHistory(array $conversationHistory): array
+    {
+        $formattedHistory = [];
+        foreach ($conversationHistory as $message) {
+            if (is_array($message) && isset($message['role'], $message['content']) && Validator::string($message['content'])) {
+                $formattedHistory[] = $message;
+            } else {
+                $formattedHistory[] = ['role' => 'user', 'content' => (string) $message];
+            }
+        }
+        return $formattedHistory;
+    }
+
+    /**
      * Sends a message to the OpenAI API and returns the AI's response.
      *
      * @param array $conversationHistory The conversation history array containing previous messages.
@@ -64,31 +83,29 @@ class ChatGPTClient
      */
     public function sendMessage(array $conversationHistory, string $userMessage): string
     {
+        if (!Validator::string($userMessage)) {
+            throw new \InvalidArgumentException("Invalid user message: must be a string.");
+        }
+
+        // Optional: Convert emojis or special patterns in the message
+        $userMessage = Validator::emojis($userMessage);
+
+        // Format the conversation history
+        $formattedHistory = $this->formatConversationHistory($conversationHistory);
+
+        // Add the new user message
+        $formattedHistory[] = ['role' => 'user', 'content' => $userMessage];
+
+        // Check cache first
+        $cacheKey = md5(serialize($formattedHistory));
+        if (isset($this->cache[$cacheKey])) {
+            return $this->cache[$cacheKey];
+        }
+
+        // Determine the appropriate model to use
+        $model = $this->determineModel($formattedHistory);
+
         try {
-            if (!Validator::string($userMessage)) {
-                throw new \InvalidArgumentException("Invalid user message: must be a string.");
-            }
-
-            // Optional: Convert emojis or special patterns in the message
-            $userMessage = Validator::emojis($userMessage);
-
-            // Ensure conversationHistory is properly formatted
-            $formattedHistory = [];
-            foreach ((array) $conversationHistory as $key => $message) {
-                if (is_array($message) && isset($message['role'], $message['content']) && Validator::string($message['content'])) {
-                    $formattedHistory[] = $message;
-                } else {
-                    // If the message is a string, assume it's a user message without a role
-                    $formattedHistory[] = ['role' => 'user', 'content' => (string) $message];
-                }
-            }
-
-            // Add the new user message
-            $formattedHistory[] = ['role' => 'user', 'content' => $userMessage];
-
-            // Determine the appropriate model to use
-            $model = $this->determineModel($formattedHistory);
-
             // Sending a POST request to the AI API
             $response = $this->client->request('POST', $this->apiUrl, [
                 'headers' => [
@@ -106,10 +123,18 @@ class ChatGPTClient
             $responseBody = $response->getBody();
             $responseContent = json_decode($responseBody, true);
 
-            // Return the content of the AI's response message
-            return $responseContent['choices'][0]['message']['content'];
+            // Check if response is in expected format
+            if (isset($responseContent['choices'][0]['message']['content'])) {
+                $aiMessage = $responseContent['choices'][0]['message']['content'];
+                // Cache the result
+                $this->cache[$cacheKey] = $aiMessage;
+                return $aiMessage;
+            }
+
+            throw new \RuntimeException('Unexpected API response format.');
         } catch (RequestException $e) {
-            throw new \RuntimeException("API request failed: " . $e->getMessage());
+            // Log error here if you have a logger
+            throw new \RuntimeException("API request failed: " . $e->getMessage(), 0, $e);
         }
     }
 
@@ -119,7 +144,7 @@ class ChatGPTClient
      * @param string $gptResponse The raw response from GPT.
      * @return string The formatted HTML.
      */
-    public function formatGPTResponseToHTML($gptResponse)
+    public function formatGPTResponseToHTML(string $gptResponse): string
     {
         try {
             // Decode all HTML entities including numeric ones
@@ -140,12 +165,10 @@ class ChatGPTClient
             }, $gptResponse);
 
             // Convert bold text (e.g., **text** or __text__ -> <strong>text</strong>)
-            $gptResponse = preg_replace('/\*\*(.*?)\*\*/s', '<strong>$1</strong>', $gptResponse);
-            $gptResponse = preg_replace('/__(.*?)__/s', '<strong>$1</strong>', $gptResponse);
+            $gptResponse = preg_replace('/(\*\*|__)(.*?)\1/', '<strong>$2</strong>', $gptResponse);
 
             // Convert italic text (e.g., *text* or _text_ -> <em>text</em>)
-            $gptResponse = preg_replace('/(?<!\*)\*(?!\*)(.*?)\*(?!\*)/s', '<em>$1</em>', $gptResponse);
-            $gptResponse = preg_replace('/(?<!_)_(?!_)(.*?)_(?!_)/s', '<em>$1</em>', $gptResponse);
+            $gptResponse = preg_replace('/(\*|_)(.*?)\1/', '<em>$2</em>', $gptResponse);
 
             // Convert strikethrough text (e.g., ~~text~~ -> <del>text</del>)
             $gptResponse = preg_replace('/~~(.*?)~~/s', '<del>$1</del>', $gptResponse);

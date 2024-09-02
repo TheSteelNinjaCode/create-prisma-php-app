@@ -11,7 +11,7 @@ enum ArrayType: string
     case Value = 'value';
 }
 
-abstract class Utility
+final class Utility
 {
     public static function checkFieldsExistWithReferences(
         array $select,

@@ -16,14 +16,23 @@ class Auth
     public const ROLE_NAME = '';
     public const PAYLOAD = 'payload_2183A';
     public const COOKIE_NAME = 'pphp_aut_token_D36E5';
-    private const PPHPAUTH = 'pphpauth';
 
+    private static ?Auth $instance = null;
+    private const PPHPAUTH = 'pphpauth';
     private $secretKey;
     private $defaultTokenValidity = '1h'; // Default to 1 hour
 
-    public function __construct()
+    private function __construct()
     {
         $this->secretKey = $_ENV['AUTH_SECRET'];
+    }
+
+    public static function getInstance(): Auth
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
     }
 
     /**
@@ -35,7 +44,7 @@ class Auth
      * @param mixed $data User data which can be a simple string or an instance of AuthRole.
      *                    If an instance of AuthRole is provided, its `value` property will be used as the role in the token.
      * @param string|null $tokenValidity Optional parameter specifying the duration the token is valid for (e.g., '10m', '1h').
-     *                                   If null, the default validity period set in the class property is used.
+     *                                   If null, the default validity period set in the class property is used, which is 1 hour.
      *                                   The format should be a number followed by a time unit ('s' for seconds, 'm' for minutes,
      *                                   'h' for hours, 'd' for days), and this is parsed to calculate the exact expiration time.
      *
@@ -91,7 +100,19 @@ class Auth
      */
     public function isAuthenticated(): bool
     {
-        return isset($_SESSION[self::PAYLOAD]);
+        if (!isset($_COOKIE[self::COOKIE_NAME])) {
+            unset($_SESSION[self::PAYLOAD]);
+            return false;
+        }
+
+        $jwt = $_COOKIE[self::COOKIE_NAME];
+
+        $verifyToken = $this->verifyToken($jwt);
+        if ($verifyToken === false) {
+            return false;
+        }
+
+        return true;
     }
 
     private function calculateExpirationTime(string $duration): int
@@ -136,7 +157,7 @@ class Auth
     {
         try {
             return JWT::decode($jwt, new Key($this->secretKey, 'HS256'));
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             throw new \InvalidArgumentException("Invalid token.");
         }
     }
@@ -227,7 +248,8 @@ class Auth
     public function getPayload()
     {
         if (isset($_SESSION[self::PAYLOAD])) {
-            return $_SESSION[self::PAYLOAD][self::PAYLOAD_NAME];
+            $value = $_SESSION[self::PAYLOAD][self::PAYLOAD_NAME];
+            return is_array($value) ? new \ArrayObject($value, \ArrayObject::ARRAY_AS_PROPS) : $value;
         }
 
         return null;
@@ -278,7 +300,7 @@ class Auth
      * @param mixed ...$providers An array of provider objects such as GoogleProvider or GithubProvider.
      * 
      * Example:
-     *   $auth = new Auth();
+     *   $auth = Auth::getInstance();
      *   $auth->authProviders(new GoogleProvider('client_id', 'client_secret', 'redirect_uri'));
      */
     public function authProviders(...$providers)
@@ -461,8 +483,7 @@ class GoogleProvider
         public string $clientSecret,
         public string $redirectUri,
         public string $maxAge = '30d'
-    ) {
-    }
+    ) {}
 }
 
 class GithubProvider
@@ -471,6 +492,5 @@ class GithubProvider
         public string $clientId,
         public string $clientSecret,
         public string $maxAge = '30d'
-    ) {
-    }
+    ) {}
 }

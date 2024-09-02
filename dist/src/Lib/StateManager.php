@@ -7,14 +7,12 @@ namespace Lib;
  */
 class StateManager
 {
+    private static ?StateManager $instance = null;
     private const APP_STATE = 'app_state_F989A';
     private array $state = [];
     private array $listeners = [];
 
-    /**
-     * Initializes a new instance of the StateManager class.
-     */
-    public function __construct()
+    private function __construct()
     {
         global $isWire;
 
@@ -23,6 +21,14 @@ class StateManager
         if (!$isWire) {
             $this->resetState();
         }
+    }
+
+    public static function getInstance(): StateManager
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
     }
 
     /**
@@ -71,7 +77,7 @@ class StateManager
     {
         $this->listeners[] = $listener;
         $listener($this->state);
-        return fn () => $this->listeners = array_filter($this->listeners, fn ($l) => $l !== $listener);
+        return fn() => $this->listeners = array_filter($this->listeners, fn($l) => $l !== $listener);
     }
 
     /**

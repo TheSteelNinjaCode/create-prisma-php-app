@@ -5,7 +5,7 @@ namespace Lib;
 use HTMLPurifier;
 use HTMLPurifier_Config;
 
-class Validator
+final class Validator
 {
     // String Validation
 
@@ -350,5 +350,227 @@ class Validator
         ];
 
         return strtr($content, $emojiMap);
+    }
+
+    /**
+     * Validate a value against a set of rules.
+     *
+     * @param mixed $value The value to validate.
+     * @param string $rules A pipe-separated string of rules (e.g., 'required|min:2|max:50').
+     * @param mixed $confirmationValue The value to confirm against, if applicable.
+     * @return bool|string|null True if validation passes, string with error message if fails, or null for optional field.
+     */
+    public static function withRules($value, string $rules, $confirmationValue = null)
+    {
+        $rulesArray = explode('|', $rules);
+        foreach ($rulesArray as $rule) {
+            // Handle parameters in rules, e.g., 'min:10'
+            if (strpos($rule, ':') !== false) {
+                [$ruleName, $parameter] = explode(':', $rule);
+                $result = self::applyRule($ruleName, $parameter, $value, $confirmationValue);
+            } else {
+                $result = self::applyRule($rule, null, $value, $confirmationValue);
+            }
+
+            // If a validation rule fails, return the error message
+            if ($result !== true) {
+                return $result;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Apply an individual rule to a value.
+     *
+     * @param string $rule The rule to apply.
+     * @param mixed $parameter The parameter for the rule, if applicable.
+     * @param mixed $value The value to validate.
+     * @return bool|string True if the rule passes, or a string with an error message if it fails.
+     */
+    private static function applyRule(string $rule, $parameter, $value, $confirmationValue = null)
+    {
+        switch ($rule) {
+            case 'required':
+                if (empty($value) && $value !== '0') {
+                    return "This field is required.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'min':
+                if (strlen($value) < (int)$parameter) {
+                    return "This field must be at least $parameter characters long.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'max':
+                if (strlen($value) > (int)$parameter) {
+                    return "This field must not exceed $parameter characters.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'startsWith':
+                if (strpos($value, $parameter) !== 0) {
+                    return "This field must start with $parameter.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'endsWith':
+                if (substr($value, -strlen($parameter)) !== $parameter) {
+                    return "This field must end with $parameter.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'confirmed':
+                if ($confirmationValue !== $value) {
+                    return "The $rule confirmation does not match.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'email':
+                return self::email($value) ? true : "This field must be a valid email address.";
+            case 'url':
+                return self::url($value) ? true : "This field must be a valid URL.";
+            case 'ip':
+                return self::ip($value) ? true : "This field must be a valid IP address.";
+            case 'uuid':
+                return self::uuid($value) ? true : "This field must be a valid UUID.";
+            case 'cuid':
+                return self::cuid($value) ? true : "This field must be a valid CUID.";
+            case 'int':
+                return self::int($value) !== null ? true : "This field must be an integer.";
+            case 'float':
+                return self::float($value) !== null ? true : "This field must be a float.";
+            case 'boolean':
+                return self::boolean($value) !== null ? true : "This field must be a boolean.";
+            case 'in':
+                if (!in_array($value, explode(',', $parameter), true)) {
+                    return "The selected value is invalid.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'notIn':
+                if (in_array($value, explode(',', $parameter), true)) {
+                    return "The selected value is invalid.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'size':
+                if (strlen($value) !== (int)$parameter) {
+                    return "This field must be exactly $parameter characters long.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'between':
+                [$min, $max] = explode(',', $parameter);
+                if (strlen($value) < (int)$min || strlen($value) > (int)$max) {
+                    return "This field must be between $min and $max characters long.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'date':
+                return self::date($value, $parameter ?: 'Y-m-d') ? true : "This field must be a valid date.";
+            case 'dateFormat':
+                if (!\DateTime::createFromFormat($parameter, $value)) {
+                    return "This field must match the format $parameter.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'before':
+                if (strtotime($value) >= strtotime($parameter)) {
+                    return "This field must be a date before $parameter.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'after':
+                if (strtotime($value) <= strtotime($parameter)) {
+                    return "This field must be a date after $parameter.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'json':
+                return self::json($value) ? true : "This field must be a valid JSON string.";
+                break;
+            case 'timezone':
+                if (!in_array($value, timezone_identifiers_list())) {
+                    return "This field must be a valid timezone.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'regex':
+                if (!preg_match($parameter, $value)) {
+                    return "This field format is invalid.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'digits':
+                if (!ctype_digit($value) || strlen($value) != $parameter) {
+                    return "This field must be $parameter digits.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'digitsBetween':
+                [$min, $max] = explode(',', $parameter);
+                if (!ctype_digit($value) || strlen($value) < (int)$min || strlen($value) > (int)$max) {
+                    return "This field must be between $min and $max digits.";
+                } else {
+                    return true;
+                }
+                break;
+            case 'mimes':
+                $mimeTypes = explode(',', $parameter);
+                if (!self::isMimeTypeAllowed($value, $mimeTypes)) {
+                    return "The file must be of type: " . implode(', ', $mimeTypes) . ".";
+                } else {
+                    return true;
+                }
+                break;
+            case 'file':
+                if (!is_uploaded_file($value)) {
+                    return "This field must be a valid file.";
+                } else {
+                    return true;
+                }
+                break;
+                // Add additional rules as needed...
+            default:
+                return true;
+        }
+    }
+
+    private static function isMimeTypeAllowed($file, array $allowedMimeTypes)
+    {
+        // Check if the file is a valid uploaded file
+        if (!is_uploaded_file($file)) {
+            return false;
+        }
+
+        // Get the MIME type of the file using PHP's finfo_file function
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file);
+        finfo_close($finfo);
+
+        // Check if the MIME type is in the list of allowed MIME types
+        if (in_array($mimeType, $allowedMimeTypes, true)) {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -13,26 +13,17 @@ enum AuthRole: string
     }
 }
 
-class AuthConfig
+final class AuthConfig
 {
     public const ROLE_IDENTIFIER = 'role';
     public const IS_ROLE_BASE = false;
     public const IS_TOKEN_AUTO_REFRESH = false;
 
     /**
-     * An array listing the public routes that do not require authentication.
-     * Routes should be listed as string paths.
-     * By default, all routes are public.
-     * Example: public static $publicRoutes = ['/']; // This means the home page and others are public and do not require authentication.
-     * NOTE: This $publicRoutes = ['/']; is the default setting and does not need to be modified.
-     */
-    public static $publicRoutes = ['/'];
-
-    /**
      * An array of private routes that are accessible to all authenticated users
      * without specific role-based access control. Routes should be listed as string paths.
      * Example: public static $privateRoutes = ['/']; // This makes the home page private
-     * Example: public static $privateRoutes = ['profile', 'dashboard/settings']; // These routes are private
+     * Example: public static $privateRoutes = ['/profile', '/dashboard/settings']; // These routes are private
      */
     public static $privateRoutes = [];
 

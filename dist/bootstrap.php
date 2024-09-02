@@ -4,14 +4,16 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__ . '/settings/paths.php';
 require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/settings/paths.php';
 
 use Lib\Middleware\AuthMiddleware;
 use Dotenv\Dotenv;
 
 $dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
 $dotenv->load();
+
+date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
 
 function determineContentToInclude()
 {

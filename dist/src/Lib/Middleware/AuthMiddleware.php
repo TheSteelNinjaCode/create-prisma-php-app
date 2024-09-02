@@ -5,7 +5,7 @@ namespace Lib\Middleware;
 use Lib\Auth\Auth;
 use Lib\Auth\AuthConfig;
 
-class AuthMiddleware
+final class AuthMiddleware
 {
     public static function handle($requestUri)
     {
@@ -17,13 +17,11 @@ class AuthMiddleware
         // Check if the user is authorized to access the route or redirect to login
         if (!self::isAuthorized()) {
             redirect('/auth/login');
-            exit;
         }
 
         // Check if the user has the required role to access the route or redirect to denied
         if (AuthConfig::IS_ROLE_BASE && !self::hasRequiredRole($requestUri)) {
             redirect('/denied');
-            exit;
         }
     }
 
@@ -39,7 +37,7 @@ class AuthMiddleware
 
     protected static function isAuthorized(): bool
     {
-        $auth = new Auth();
+        $auth = Auth::getInstance();
         $cookieName = Auth::COOKIE_NAME;
         if (!isset($_COOKIE[$cookieName])) {
             unset($_SESSION[Auth::PAYLOAD]);
@@ -68,7 +66,7 @@ class AuthMiddleware
 
     protected static function hasRequiredRole($requestUri): bool
     {
-        $auth = new Auth();
+        $auth = Auth::getInstance();
         $roleBasedRoutes = AuthConfig::$roleBasedRoutes ?? [];
         foreach ($roleBasedRoutes as $pattern => $data) {
             if (self::getUriRegex($pattern, $requestUri)) {
