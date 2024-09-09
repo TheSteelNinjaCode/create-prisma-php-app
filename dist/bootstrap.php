@@ -456,29 +456,62 @@ function convertToArrayObject($data)
 function wireCallback()
 {
     try {
-        // Read input data
-        $input = file_get_contents('php://input');
-        $data = json_decode($input, true);
-
         // Initialize response
         $response = [
             'success' => false,
             'error' => 'Callback not provided',
-            'data' => $data
+            'data' => null
         ];
 
         $callbackResponse = null;
+        $data = [];
+
+        // Check if the request includes one or more files
+        $hasFile = isset($_FILES['file']) && !empty($_FILES['file']['name'][0]);
+
+        // Process form data
+        if ($hasFile) {
+            // Handle file upload, including multiple files
+            $data = $_POST; // Form data will be available in $_POST
+
+            if (is_array($_FILES['file']['name'])) {
+                // Multiple files uploaded
+                $files = [];
+                foreach ($_FILES['file']['name'] as $index => $name) {
+                    $files[] = [
+                        'name' => $name,
+                        'type' => $_FILES['file']['type'][$index],
+                        'tmp_name' => $_FILES['file']['tmp_name'][$index],
+                        'error' => $_FILES['file']['error'][$index],
+                        'size' => $_FILES['file']['size'][$index],
+                    ];
+                }
+                $data['files'] = $files;
+            } else {
+                // Single file uploaded
+                $data['file'] = $_FILES['file']; // Attach single file information to data
+            }
+        } else {
+            // Handle non-file form data (likely JSON)
+            $input = file_get_contents('php://input');
+            $data = json_decode($input, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                // Fallback to handle form data in POST (non-JSON)
+                $data = $_POST;
+            }
+        }
 
         // Validate and call the dynamic function
         if (isset($data['callback'])) {
             // Sanitize and create a dynamic function name
-            $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']); // Sanitize
+            $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']); // Sanitize the callback name
 
             // Check if the dynamic function is defined and callable
             if (function_exists($callbackName) && is_callable($callbackName)) {
                 $dataObject = convertToArrayObject($data);
 
-                // Call the anonymous function dynamically
+                // Call the function dynamically
                 $callbackResponse = call_user_func($callbackName, $dataObject);
 
                 // Handle different types of responses
@@ -499,6 +532,8 @@ function wireCallback()
                 // Invalid callback provided
                 $response['error'] = 'Invalid callback';
             }
+        } else {
+            $response['error'] = 'No callback provided';
         }
 
         // Output the JSON response only if the callbackResponse is not null
@@ -506,7 +541,7 @@ function wireCallback()
             echo json_encode($response);
         }
     } catch (Throwable $e) {
-        // Handle any exceptions and prepare error response
+        // Handle any exceptions and prepare an error response
         $response = [
             'success' => false,
             'error' => 'Exception occurred',

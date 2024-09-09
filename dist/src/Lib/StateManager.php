@@ -104,10 +104,23 @@ class StateManager
 
     /**
      * Resets the application state to an empty array.
+     *
+     * @param string|null $key The key of the state value to reset.
      */
-    public function resetState(): void
+    public function resetState(string $key = null): void
     {
-        $this->state = [];
+        if ($key !== null) {
+            if (array_key_exists($key, $this->state)) {
+                $this->state[$key] = null;
+
+                if (array_key_exists($key, $GLOBALS)) {
+                    $GLOBALS[$key] = null;
+                }
+            }
+        } else {
+            $this->state = [];
+        }
+
         $this->notifyListeners();
         $this->saveState();
     }

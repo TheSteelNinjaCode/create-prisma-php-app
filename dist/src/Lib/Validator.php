@@ -533,6 +533,14 @@ final class Validator
                     return true;
                 }
                 break;
+            case 'extensions':
+                $extensions = explode(',', $parameter);
+                if (!self::isExtensionAllowed($value, $extensions)) {
+                    return "The file must have one of the following extensions: " . implode(', ', $extensions) . ".";
+                } else {
+                    return true;
+                }
+                break;
             case 'mimes':
                 $mimeTypes = explode(',', $parameter);
                 if (!self::isMimeTypeAllowed($value, $mimeTypes)) {
@@ -554,6 +562,29 @@ final class Validator
         }
     }
 
+    /**
+     * Check if a file's extension is in the list of allowed extensions.
+     *
+     * @param string $file The path or filename of the file.
+     * @param array $allowedExtensions The list of allowed extensions.
+     * @return bool True if the extension is allowed, false otherwise.
+     */
+    private static function isExtensionAllowed($file, array $allowedExtensions): bool
+    {
+        // Extract the file extension
+        $fileExtension = pathinfo($file, PATHINFO_EXTENSION);
+
+        // Check if the extension is in the allowed list
+        return in_array(strtolower($fileExtension), array_map('strtolower', $allowedExtensions), true);
+    }
+
+    /**
+     * Check if a file's MIME type is in the list of allowed MIME types.
+     *
+     * @param string $file The path or filename of the file.
+     * @param array $allowedMimeTypes The list of allowed MIME types.
+     * @return bool True if the MIME type is allowed, false otherwise.
+     */
     private static function isMimeTypeAllowed($file, array $allowedMimeTypes)
     {
         // Check if the file is a valid uploaded file
