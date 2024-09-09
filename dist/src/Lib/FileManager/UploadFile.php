@@ -296,29 +296,33 @@ class UploadFile
 
     protected function checkName(array $file): void
     {
-        $name = str_replace(' ', '_', $file['name']);
-        $nameParts = pathinfo($name);
-        $extension = $nameParts['extension'] ?? '';
-
-        // Handle trusted vs untrusted extensions
-        if (!$this->typeCheckingOn && (in_array($extension, $this->notTrusted) || empty($extension))) {
-            $this->newName = $name . $this->suffix;
+        $this->newName = '';
+        $noSpaces = str_replace(' ', '_', $file['name']);
+        if ($noSpaces != $file['name']) {
+            $this->newName = $noSpaces;
         }
-
-        // Rename duplicates if necessary
-        if ($this->renameDuplicates) {
-            $existingFiles = scandir($this->destination);
-            $originalName = $name;
-            $i = 1;
-
-            while (in_array($name, $existingFiles)) {
-                $name = "{$nameParts['filename']}_$i." . ($extension ?: ''); // Maintain the extension if available
-                $i++;
+        $nameParts = pathinfo($noSpaces);
+        $extension = $nameParts['extension'] ?? '';
+        if (!$this->typeCheckingOn && !empty($this->suffix)) {
+            if (in_array($extension, $this->notTrusted) || empty($extension)) {
+                $this->newName = $noSpaces . $this->suffix;
             }
-
-            $this->newName = $name;
-        } else {
-            $this->newName = $name;
+        }
+        if ($this->renameDuplicates) {
+            $name = isset($this->newName) ? $this->newName : $file['name'];
+            $existing = scandir($this->destination);
+            if (in_array($name, $existing)) {
+                $i = 1;
+                do {
+                    $this->newName = $nameParts['filename'] . '_' . $i++;
+                    if (!empty($extension)) {
+                        $this->newName .= ".$extension";
+                    }
+                    if (in_array($extension, $this->notTrusted)) {
+                        $this->newName .= $this->suffix;
+                    }
+                } while (in_array($this->newName, $existing));
+            }
         }
     }
 
