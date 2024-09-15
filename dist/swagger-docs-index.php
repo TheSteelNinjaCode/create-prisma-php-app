@@ -10,6 +10,6 @@ $mainLayoutHead = [
 ?>
 
 <div id="swagger-ui"></div>
-<script src="<?php echo $baseUrl ?>/swagger-docs/dist/swagger-ui-bundle.js" charset="UTF-8"> </script>
-<script src="<?php echo $baseUrl ?>/swagger-docs/dist/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
-<script src="<?php echo $baseUrl ?>/swagger-docs/dist/swagger-initializer.js" charset="UTF-8"> </script>
+<script src="<?= $baseUrl ?>/swagger-docs/dist/swagger-ui-bundle.js" charset="UTF-8"> </script>
+<script src="<?= $baseUrl ?>/swagger-docs/dist/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
+<script src="<?= $baseUrl ?>/swagger-docs/dist/swagger-initializer.js" charset="UTF-8"> </script>

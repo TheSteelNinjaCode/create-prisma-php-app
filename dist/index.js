@@ -90,6 +90,7 @@ module.exports = {
   notify: false,
   open: false,
   ghostMode: false,
+  codeSync: true, // Disable synchronization of code changes across clients
 };`;
   // Determine the path and write the bs-config.js
   const bsConfigPath = path.join(baseDir, "settings", "bs-config.cjs");
@@ -142,6 +143,7 @@ async function updatePackageJson(baseDir, answer) {
       Object.assign({}, packageJson.scripts),
       { "create-swagger-docs": "node settings/swagger-setup.js" }
     );
+    answersToInclude.push("create-swagger-docs");
   }
   // Initialize with existing scripts
   let updatedScripts = Object.assign({}, packageJson.scripts);
@@ -240,11 +242,7 @@ function copyRecursiveSync(src, dest, answer) {
       (answer.backendOnly && destLower.includes("src\\app\\css"))
     )
       return;
-    if (
-      answer.backendOnly &&
-      !answer.swaggerDocs &&
-      destLower.includes("src\\app\\swagger-docs")
-    )
+    if (!answer.swaggerDocs && destLower.includes("src\\app\\swagger-docs"))
       return;
     const destModified = dest.replace(/\\/g, "/");
     if (
@@ -345,13 +343,13 @@ function modifyLayoutPHP(baseDir, answer) {
     let indexContent = fs.readFileSync(layoutPath, "utf8");
     let stylesAndLinks = "";
     if (!answer.backendOnly) {
-      stylesAndLinks = `\n    <link href="<?php echo $baseUrl; ?>/css/index.css" rel="stylesheet">\n    <script src="<?php echo $baseUrl; ?>/js/index.js"></script>`;
+      stylesAndLinks = `\n    <link href="<?= $baseUrl; ?>/css/index.css" rel="stylesheet">\n    <script src="<?= $baseUrl; ?>/js/index.js"></script>`;
     }
     // Tailwind CSS link or CDN script
     let tailwindLink = "";
     if (!answer.backendOnly) {
       tailwindLink = answer.tailwindcss
-        ? `    <link href="<?php echo $baseUrl; ?>/css/styles.css" rel="stylesheet"> ${stylesAndLinks}`
+        ? `    <link href="<?= $baseUrl; ?>/css/styles.css" rel="stylesheet"> ${stylesAndLinks}`
         : `    <script src="https://cdn.tailwindcss.com"></script> ${stylesAndLinks}`;
     }
     // Insert before the closing </head> tag
@@ -359,7 +357,7 @@ function modifyLayoutPHP(baseDir, answer) {
     indexContent = indexContent.replace(
       "</head>",
       `${tailwindLink}${breakLine}    <!-- Dynamic Head -->
-    <?php echo implode("\\n", $mainLayoutHead); ?>
+    <?= implode("\\n", $mainLayoutHead); ?>
 </head>`
     );
     fs.writeFileSync(layoutPath, indexContent, { flag: "w" });

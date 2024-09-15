@@ -661,7 +661,7 @@ try {
     authenticateUserToken();
 
     if (empty($_contentToInclude)) {
-        if (!$isXFilRequest) {
+        if (!$isXFilRequest && $_prismaPHPSettings['backendOnly'] === "true") {
             // Set the header and output a JSON response for permission denied
             header('Content-Type: application/json');
             echo json_encode([
@@ -684,7 +684,8 @@ try {
                 header('Content-Type: ' . mime_content_type($filePath)); // Dynamic content type
                 readfile($filePath);
             }
-        } else {
+            exit;
+        } else if ($_prismaPHPSettings['backendOnly'] === "true") {
             // Set the header and output a JSON response for file not found
             header('Content-Type: application/json');
             echo json_encode([
@@ -692,8 +693,8 @@ try {
                 'error' => 'Not found'
             ]);
             http_response_code(404); // Set HTTP status code to 404 Not Found
+            exit;
         }
-        exit;
     }
 
     if (!empty($_contentToInclude) && basename($_contentToInclude) === 'route.php') {

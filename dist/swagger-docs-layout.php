@@ -7,9 +7,9 @@
 </head>
 
 <body>
-    <?php echo $content; ?>
+    <?= $content; ?>
     <!-- Dynamic Footer -->
-    <?php echo implode("\n", $mainLayoutFooter); ?>
+    <?= implode("\n", $mainLayoutFooter); ?>
 </body>
 
 </html>

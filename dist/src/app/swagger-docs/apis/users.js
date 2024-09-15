@@ -46,7 +46,7 @@
  *         required: true
  *         description: The user ID
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: A single user object
@@ -70,7 +70,7 @@
 
 /**
  * @swagger
- * /users:
+ * /users/create:
  *   post:
  *     summary: Create a new user
  *     tags:
@@ -112,7 +112,7 @@
 
 /**
  * @swagger
- * /users/{id}:
+ * /users/update/{id}:
  *   put:
  *     summary: Update a user by ID
  *     tags:
@@ -123,7 +123,7 @@
  *         required: true
  *         description: The user ID
  *         schema:
- *           type: integer
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -160,7 +160,7 @@
 
 /**
  * @swagger
- * /users/{id}:
+ * /users/delete/{id}:
  *   delete:
  *     summary: Delete a user by ID
  *     tags:
@@ -171,7 +171,7 @@
  *         required: true
  *         description: The user ID
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       204:
  *         description: User successfully deleted
