@@ -22,11 +22,20 @@ class Auth
     private $secretKey;
     private $defaultTokenValidity = '1h'; // Default to 1 hour
 
+    /**
+     * Private constructor to prevent direct instantiation.
+     * Use Auth::getInstance() to get the singleton instance.
+     */
     private function __construct()
     {
         $this->secretKey = $_ENV['AUTH_SECRET'];
     }
 
+    /**
+     * Returns the singleton instance of the Auth class.
+     * 
+     * @return Auth The singleton instance.
+     */
     public static function getInstance(): Auth
     {
         if (self::$instance === null) {

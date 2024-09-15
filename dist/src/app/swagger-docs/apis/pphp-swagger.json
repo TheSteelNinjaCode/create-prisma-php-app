@@ -8,20 +8,32 @@
   "servers": [
     {
       "url": "http://localhost:3000",
-      "description": "Server"
+      "description": "Development Server"
     },
     {
-      "url": "your-domain",
-      "description": "Server"
+      "url": "your-production-domain",
+      "description": "Production Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
     }
   ],
   "paths": {
     "/users": {
       "get": {
         "summary": "Retrieve a list of users",
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "responses": {
           "200": {
             "description": "A list of users",
@@ -54,19 +66,14 @@
       },
       "post": {
         "summary": "Create a new user",
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "name",
-                  "email"
-                ],
+                "required": ["name", "email"],
                 "properties": {
                   "name": {
                     "type": "string",
@@ -112,9 +119,7 @@
     "/users/{id}": {
       "get": {
         "summary": "Retrieve a single user by ID",
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "parameters": [
           {
             "in": "path",
@@ -158,9 +163,7 @@
       },
       "put": {
         "summary": "Update a user by ID",
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "parameters": [
           {
             "in": "path",
@@ -224,9 +227,7 @@
       },
       "delete": {
         "summary": "Delete a user by ID",
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "parameters": [
           {
             "in": "path",
@@ -249,7 +250,6 @@
       }
     }
   },
-  "components": {},
   "tags": [
     {
       "name": "Users",

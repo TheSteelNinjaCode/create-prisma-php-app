@@ -658,6 +658,8 @@ try {
     $pathname = $uri ? "/" . $uri : "/";
     $_fileToInclude = basename($_contentToInclude);
 
+    authenticateUserToken();
+
     if (empty($_contentToInclude)) {
         if (!$isXFilRequest) {
             // Set the header and output a JSON response for permission denied
@@ -687,7 +689,7 @@ try {
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => false,
-                'error' => 'File not found'
+                'error' => 'Not found'
             ]);
             http_response_code(404); // Set HTTP status code to 404 Not Found
         }

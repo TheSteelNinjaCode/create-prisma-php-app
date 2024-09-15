@@ -12,6 +12,10 @@ class StateManager
     private array $state = [];
     private array $listeners = [];
 
+    /**
+     * Constructs a new instance of the StateManager class.
+     * Use StateManager::getInstance() to get the singleton instance.
+     */
     private function __construct()
     {
         global $isWire;
@@ -23,6 +27,11 @@ class StateManager
         }
     }
 
+    /**
+     * Gets the singleton instance of the StateManager class.
+     * 
+     * @return StateManager The singleton instance of the StateManager class.
+     */
     public static function getInstance(): StateManager
     {
         if (self::$instance === null) {
