@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * @var string $requestMethod - The request method.
+ */
 $requestMethod = $_SERVER['REQUEST_METHOD'];
 
 if ($requestMethod == 'OPTIONS') {
@@ -7,6 +10,9 @@ if ($requestMethod == 'OPTIONS') {
     exit;
 }
 
+/**
+ * @var array $allowedMethods - The allowed request methods.
+ */
 $allowedMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
 if (!in_array($requestMethod, $allowedMethods)) {
@@ -15,26 +21,83 @@ if (!in_array($requestMethod, $allowedMethods)) {
     exit;
 }
 
+/**
+ * @var bool $isGet - True if the request method is GET, false otherwise.
+ */
 $isGet = $requestMethod === 'GET';
+/**
+ * @var bool $isPost - True if the request method is POST, false otherwise.
+ */
 $isPost = $requestMethod === 'POST';
+/**
+ * @var bool $isPut - True if the request method is PUT, false otherwise.
+ */
 $isPut = $requestMethod === 'PUT';
+/**
+ * @var bool $isDelete - True if the request method is DELETE, false otherwise.
+ */
 $isDelete = $requestMethod === 'DELETE';
+/**
+ * @var bool $isPatch - True if the request method is PATCH, false otherwise.
+ */
 $isPatch = $requestMethod === 'PATCH';
+/**
+ * @var bool $isHead - True if the request method is HEAD, false otherwise.
+ */
 $isHead = $requestMethod === 'HEAD';
+/**
+ * @var bool $isOptions - True if the request method is OPTIONS, false otherwise.
+ */
 $isOptions = $requestMethod === 'OPTIONS';
+/**
+ * @var bool $isAjax - True if the request is an AJAX request, false otherwise.
+ */
 $isAjax = isAjaxRequest();
+/**
+ * @var bool $isWire - True if the request is a wire request, false otherwise.
+ */
 $isWire = isWireRequest();
+/**
+ * @var bool $isXFilRequest - True if the request is an X-Fil request, false otherwise.
+ */
+$isXFilRequest = isXFilRequest();
+/**
+ * @var string $contentType - The content type of the request.
+ */
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+/**
+ * @var string $requestedWith - The X-Requested-With header of the request.
+ */
 $requestedWith = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+/**
+ * @var string $protocol - The protocol of the request.
+ */
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
     (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
     $_SERVER['SERVER_PORT'] == 443 ? "https://" : "http://";
+/**
+ * @var string $domainName - The domain name of the request.
+ */
 $domainName = $_SERVER['HTTP_HOST'];
-$scriptName = dirname($_SERVER['SCRIPT_NAME']) . '/';
-$baseUrl = $protocol . $domainName . rtrim($scriptName, '/') . '/src/app/';
-$documentUrl = $protocol . $domainName . rtrim($scriptName, '/') . '/';
+/**
+ * @var string $scriptName - The script name of the request.
+ */
+$scriptName = dirname($_SERVER['SCRIPT_NAME']);
+/**
+ * @var string $baseUrl - The base URL of the request.
+ */
+$baseUrl = $protocol . $domainName . "$scriptName/src/app";
+/**
+ * @var string $documentUrl - The document URL of the request.
+ */
+$documentUrl = $protocol . $domainName . $scriptName;
+/**
+ * @var string $referer - The referer of the request.
+ */
 $referer = $_SERVER['HTTP_REFERER'] ?? 'Unknown';
-
+/**
+ * @var \ArrayObject $params - The request parameters
+ */
 $params = [];
 
 if ($requestMethod == 'GET') {

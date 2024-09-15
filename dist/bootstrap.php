@@ -8,6 +8,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/settings/paths.php';
 
 use Lib\Middleware\AuthMiddleware;
+use Lib\Auth\Auth;
 use Dotenv\Dotenv;
 
 $dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
@@ -136,8 +137,9 @@ function getFilePrecedence()
 
 function uriExtractor(string $scriptUrl): string
 {
-    $prismaPHPSettings = json_decode(file_get_contents("prisma-php.json"), true);
-    $projectName = $prismaPHPSettings['projectName'] ?? '';
+    global $_prismaPHPSettings;
+
+    $projectName = $_prismaPHPSettings['projectName'] ?? '';
     if (empty($projectName)) {
         return "/";
     }
@@ -173,7 +175,7 @@ function writeRoutes()
 
         $jsonData = json_encode($filesList, JSON_PRETTY_PRINT);
         $jsonFileName = SETTINGS_PATH . '/files-list.json';
-        @file_put_contents($jsonFileName, $jsonData);
+        file_put_contents($jsonFileName, $jsonData);
 
         if (file_exists($jsonFileName)) {
             $_filesListRoutes = json_decode(file_get_contents($jsonFileName), true);
@@ -383,18 +385,6 @@ function setupErrorHandling(&$content)
     });
 }
 
-ob_start();
-require_once SETTINGS_PATH . '/public-functions.php';
-require_once SETTINGS_PATH . '/request-methods.php';
-$metadataFile = APP_PATH . '/metadata.php';
-$_metadataArray = file_exists($metadataFile) ? require_once $metadataFile : [];
-$_filesListRoutes = [];
-$metadata = "";
-$uri = "";
-$pathname = "";
-$dynamicRouteParams = [];
-$content = "";
-$childContent = "";
 
 function containsChildContent($filePath)
 {
@@ -589,6 +579,76 @@ function getLoadingsFiles()
     return '';
 }
 
+function authenticateUserToken()
+{
+    $token = getBearerToken();
+    if ($token) {
+        $auth = Auth::getInstance();
+        $verifyToken = $auth->verifyToken($token);
+        if ($verifyToken) {
+            $auth->authenticate($verifyToken);
+        }
+    }
+}
+
+function getPrismaSettings(): \ArrayObject
+{
+    $_prismaPHPSettingsFile = DOCUMENT_PATH . '/prisma-php.json';
+
+    if (file_exists($_prismaPHPSettingsFile)) {
+        $jsonContent = file_get_contents($_prismaPHPSettingsFile);
+        $decodedJson = json_decode($jsonContent, true);
+
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return new \ArrayObject($decodedJson, \ArrayObject::ARRAY_AS_PROPS);
+        } else {
+            return new \ArrayObject([]);
+        }
+    }
+}
+
+ob_start();
+require_once SETTINGS_PATH . '/public-functions.php';
+require_once SETTINGS_PATH . '/request-methods.php';
+$_metadataFile = APP_PATH . '/metadata.php';
+$_metadataArray = file_exists($_metadataFile) ? require_once $_metadataFile : [];
+$_filesListRoutes = [];
+$_prismaPHPSettings = getPrismaSettings();
+$_fileToInclude = '';
+
+/**
+ * @var array $metadata Metadata information
+ */
+$metadata = [];
+/**
+ * @var string $uri The URI of the current request
+ */
+$uri = "";
+/**
+ * @var string $pathname The pathname of the current request
+ */
+$pathname = "";
+/**
+ * @var array $dynamicRouteParams The dynamic route parameters
+ */
+$dynamicRouteParams = [];
+/**
+ * @var string $content The content to be included in the main layout file
+ */
+$content = "";
+/**
+ * @var string $childContent The child content to be included in the layout file
+ */
+$childContent = "";
+/**
+ * @var array $mainLayoutHead The head content to be included in the main layout file
+ */
+$mainLayoutHead = [];
+/**
+ * @var array $mainLayoutFooter The footer content to be included in the main layout file
+ */
+$mainLayoutFooter = [];
+
 try {
     $_determineContentToInclude = determineContentToInclude();
     checkForDuplicateRoutes();
@@ -596,13 +656,51 @@ try {
     $_layoutsToInclude = $_determineContentToInclude['layouts'] ?? [];
     $uri = $_determineContentToInclude['uri'] ?? '';
     $pathname = $uri ? "/" . $uri : "/";
+    $_fileToInclude = basename($_contentToInclude);
+
+    if (empty($_contentToInclude)) {
+        if (!$isXFilRequest) {
+            // Set the header and output a JSON response for permission denied
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error' => 'Permission denied'
+            ]);
+            http_response_code(403); // Set HTTP status code to 403 Forbidden
+            exit;
+        }
+
+        $filePath = APP_PATH . '/' . $uri;
+        if (file_exists($filePath)) {
+            // Check if the file is a PHP file
+            if (pathinfo($filePath, PATHINFO_EXTENSION) === 'php') {
+                // Include the PHP file without setting the JSON header
+                include $filePath;
+            } else {
+                // Set the appropriate content-type for non-PHP files if needed
+                // and read the content
+                header('Content-Type: ' . mime_content_type($filePath)); // Dynamic content type
+                readfile($filePath);
+            }
+        } else {
+            // Set the header and output a JSON response for file not found
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error' => 'File not found'
+            ]);
+            http_response_code(404); // Set HTTP status code to 404 Not Found
+        }
+        exit;
+    }
+
     if (!empty($_contentToInclude) && basename($_contentToInclude) === 'route.php') {
         header('Content-Type: application/json');
         require_once $_contentToInclude;
         exit;
     }
 
-    $metadata = $_metadataArray[$uri] ?? ($_metadataArray['default'] ?? null);
+    $metadata = $_metadataArray[$uri] ?? ($_metadataArray['default'] ?? []);
     $_parentLayoutPath = APP_PATH . '/layout.php';
     $_isParentLayout = !empty($_layoutsToInclude) && strpos($_layoutsToInclude[0], 'src/app/layout.php') !== false;
 

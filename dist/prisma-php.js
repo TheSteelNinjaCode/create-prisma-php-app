@@ -1,5 +1,66 @@
 #!/usr/bin/env node
-import chalk from"chalk";import{spawn}from"child_process";import fs from"fs";import path from"path";import prompts from"prompts";import{fileURLToPath}from"url";const __filename=fileURLToPath(import.meta.url),__dirname=path.dirname(__filename),args=process.argv.slice(2),readJsonFile=e=>{const t=fs.readFileSync(e,"utf8");return JSON.parse(t)},executeCommand=(e,t=[],o={})=>new Promise(((r,a)=>{const s=spawn(e,t,Object.assign({stdio:"inherit",shell:!0},o));s.on("error",(e=>{a(e)})),s.on("close",(e=>{0===e?r():a(new Error(`Process exited with code ${e}`))}))}));async function getAnswer(){const e=[{type:"toggle",name:"shouldProceed",message:`This command will update the ${chalk.blue("create-prisma-php-app")} package and overwrite all default files. ${chalk.blue("Do you want to proceed")}?`,initial:!1,active:"Yes",inactive:"No"}],t=await prompts(e,{onCancel:()=>{process.exit(0)}});return 0===Object.keys(t).length?null:t}const commandsToExecute={generateClass:"npx php generate class",update:"npx php update project"};
+import chalk from "chalk";
+import { spawn } from "child_process";
+import fs from "fs";
+import path from "path";
+import prompts from "prompts";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const args = process.argv.slice(2);
+const readJsonFile = (filePath) => {
+  const jsonData = fs.readFileSync(filePath, "utf8");
+  return JSON.parse(jsonData);
+};
+const executeCommand = (command, args = [], options = {}) => {
+  return new Promise((resolve, reject) => {
+    const process = spawn(
+      command,
+      args,
+      Object.assign({ stdio: "inherit", shell: true }, options)
+    );
+    process.on("error", (error) => {
+      console.error(`Execution error: ${error.message}`);
+      reject(error);
+    });
+    process.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Process exited with code ${code}`));
+      }
+    });
+  });
+};
+async function getAnswer() {
+  const questions = [
+    {
+      type: "toggle",
+      name: "shouldProceed",
+      message: `This command will update the ${chalk.blue(
+        "create-prisma-php-app"
+      )} package and overwrite all default files. ${chalk.blue(
+        "Do you want to proceed"
+      )}?`,
+      initial: false,
+      active: "Yes",
+      inactive: "No",
+    },
+  ];
+  const onCancel = () => {
+    console.log(chalk.red("Operation cancelled by the user."));
+    process.exit(0);
+  };
+  const response = await prompts(questions, { onCancel });
+  if (Object.keys(response).length === 0) {
+    return null;
+  }
+  return response;
+}
+const commandsToExecute = {
+  generateClass: "npx php generate class",
+  update: "npx php update project",
+};
 const main = async () => {
   if (args.length === 0) {
     console.log("No command provided.");
@@ -33,6 +94,7 @@ const main = async () => {
       const localSettings = readJsonFile(configPath);
       const commandArgs = [localSettings.projectName];
       if (localSettings.backendOnly) commandArgs.push("--backend-only");
+      if (localSettings.swaggerDocs) commandArgs.push("--swagger-docs");
       if (localSettings.tailwindcss) commandArgs.push("--tailwindcss");
       if (localSettings.websocket) commandArgs.push("--websocket");
       if (localSettings.prisma) commandArgs.push("--prisma");

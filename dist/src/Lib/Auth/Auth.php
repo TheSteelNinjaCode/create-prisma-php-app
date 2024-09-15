@@ -100,13 +100,22 @@ class Auth
      */
     public function isAuthenticated(): bool
     {
+        global $_fileToInclude;
+
         if (!isset($_COOKIE[self::COOKIE_NAME])) {
             unset($_SESSION[self::PAYLOAD]);
             return false;
         }
 
-        $jwt = $_COOKIE[self::COOKIE_NAME];
+        if ($_fileToInclude === 'route.php') {
+            $bearerToken = getBearerToken();
+            $verifyBearerToken = $this->verifyToken($bearerToken);
+            if (!$verifyBearerToken) {
+                return false;
+            }
+        }
 
+        $jwt = $_COOKIE[self::COOKIE_NAME];
         $verifyToken = $this->verifyToken($jwt);
         if ($verifyToken === false) {
             return false;
@@ -148,17 +157,31 @@ class Auth
 
     /**
      * Verifies the JWT token and returns the decoded payload if the token is valid.
-     * If the token is invalid, an exception is thrown.
+     * If the token is invalid or expired, null is returned.
      * 
      * @param string $jwt The JWT token to verify.
-     * @return object Returns the decoded payload if the token is valid.
+     * @return object|null Returns the decoded payload if the token is valid, or null if invalid or expired.
      */
-    public function verifyToken(string $jwt)
+    public function verifyToken(?string $jwt): ?object
     {
         try {
-            return JWT::decode($jwt, new Key($this->secretKey, 'HS256'));
+            if (!$jwt) {
+                return null;
+            }
+
+            $token = JWT::decode($jwt, new Key($this->secretKey, 'HS256'));
+
+            if (empty($token->role)) {
+                return null;
+            }
+
+            if (isset($token->exp) && time() >= $token->exp) {
+                return null;
+            }
+
+            return $token;
         } catch (\Exception) {
-            throw new \InvalidArgumentException("Invalid token.");
+            return null;
         }
     }
 
