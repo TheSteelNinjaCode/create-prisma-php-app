@@ -657,11 +657,10 @@ try {
     $uri = $_determineContentToInclude['uri'] ?? '';
     $pathname = $uri ? "/" . $uri : "/";
     $_fileToInclude = basename($_contentToInclude);
-
     authenticateUserToken();
 
     if (empty($_contentToInclude)) {
-        if (!$isXFilRequest && $_prismaPHPSettings['backendOnly'] === "true") {
+        if (!$isXFilRequest && $_prismaPHPSettings['backendOnly']) {
             // Set the header and output a JSON response for permission denied
             header('Content-Type: application/json');
             echo json_encode([
@@ -685,7 +684,7 @@ try {
                 readfile($filePath);
             }
             exit;
-        } else if ($_prismaPHPSettings['backendOnly'] === "true") {
+        } else if ($_prismaPHPSettings['backendOnly']) {
             // Set the header and output a JSON response for file not found
             header('Content-Type: application/json');
             echo json_encode([
