@@ -672,18 +672,20 @@ try {
         }
 
         $filePath = APP_PATH . '/' . $uri;
-        if (file_exists($filePath)) {
-            // Check if the file is a PHP file
-            if (pathinfo($filePath, PATHINFO_EXTENSION) === 'php') {
-                // Include the PHP file without setting the JSON header
-                include $filePath;
-            } else {
-                // Set the appropriate content-type for non-PHP files if needed
-                // and read the content
-                header('Content-Type: ' . mime_content_type($filePath)); // Dynamic content type
-                readfile($filePath);
+        if (is_file($filePath)) {
+            if (file_exists($filePath)) {
+                // Check if the file is a PHP file
+                if (pathinfo($filePath, PATHINFO_EXTENSION) === 'php') {
+                    // Include the PHP file without setting the JSON header
+                    include $filePath;
+                } else {
+                    // Set the appropriate content-type for non-PHP files if needed
+                    // and read the content
+                    header('Content-Type: ' . mime_content_type($filePath)); // Dynamic content type
+                    readfile($filePath);
+                }
+                exit;
             }
-            exit;
         } else if ($_prismaPHPSettings['backendOnly']) {
             // Set the header and output a JSON response for file not found
             header('Content-Type: application/json');
@@ -696,7 +698,7 @@ try {
         }
     }
 
-    if (!empty($_contentToInclude) && basename($_contentToInclude) === 'route.php') {
+    if (!empty($_contentToInclude) && $_fileToInclude === 'route.php') {
         header('Content-Type: application/json');
         require_once $_contentToInclude;
         exit;

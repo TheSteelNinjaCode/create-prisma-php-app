@@ -5,4 +5,5 @@ module.exports = {
   notify: false,
   open: false,
   ghostMode: false,
+  codeSync: true, // Disable synchronization of code changes across clients
 };
