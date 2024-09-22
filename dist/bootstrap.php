@@ -685,7 +685,6 @@ $mainLayoutFooter = [];
 
 try {
     $_determineContentToInclude = determineContentToInclude();
-    checkForDuplicateRoutes();
     $_contentToInclude = $_determineContentToInclude['path'] ?? '';
     $_layoutsToInclude = $_determineContentToInclude['layouts'] ?? [];
     $uri = $_determineContentToInclude['uri'] ?? '';
@@ -694,6 +693,9 @@ try {
     if (is_file($_contentToInclude)) {
         $_fileToInclude = basename($_contentToInclude); // returns the file name
     }
+    $metadata = $_metadataArray[$uri] ?? ($_metadataArray['default'] ?? []);
+
+    checkForDuplicateRoutes();
     authenticateUserToken();
 
     if (empty($_contentToInclude)) {
@@ -741,7 +743,6 @@ try {
         exit;
     }
 
-    $metadata = $_metadataArray[$uri] ?? ($_metadataArray['default'] ?? []);
     $_parentLayoutPath = APP_PATH . '/layout.php';
     $_isParentLayout = !empty($_layoutsToInclude) && strpos($_layoutsToInclude[0], 'src/app/layout.php') !== false;
 
