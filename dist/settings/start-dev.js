@@ -126,7 +126,7 @@ async function startDev() {
 
         if (!browserSyncReady) {
           browserSyncReady = true;
-          // Start _dev after browserSync is ready
+          // Start npmRunAll after browserSync is ready
           startDevProcess();
         }
       } else if (REGEX_PATTERNS.BROWSERSYNC.test(line)) {
@@ -148,10 +148,10 @@ async function startDev() {
       console.error(`Failed to start browserSync process: ${err.message}`);
     });
 
-    // Function to start _dev process
+    // Function to start npmRunAll process
     function startDevProcess() {
-      console.log("Starting _dev...");
-      devProcess = spawn("npm", ["run", "_dev"], { shell: true });
+      console.log("Starting npmRunAll...");
+      devProcess = spawn("npm", ["run", "npmRunAll"], { shell: true });
 
       devProcess.stdout.on("data", (data) => {
         process.stdout.write(data);

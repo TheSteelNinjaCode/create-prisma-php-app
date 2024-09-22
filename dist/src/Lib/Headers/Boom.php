@@ -73,6 +73,19 @@ class Boom
     }
 
     /**
+     * Factory method for 402 Payment Required.
+     *
+     * @param string $message Error message.
+     * @param array  $details Additional error details.
+     *
+     * @return self
+     */
+    public static function paymentRequired(string $message = 'Payment Required', array $details = []): self
+    {
+        return new self(402, $message, $details);
+    }
+
+    /**
      * Factory method for 403 Forbidden.
      *
      * @param string $message Error message.
@@ -96,6 +109,32 @@ class Boom
     public static function notFound(string $message = 'Not Found', array $details = []): self
     {
         return new self(404, $message, $details);
+    }
+
+    /**
+     * Factory method for 405 Method Not Allowed.
+     *
+     * @param string $message Error message.
+     * @param array  $details Additional error details.
+     *
+     * @return self
+     */
+    public static function methodNotAllowed(string $message = 'Method Not Allowed', array $details = []): self
+    {
+        return new self(405, $message, $details);
+    }
+
+    /**
+     * Factory method for 406 Not Acceptable.
+     *
+     * @param string $message Error message.
+     * @param array  $details Additional error details.
+     *
+     * @return self
+     */
+    public static function notAcceptable(string $message = 'Not Acceptable', array $details = []): self
+    {
+        return new self(406, $message, $details);
     }
 
     /**

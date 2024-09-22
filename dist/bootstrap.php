@@ -25,8 +25,17 @@ function determineContentToInclude()
     $baseDir = APP_PATH;
     $includePath = '';
     $layoutsToInclude = [];
-    writeRoutes();
+
+    /** 
+     * ============ Middleware Management ============
+     * AuthMiddleware is invoked to handle authentication logic for the current route ($uri).
+     * ================================================
+     */
     AuthMiddleware::handle($uri);
+    /** 
+     * ============ End of Middleware Management ======
+     * ================================================
+     */
 
     $isDirectAccessToPrivateRoute = preg_match('/\/_/', $uri);
     if ($isDirectAccessToPrivateRoute) {
@@ -107,31 +116,23 @@ function getFilePrecedence()
     global $_filesListRoutes;
 
     // Normalize the file paths for consistent comparison
-    $_filesListRoutes = array_map(function ($route) {
-        return str_replace('\\', '/', $route);
-    }, $_filesListRoutes);
-
-    // Look for route.php in the /src/app/ directory
-    $routeFile = array_filter($_filesListRoutes, function ($route) {
-        return preg_match('/^\.\/src\/app\/route\.php$/', $route);
-    });
-
-    // If route.php is found, return just the file name
-    if (!empty($routeFile)) {
-        return '/route.php';
+    foreach ($_filesListRoutes as $route) {
+        $normalizedRoute = str_replace('\\', '/', $route);
+        // First, check for route.php
+        if (preg_match('/^\.\/src\/app\/route\.php$/', $normalizedRoute)) {
+            return '/route.php';
+        }
     }
 
-    // If route.php is not found, look for index.php in the /src/app/ directory
-    $indexFile = array_filter($_filesListRoutes, function ($route) {
-        return preg_match('/^\.\/src\/app\/index\.php$/', $route);
-    });
-
-    // If index.php is found, return just the file name
-    if (!empty($indexFile)) {
-        return '/index.php';
+    // If no route.php is found, check for index.php
+    foreach ($_filesListRoutes as $route) {
+        $normalizedRoute = str_replace('\\', '/', $route);
+        if (preg_match('/^\.\/src\/app\/index\.php$/', $normalizedRoute)) {
+            return '/index.php';
+        }
     }
 
-    // If neither file is found, return null or handle the case as needed
+    // If neither file is found, return null
     return null;
 }
 
@@ -145,42 +146,19 @@ function uriExtractor(string $scriptUrl): string
     }
 
     $escapedIdentifier = preg_quote($projectName, '/');
-    $pattern = "/(?:.*$escapedIdentifier)(\/.*)$/";
-    if (preg_match($pattern, $scriptUrl, $matches)) {
-        if (!empty($matches[1])) {
-            $leftTrim = ltrim($matches[1], '/');
-            $rightTrim = rtrim($leftTrim, '/');
-            return "$rightTrim";
-        }
+    if (preg_match("/(?:.*$escapedIdentifier)(\/.*)$/", $scriptUrl, $matches) && !empty($matches[1])) {
+        return rtrim(ltrim($matches[1], '/'), '/');
     }
 
     return "/";
 }
 
-function writeRoutes()
+function getFilesListRoutes()
 {
-    global $_filesListRoutes;
-    $directory = './src/app';
+    $jsonFileName = SETTINGS_PATH . '/files-list.json';
+    $routeFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
 
-    if (is_dir($directory)) {
-        $filesList = [];
-
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory));
-
-        foreach ($iterator as $file) {
-            if ($file->isFile()) {
-                $filesList[] = $file->getPathname();
-            }
-        }
-
-        $jsonData = json_encode($filesList, JSON_PRETTY_PRINT);
-        $jsonFileName = SETTINGS_PATH . '/files-list.json';
-        file_put_contents($jsonFileName, $jsonData);
-
-        if (file_exists($jsonFileName)) {
-            $_filesListRoutes = json_decode(file_get_contents($jsonFileName), true);
-        }
-    }
+    return $routeFiles;
 }
 
 function findGroupFolder($uri): string
@@ -213,14 +191,21 @@ function dynamicRoute($uri)
     foreach ($_filesListRoutes as $route) {
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
         $routeSegments = explode('/', ltrim($normalizedRoute, '/'));
+
+        $filteredRouteSegments = array_values(array_filter($routeSegments, function ($segment) {
+            return !preg_match('/\(.+\)/', $segment); // Skip segments with parentheses (groups)
+        }));
+
         $singleDynamic = preg_match_all('/\[[^\]]+\]/', $normalizedRoute, $matches) === 1 && !strpos($normalizedRoute, '[...');
         if ($singleDynamic) {
-            $segmentMatch = singleDynamicRoute($uriSegments, $routeSegments);
-            if (!empty($segmentMatch)) {
+            $segmentMatch = singleDynamicRoute($uriSegments, $filteredRouteSegments);
+            $index = array_search($segmentMatch, $filteredRouteSegments);
+            if ($index !== false && isset($uriSegments[$index])) {
                 $trimSegmentMatch = trim($segmentMatch, '[]');
-                $dynamicRouteParams = new \ArrayObject([$trimSegmentMatch => $uriSegments[array_search($segmentMatch, $routeSegments)]], \ArrayObject::ARRAY_AS_PROPS);
-
-                $dynamicRouteUri = str_replace($segmentMatch, $uriSegments[array_search($segmentMatch, $routeSegments)], $normalizedRoute);
+                $dynamicRouteParams = new \ArrayObject([$trimSegmentMatch => $uriSegments[$index]], \ArrayObject::ARRAY_AS_PROPS);
+                $dynamicRouteUri = str_replace($segmentMatch, $uriSegments[$index], $normalizedRoute);
+                $dynamicRouteUri = preg_replace('/\(.+\)/', '', $dynamicRouteUri);
+                $dynamicRouteUri = preg_replace('/\/+/', '/', $dynamicRouteUri);
                 $dynamicRouteUriDirname = dirname($dynamicRouteUri);
                 $dynamicRouteUriDirname = rtrim($dynamicRouteUriDirname, '/');
 
@@ -235,30 +220,41 @@ function dynamicRoute($uri)
                 }
             }
         } elseif (strpos($normalizedRoute, '[...') !== false) {
-            $cleanedRoute = preg_replace('/\[\.\.\..*?\].*/', '', $normalizedRoute);
-            if (strpos('/src/app/' . $normalizedUri, $cleanedRoute) === 0) {
+            // Clean and normalize the route
+            $cleanedNormalizedRoute = preg_replace('/\(.+\)/', '', $normalizedRoute); // Remove any public/private segment
+            $cleanedNormalizedRoute = preg_replace('/\/+/', '/', $cleanedNormalizedRoute); // Replace multiple slashes
+            $dynamicSegmentRoute = preg_replace('/\[\.\.\..*?\].*/', '', $cleanedNormalizedRoute); // Remove the dynamic segment
 
-                $normalizedUriEdited = "/src/app/$normalizedUri";
-                $trimNormalizedUriEdited = str_replace($cleanedRoute, '', $normalizedUriEdited);
-                $explodedNormalizedUri = explode('/', $trimNormalizedUriEdited);
-                $pattern = '/\[\.\.\.(.*?)\]/';
-                if (preg_match($pattern, $normalizedRoute, $matches)) {
-                    $contentWithinBrackets = $matches[1];
-                    $dynamicRouteParams = new \ArrayObject([$contentWithinBrackets => $explodedNormalizedUri], \ArrayObject::ARRAY_AS_PROPS);
+            // Check if the normalized URI starts with the cleaned route
+            if (strpos("/src/app/$normalizedUri", $dynamicSegmentRoute) === 0) {
+                $trimmedUri = str_replace($dynamicSegmentRoute, '', "/src/app/$normalizedUri");
+                $uriParts = explode('/', trim($trimmedUri, '/'));
+
+                // Extract the dynamic segment content
+                if (preg_match('/\[\.\.\.(.*?)\]/', $normalizedRoute, $matches)) {
+                    $dynamicParam = $matches[1];
+                    $dynamicRouteParams = new \ArrayObject([$dynamicParam => $uriParts], \ArrayObject::ARRAY_AS_PROPS);
                 }
+
+                // Check for 'route.php'
                 if (strpos($normalizedRoute, 'route.php') !== false) {
                     $uriMatch = $normalizedRoute;
                     break;
-                } else {
-                    if (strpos($normalizedRoute, 'index.php') !== false) {
-                        $segmentMatch = "[...$contentWithinBrackets]";
-                        $dynamicRouteUri = str_replace($segmentMatch, $uriSegments[array_search($segmentMatch, $routeSegments)], $normalizedRoute);
-                        $dynamicRouteUriDirname = dirname($dynamicRouteUri);
-                        $dynamicRouteUriDirname = rtrim($dynamicRouteUriDirname, '/');
+                }
 
-                        $expectedUri = '/src/app/' . $normalizedUri;
-                        $expectedUri = rtrim($expectedUri, '/');
+                // Handle matching routes ending with 'index.php'
+                if (strpos($normalizedRoute, 'index.php') !== false) {
+                    $segmentMatch = "[...$dynamicParam]";
+                    $index = array_search($segmentMatch, $filteredRouteSegments);
 
+                    if ($index !== false && isset($uriSegments[$index])) {
+                        // Generate the dynamic URI
+                        $dynamicRouteUri = str_replace($segmentMatch, implode('/', $uriParts), $cleanedNormalizedRoute);
+                        $dynamicRouteUriDirname = rtrim(dirname($dynamicRouteUri), '/');
+
+                        $expectedUri = rtrim("/src/app/$normalizedUri", '/');
+
+                        // Compare the expected and dynamic URIs
                         if ($expectedUri === $dynamicRouteUriDirname) {
                             $uriMatch = $normalizedRoute;
                             break;
@@ -280,6 +276,7 @@ function isGroupIdentifier($segment): bool
 function matchGroupFolder($constructedPath): ?string
 {
     global $_filesListRoutes;
+
     $bestMatch = null;
     $normalizedConstructedPath = ltrim(str_replace('\\', '/', $constructedPath), './');
 
@@ -330,6 +327,10 @@ function singleDynamicRoute($uriSegments, $routeSegments)
 
 function checkForDuplicateRoutes()
 {
+    if ($_ENV['APP_ENV'] !== 'development') {
+        return;
+    }
+
     global $_filesListRoutes;
     $normalizedRoutesMap = [];
     foreach ($_filesListRoutes as $route) {
@@ -363,72 +364,27 @@ function checkForDuplicateRoutes()
     }
 }
 
-function setupErrorHandling(&$content)
-{
-    set_error_handler(function ($severity, $message, $file, $line) use (&$content) {
-        $content .= "<div class='error'>Error: {$severity} - {$message} in {$file} on line {$line}</div>";
-    });
-
-    set_exception_handler(function ($exception) use (&$content) {
-        $content .= "<div class='error'>Exception: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
-    });
-
-    register_shutdown_function(function () use (&$content) {
-        $error = error_get_last();
-        if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR])) {
-            $formattedError = "<div class='error'>Fatal Error: " . htmlspecialchars($error['message'], ENT_QUOTES, 'UTF-8') .
-                " in " . htmlspecialchars($error['file'], ENT_QUOTES, 'UTF-8') .
-                " on line " . $error['line'] . "</div>";
-            $content .= $formattedError;
-            modifyOutputLayoutForError($content);
-        }
-    });
-}
-
 
 function containsChildContent($filePath)
 {
     $fileContent = file_get_contents($filePath);
-    if (
-        (strpos($fileContent, 'echo $childContent') === false &&
-            strpos($fileContent, 'echo $childContent;') === false) &&
-        (strpos($fileContent, '<?= $childContent ?>') === false) &&
-        (strpos($fileContent, '<?= $childContent; ?>') === false)
-    ) {
-        return true;
-    } else {
-        return false;
-    }
+
+    // Regular expression to match different ways of echoing $childContent
+    $pattern = '/\<\?=\s*\$childContent\s*;?\s*\?>|echo\s*\$childContent\s*;?/';
+
+    // Return true if $childContent variables are found, false otherwise
+    return preg_match($pattern, $fileContent) === 1;
 }
 
 function containsContent($filePath)
 {
     $fileContent = file_get_contents($filePath);
-    if (
-        (strpos($fileContent, 'echo $content') === false &&
-            strpos($fileContent, 'echo $content;') === false) &&
-        (strpos($fileContent, '<?= $content ?>') === false) &&
-        (strpos($fileContent, '<?= $content; ?>') === false)
-    ) {
-        return true;
-    } else {
-        return false;
-    }
-}
 
-function modifyOutputLayoutForError($contentToAdd)
-{
-    if ($_ENV['SHOW_ERRORS'] === "false") exit;
+    // Improved regular expression to match different ways of echoing $content
+    $pattern = '/\<\?=\s*\$content\s*;?\s*\?>|echo\s*\$content\s*;?/';
 
-    $layoutContent = file_get_contents(APP_PATH . '/layout.php');
-    if ($layoutContent !== false) {
-        $newBodyContent = "<body class=\"fatal-error\">$contentToAdd</body>";
-
-        $modifiedNotFoundContent = preg_replace('~<body.*?>.*?</body>~s', $newBodyContent, $layoutContent);
-
-        echo $modifiedNotFoundContent;
-        exit;
-    }
+    // Return true if content variables are found, false otherwise
+    return preg_match($pattern, $fileContent) === 1;
 }
 
 function convertToArrayObject($data)
@@ -579,17 +535,7 @@ function getLoadingsFiles()
     return '';
 }
 
-function authenticateUserToken()
-{
-    $token = getBearerToken();
-    if ($token) {
-        $auth = Auth::getInstance();
-        $verifyToken = $auth->verifyToken($token);
-        if ($verifyToken) {
-            $auth->authenticate($verifyToken);
-        }
-    }
-}
+
 
 function getPrismaSettings(): \ArrayObject
 {
@@ -607,14 +553,102 @@ function getPrismaSettings(): \ArrayObject
     }
 }
 
-ob_start();
+function modifyOutputLayoutForError($contentToAdd)
+{
+    global
+        $baseUrl,
+        $metadata,
+        $content,
+        $childContent,
+        $uri,
+        $pathname,
+        $dynamicRouteParams,
+        $params,
+        $referer,
+        $mainLayoutHead,
+        $mainLayoutFooter;
+
+    $errorFile = APP_PATH . '/error.php';
+    $errorFileExists = file_exists($errorFile);
+
+    if ($_ENV['SHOW_ERRORS'] === "false") {
+        if ($errorFileExists) {
+            $contentToAdd = "<div class='error'>An error occurred</div>";
+        } else {
+            exit; // Exit if SHOW_ERRORS is false and no error file exists
+        }
+    }
+
+    if ($errorFileExists) {
+
+        $errorContent = $contentToAdd;
+
+        $layoutFile = APP_PATH . '/layout.php';
+        if (file_exists($layoutFile)) {
+
+            ob_start();
+            include_once $errorFile;
+            $content = ob_get_clean();
+            include $layoutFile;
+        } else {
+            echo $errorContent;
+        }
+    } else {
+        echo $contentToAdd;
+    }
+    exit;
+}
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) {
+        // This error code is not included in error_reporting
+        return;
+    }
+
+    // Capture the specific severity types, including warnings (E_WARNING)
+    $errorContent = "<div class='error'>Error: {$severity} - {$message} in {$file} on line {$line}</div>";
+
+    // If needed, log it or output immediately based on severity
+    if ($severity === E_WARNING || $severity === E_NOTICE) {
+        modifyOutputLayoutForError($errorContent);
+    }
+});
+
+set_exception_handler(function ($exception) {
+    $errorContent = "<div class='error'>Exception: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
+    modifyOutputLayoutForError($errorContent);
+});
+
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR])) {
+        $formattedError = "<div class='error'>Fatal Error: " . htmlspecialchars($error['message'], ENT_QUOTES, 'UTF-8') .
+            " in " . htmlspecialchars($error['file'], ENT_QUOTES, 'UTF-8') .
+            " on line " . $error['line'] . "</div>";
+        $errorContent = $formattedError;
+        modifyOutputLayoutForError($errorContent);
+    }
+});
+
 require_once SETTINGS_PATH . '/public-functions.php';
 require_once SETTINGS_PATH . '/request-methods.php';
 $_metadataFile = APP_PATH . '/metadata.php';
 $_metadataArray = file_exists($_metadataFile) ? require_once $_metadataFile : [];
-$_filesListRoutes = [];
+$_filesListRoutes = getFilesListRoutes();
 $_prismaPHPSettings = getPrismaSettings();
 $_fileToInclude = '';
+
+function authenticateUserToken()
+{
+    $token = getBearerToken();
+    if ($token) {
+        $auth = Auth::getInstance();
+        $verifyToken = $auth->verifyToken($token);
+        if ($verifyToken) {
+            $auth->authenticate($verifyToken);
+        }
+    }
+}
 
 /**
  * @var array $metadata Metadata information
@@ -656,7 +690,10 @@ try {
     $_layoutsToInclude = $_determineContentToInclude['layouts'] ?? [];
     $uri = $_determineContentToInclude['uri'] ?? '';
     $pathname = $uri ? "/" . $uri : "/";
-    $_fileToInclude = basename($_contentToInclude);
+    $_fileToInclude = null;
+    if (is_file($_contentToInclude)) {
+        $_fileToInclude = basename($_contentToInclude); // returns the file name
+    }
     authenticateUserToken();
 
     if (empty($_contentToInclude)) {
@@ -710,11 +747,11 @@ try {
 
     $_isContentIncluded = false;
     $_isChildContentIncluded = false;
-    if (containsContent($_parentLayoutPath)) {
+    $_isContentVariableIncluded = containsContent($_parentLayoutPath);
+    if (!$_isContentVariableIncluded) {
         $_isContentIncluded = true;
     }
 
-    ob_start();
     if (!empty($_contentToInclude)) {
         if (!$_isParentLayout) {
             ob_start();
@@ -726,7 +763,8 @@ try {
                 continue;
             }
 
-            if (containsChildContent($layoutPath)) {
+            $_isChildContentVariableIncluded = containsChildContent($layoutPath);
+            if (!$_isChildContentVariableIncluded) {
                 $_isChildContentIncluded = true;
             }
 
@@ -759,18 +797,16 @@ try {
         }
     } else {
         if ($_isContentIncluded) {
-            $content .= "<div class='error'>The parent layout file does not contain &lt;?php echo \$content; ?&gt; Or &lt;?= \$content ?&gt;<br>" . "<strong>$_parentLayoutPath</strong></div>";
-            modifyOutputLayoutForError($content);
+            echo "<div class='error'>The parent layout file does not contain &lt;?php echo \$content; ?&gt; Or &lt;?= \$content ?&gt;<br>" . "<strong>$_parentLayoutPath</strong></div>";
         } else {
-            $content .= "<div class='error'>The layout file does not contain &lt;?php echo \$childContent; ?&gt; or &lt;?= \$childContent ?&gt;<br><strong>$layoutPath</strong></div>";
-            modifyOutputLayoutForError($content);
+            $errorDetails = "<div class='error'>The layout file does not contain &lt;?php echo \$childContent; ?&gt; or &lt;?= \$childContent ?&gt;<br><strong>$layoutPath</strong></div>";
+            modifyOutputLayoutForError($errorDetails);
         }
     }
 } catch (Throwable $e) {
-    $content = ob_get_clean();
     $errorDetails = "Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
     $errorDetails .= "<br>File: " . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
     $errorDetails .= "<br>Line: " . htmlspecialchars($e->getLine(), ENT_QUOTES, 'UTF-8');
-    $content .= "<div class='error'>" . $errorDetails . "</div>";
-    modifyOutputLayoutForError($content);
+    $errorDetails = "<div class='error'>$errorDetails</div>";
+    modifyOutputLayoutForError($errorDetails);
 }
