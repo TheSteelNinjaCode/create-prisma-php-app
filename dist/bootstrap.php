@@ -515,6 +515,7 @@ function getLoadingsFiles()
     $haveLoadingFileContent = array_reduce($loadingFiles, function ($carry, $route) use ($uri, $pathname, $dynamicRouteParams, $params, $referer) {
         $normalizeUri = str_replace('\\', '/', $route);
         $fileUrl = str_replace('./src/app', '', $normalizeUri);
+        $route = str_replace(['\\', './'], ['/', ''], $route);
 
         ob_start();
         include($route); // This will execute the PHP code in loading.php
