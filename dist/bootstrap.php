@@ -188,29 +188,37 @@ function dynamicRoute($uri)
     $normalizedUri = ltrim(str_replace('\\', '/', $uri), './');
     $normalizedUriEdited = "src/app/$normalizedUri";
     $uriSegments = explode('/', $normalizedUriEdited);
+
     foreach ($_filesListRoutes as $route) {
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
+
+        // Skip non-.php files to improve performance
+        if (pathinfo($normalizedRoute, PATHINFO_EXTENSION) !== 'php') {
+            continue;
+        }
+
         $routeSegments = explode('/', ltrim($normalizedRoute, '/'));
 
         $filteredRouteSegments = array_values(array_filter($routeSegments, function ($segment) {
             return !preg_match('/\(.+\)/', $segment); // Skip segments with parentheses (groups)
         }));
 
-        $singleDynamic = preg_match_all('/\[[^\]]+\]/', $normalizedRoute, $matches) === 1 && !strpos($normalizedRoute, '[...');
+        $singleDynamic = preg_match_all('/\[[^\]]+\]/', $normalizedRoute, $matches) === 1 && strpos($normalizedRoute, '[...') === false;
+
         if ($singleDynamic) {
             $segmentMatch = singleDynamicRoute($uriSegments, $filteredRouteSegments);
             $index = array_search($segmentMatch, $filteredRouteSegments);
+
             if ($index !== false && isset($uriSegments[$index])) {
                 $trimSegmentMatch = trim($segmentMatch, '[]');
                 $dynamicRouteParams = new \ArrayObject([$trimSegmentMatch => $uriSegments[$index]], \ArrayObject::ARRAY_AS_PROPS);
+
                 $dynamicRouteUri = str_replace($segmentMatch, $uriSegments[$index], $normalizedRoute);
                 $dynamicRouteUri = preg_replace('/\(.+\)/', '', $dynamicRouteUri);
                 $dynamicRouteUri = preg_replace('/\/+/', '/', $dynamicRouteUri);
-                $dynamicRouteUriDirname = dirname($dynamicRouteUri);
-                $dynamicRouteUriDirname = rtrim($dynamicRouteUriDirname, '/');
+                $dynamicRouteUriDirname = rtrim(dirname($dynamicRouteUri), '/');
 
-                $expectedUri = '/src/app/' . $normalizedUri;
-                $expectedUri = rtrim($expectedUri, '/');
+                $expectedUri = rtrim('/src/app/' . $normalizedUri, '/');
 
                 if (strpos($normalizedRoute, 'route.php') !== false || strpos($normalizedRoute, 'index.php') !== false) {
                     if ($expectedUri === $dynamicRouteUriDirname) {
@@ -221,9 +229,9 @@ function dynamicRoute($uri)
             }
         } elseif (strpos($normalizedRoute, '[...') !== false) {
             // Clean and normalize the route
-            $cleanedNormalizedRoute = preg_replace('/\(.+\)/', '', $normalizedRoute); // Remove any public/private segment
-            $cleanedNormalizedRoute = preg_replace('/\/+/', '/', $cleanedNormalizedRoute); // Replace multiple slashes
-            $dynamicSegmentRoute = preg_replace('/\[\.\.\..*?\].*/', '', $cleanedNormalizedRoute); // Remove the dynamic segment
+            $cleanedNormalizedRoute = preg_replace('/\(.+\)/', '', $normalizedRoute);
+            $cleanedNormalizedRoute = preg_replace('/\/+/', '/', $cleanedNormalizedRoute);
+            $dynamicSegmentRoute = preg_replace('/\[\.\.\..*?\].*/', '', $cleanedNormalizedRoute);
 
             // Check if the normalized URI starts with the cleaned route
             if (strpos("/src/app/$normalizedUri", $dynamicSegmentRoute) === 0) {
@@ -363,7 +371,6 @@ function checkForDuplicateRoutes()
         modifyOutputLayoutForError($errorMessageString);
     }
 }
-
 
 function containsChildContent($filePath)
 {
@@ -535,8 +542,6 @@ function getLoadingsFiles()
 
     return '';
 }
-
-
 
 function getPrismaSettings(): \ArrayObject
 {
