@@ -636,12 +636,13 @@ register_shutdown_function(function () {
     }
 });
 
+$_prismaPHPSettings = getPrismaSettings();
+$_filesListRoutes = getFilesListRoutes();
+
 require_once SETTINGS_PATH . '/public-functions.php';
 require_once SETTINGS_PATH . '/request-methods.php';
 $_metadataFile = APP_PATH . '/metadata.php';
 $_metadataArray = file_exists($_metadataFile) ? require_once $_metadataFile : [];
-$_filesListRoutes = getFilesListRoutes();
-$_prismaPHPSettings = getPrismaSettings();
 $_fileToInclude = '';
 
 function authenticateUserToken()
