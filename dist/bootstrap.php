@@ -37,7 +37,7 @@ function determineContentToInclude()
      * ================================================
      */
 
-    $isDirectAccessToPrivateRoute = preg_match('/\/_/', $uri);
+    $isDirectAccessToPrivateRoute = preg_match('/_/', $uri);
     if ($isDirectAccessToPrivateRoute) {
         $sameSiteFetch = false;
         $serverFetchSite = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
@@ -335,9 +335,7 @@ function singleDynamicRoute($uriSegments, $routeSegments)
 
 function checkForDuplicateRoutes()
 {
-    if ($_ENV['APP_ENV'] !== 'development') {
-        return;
-    }
+    if ($_ENV['APP_ENV'] !== 'development') return;
 
     global $_filesListRoutes;
     $normalizedRoutesMap = [];
@@ -760,7 +758,7 @@ try {
         $_isContentIncluded = true;
     }
 
-    if (!empty($_contentToInclude)) {
+    if (!empty($_contentToInclude) && !empty($_fileToInclude)) {
         if (!$_isParentLayout) {
             ob_start();
             require_once $_contentToInclude;

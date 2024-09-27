@@ -86,7 +86,7 @@ $scriptName = dirname($_SERVER['SCRIPT_NAME']);
 /**
  * @var string $baseUrl - The base URL of the request.
  */
-$baseUrl = $_prismaPHPSettings['ngrok'] ? 'src/app' : $protocol . $domainName . "$scriptName/src/app";
+$baseUrl = '/src/app';
 /**
  * @var string $documentUrl - The document URL of the request.
  */
