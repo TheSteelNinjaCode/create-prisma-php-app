@@ -166,9 +166,13 @@ async function main() {
         "app",
         "swagger-docs"
       );
-      // Check if the directory exists, if not, create it
-      if (!fs.existsSync(swaggerDocsPath)) {
-        fs.mkdirSync(swaggerDocsPath, { recursive: true }); // 'recursive: true' creates parent directories if they don't exist
+      // Check if the directory exists
+      if (fs.existsSync(swaggerDocsPath)) {
+        // If it exists and is not empty, remove it before cloning
+        if (fs.readdirSync(swaggerDocsPath).length > 0) {
+          console.log("Removing existing swagger-docs directory...");
+          fs.rmSync(swaggerDocsPath, { recursive: true, force: true });
+        }
       }
       // Clone the Git repository into the swagger-docs directory
       execSync(
