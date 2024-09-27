@@ -2,18 +2,29 @@ import { writeFile } from "fs";
 import { join, basename, dirname, normalize, sep } from "path";
 import prismaPhpConfig from "../prisma-php.json";
 import { getFileMeta } from "./utils.js";
+
 const { __dirname } = getFileMeta();
+
 const newProjectName = basename(join(__dirname, ".."));
+
 // Function to update the project name and paths in the JSON config
-function updateProjectNameInConfig(filePath, newProjectName) {
+function updateProjectNameInConfig(
+  filePath: string,
+  newProjectName: string
+): void {
   const filePathDir = dirname(filePath);
+
   // Update the projectName directly in the imported config
   prismaPhpConfig.projectName = newProjectName;
+
   // Update other paths
   prismaPhpConfig.projectRootPath = filePathDir;
+
   const targetPath = getTargetPath(filePathDir, prismaPhpConfig.phpEnvironment);
+
   prismaPhpConfig.bsTarget = `http://localhost${targetPath}`;
   prismaPhpConfig.bsPathRewrite["^/"] = targetPath;
+
   // Save the updated config back to the JSON file
   writeFile(
     filePath,
@@ -30,10 +41,11 @@ function updateProjectNameInConfig(filePath, newProjectName) {
     }
   );
 }
+
 // Function to determine the target path for browser-sync
-function getTargetPath(fullPath, environment) {
+function getTargetPath(fullPath: string, environment: string): string {
   const normalizedPath = normalize(fullPath);
-  const webDirectories = {
+  const webDirectories: { [key: string]: string } = {
     XAMPP: join("htdocs"),
     WAMP: join("www"),
     MAMP: join("htdocs"),
@@ -43,16 +55,19 @@ function getTargetPath(fullPath, environment) {
     UniformServer: join("www"),
     EasyPHP: join("data", "localweb"),
   };
+
   const webDir = webDirectories[environment.toUpperCase()];
   if (!webDir) {
     throw new Error(`Unsupported environment: ${environment}`);
   }
+
   const indexOfWebDir = normalizedPath
     .toLowerCase()
     .indexOf(normalize(webDir).toLowerCase());
   if (indexOfWebDir === -1) {
     throw new Error(`Web directory not found in path: ${webDir}`);
   }
+
   const startIndex = indexOfWebDir + webDir.length;
   const subPath = normalizedPath.slice(startIndex);
   const safeSeparatorRegex = new RegExp(
@@ -60,9 +75,12 @@ function getTargetPath(fullPath, environment) {
     "g"
   );
   const finalPath = subPath.replace(safeSeparatorRegex, "/") + "/";
+
   return finalPath;
 }
+
 // Path to your JSON configuration file (for saving changes)
 const configFilePath = join(__dirname, "..", "prisma-php.json");
+
 // Run the function with your config file path and the new project name
 updateProjectNameInConfig(configFilePath, newProjectName);

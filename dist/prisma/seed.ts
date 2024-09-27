@@ -1,26 +1,26 @@
-import { PrismaClient } from "@prisma/client";
+// import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+// const prisma = new PrismaClient();
 
-// UserRole
-const userRoleData = [
-  {
-    name: "Admin",
-  },
-  {
-    name: "User",
-  },
-];
+// // UserRole
+// const userRoleData = [
+//   {
+//     name: "Admin",
+//   },
+//   {
+//     name: "User",
+//   },
+// ];
 
-// User
-const userData = [
-  {
-    name: "Juan",
-    email: "j@gmail.com",
-    password: "$2b$10$mgjotYzIXwrK1MCWmu4tgeUVnLcb.qzvqwxOq4FXEL8k2obwXivDi", // TODO: template password 1234 (bcrypt) testing only
-    roleId: 1,
-  },
-];
+// // User
+// const userData = [
+//   {
+//     name: "Juan",
+//     email: "j@gmail.com",
+//     password: "$2b$10$mgjotYzIXwrK1MCWmu4tgeUVnLcb.qzvqwxOq4FXEL8k2obwXivDi", // TODO: template password 1234 (bcrypt) testing only
+//     roleId: 1,
+//   },
+// ];
 
 async function main() {
   // ========================================
@@ -65,10 +65,10 @@ async function main() {
   // ========================================
 }
 
-main()
-  .catch((e) => {
-    throw e;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// main()
+//   .catch((e) => {
+//     throw e;
+//   })
+//   .finally(async () => {
+//     await prisma.$disconnect();
+//   });

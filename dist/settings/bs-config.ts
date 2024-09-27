@@ -1,13 +1,16 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { writeFileSync } from "fs";
 import chokidar from "chokidar";
-import browserSync from "browser-sync";
+import browserSync, { BrowserSyncInstance } from "browser-sync";
 import prismaPhpConfig from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
 import { join } from "path";
 import { getFileMeta } from "./utils.js";
+
 const { __dirname } = getFileMeta();
-const bs = browserSync.create();
+
+const bs: BrowserSyncInstance = browserSync.create();
+
 // Watch for file changes (create, delete, save)
 const watcher = chokidar.watch("src/app/**/*", {
   ignored: /(^|[\/\\])\../, // Ignore dotfiles
@@ -15,6 +18,7 @@ const watcher = chokidar.watch("src/app/**/*", {
   usePolling: true,
   interval: 1000,
 });
+
 // Perform specific actions for file events
 watcher
   .on("add", () => {
@@ -26,12 +30,13 @@ watcher
   .on("unlink", () => {
     generateFileListJson();
   });
+
 // BrowserSync initialization
 bs.init(
   {
     proxy: "http://localhost:3000",
     middleware: [
-      (_, res, next) => {
+      (_: any, res: any, next: any) => {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         res.setHeader("Pragma", "no-cache");
         res.setHeader("Expires", "0");
@@ -58,12 +63,14 @@ bs.init(
       console.error("BrowserSync failed to start:", err);
       return;
     }
+
     // Retrieve the active URLs from the BrowserSync instance
     const options = bsInstance.getOption("urls");
     const localUrl = options.get("local");
     const externalUrl = options.get("external");
     const uiUrl = options.get("ui");
     const uiExternalUrl = options.get("ui-external");
+
     // Construct the URLs dynamically
     const urls = {
       local: localUrl,
@@ -71,6 +78,7 @@ bs.init(
       ui: uiUrl,
       uiExternal: uiExternalUrl,
     };
+
     writeFileSync(
       join(__dirname, "bs-config.json"),
       JSON.stringify(urls, null, 2)

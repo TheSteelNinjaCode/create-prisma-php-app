@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import chalk from"chalk";import{spawn}from"child_process";import fs from"fs";import path from"path";import prompts from"prompts";import{fileURLToPath}from"url";const __filename=fileURLToPath(import.meta.url),__dirname=path.dirname(__filename),args=process.argv.slice(2),readJsonFile=e=>{const t=fs.readFileSync(e,"utf8");return JSON.parse(t)},executeCommand=(e,t=[],o={})=>new Promise(((r,a)=>{const s=spawn(e,t,Object.assign({stdio:"inherit",shell:!0},o));s.on("error",(e=>{a(e)})),s.on("close",(e=>{0===e?r():a(new Error(`Process exited with code ${e}`))}))}));async function getAnswer(){const e=[{type:"toggle",name:"shouldProceed",message:`This command will update the ${chalk.blue("create-prisma-php-app")} package and overwrite all default files. ${chalk.blue("Do you want to proceed")}?`,initial:!1,active:"Yes",inactive:"No"}],t=await prompts(e,{onCancel:()=>{process.exit(0)}});return 0===Object.keys(t).length?null:t}const commandsToExecute={generateClass:"npx php generate class",update:"npx php update project"};
+import chalk from"chalk";import{spawn}from"child_process";import fs from"fs";import path from"path";import prompts from"prompts";import{fileURLToPath}from"url";const __filename=fileURLToPath(import.meta.url),__dirname=path.dirname(__filename),args=process.argv.slice(2),readJsonFile=e=>{const t=fs.readFileSync(e,"utf8");return JSON.parse(t)},executeCommand=(e,t=[],o={})=>new Promise(((r,a)=>{const s=spawn(e,t,{stdio:"inherit",shell:!0,...o});s.on("error",(e=>{a(e)})),s.on("close",(e=>{0===e?r():a(new Error(`Process exited with code ${e}`))}))}));async function getAnswer(){const e=[{type:"toggle",name:"shouldProceed",message:`This command will update the ${chalk.blue("create-prisma-php-app")} package and overwrite all default files. ${chalk.blue("Do you want to proceed")}?`,initial:!1,active:"Yes",inactive:"No"}],t=await prompts(e,{onCancel:()=>{process.exit(0)}});return 0===Object.keys(t).length?null:t}const commandsToExecute={generateClass:"npx php generate class",update:"npx php update project"};
 const main = async () => {
   if (args.length === 0) {
     console.log("No command provided.");
@@ -14,9 +14,7 @@ const main = async () => {
   if (formattedCommand === commandsToExecute.update) {
     try {
       const answer = await getAnswer();
-      if (
-        !(answer === null || answer === void 0 ? void 0 : answer.shouldProceed)
-      ) {
+      if (!answer?.shouldProceed) {
         console.log(chalk.red("Operation cancelled by the user."));
         return;
       }

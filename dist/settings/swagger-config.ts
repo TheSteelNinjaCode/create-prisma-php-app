@@ -4,12 +4,15 @@ import { join } from "path";
 import chalk from "chalk";
 import { getFileMeta } from "./utils.js";
 import bsConnectionInfo from "./bs-config.json";
+
 const { __dirname } = getFileMeta();
-export async function swaggerConfig() {
+
+export async function swaggerConfig(): Promise<void> {
   const outputPath = join(
     __dirname,
     "../src/app/swagger-docs/apis/pphp-swagger.json"
   );
+
   const options = {
     definition: {
       openapi: "3.0.0",
@@ -45,8 +48,10 @@ export async function swaggerConfig() {
     },
     apis: [join(__dirname, "../src/app/swagger-docs/apis/**/*.js")], // Adjust to match JavaScript file paths
   };
+
   // Generate the Swagger specification
   const swaggerSpec = JSON.stringify(swaggerJsdoc(options), null, 2);
+
   // Always generate the swagger.json file
   try {
     writeFileSync(outputPath, swaggerSpec, "utf-8");
