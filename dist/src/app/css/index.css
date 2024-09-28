@@ -1,0 +1,20 @@
+/* Define fonts */
+@font-face {
+  font-family: "GeistVF";
+  src: url("../assets/fonts/GeistVF.woff") format("woff");
+}
+
+@font-face {
+  font-family: "GeistMonoVF";
+  src: url("../assets/fonts/GeistMonoVF.woff") format("woff");
+}
+
+/* Use GeistVF for body */
+body {
+  font-family: "GeistVF", sans-serif;
+}
+
+/* Example of using GeistMonoVF for code elements */
+code {
+  font-family: "GeistMonoVF", monospace;
+}

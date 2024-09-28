@@ -335,7 +335,7 @@ function singleDynamicRoute($uriSegments, $routeSegments)
 
 function checkForDuplicateRoutes()
 {
-    if ($_ENV['APP_ENV'] !== 'development') return;
+    if (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'production') return;
 
     global $_filesListRoutes;
     $normalizedRoutesMap = [];
