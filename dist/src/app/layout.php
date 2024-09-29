@@ -12,7 +12,7 @@
 <body>
     <?= $content; ?>
     <!-- Dynamic Footer -->
-    <?= implode("\n", $mainLayoutFooter); ?>
+    <?= getMainLayoutFooter() ?>
 </body>
 
 </html>

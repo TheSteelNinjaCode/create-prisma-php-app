@@ -57,7 +57,7 @@ export async function swaggerConfig(): Promise<void> {
     writeFileSync(outputPath, swaggerSpec, "utf-8");
     console.log(
       `Swagger JSON has been generated and saved to ${chalk.blue(
-        "src/app/swagger-docs/pphp-swagger.json"
+        "src/app/swagger-docs/apis/pphp-swagger.json"
       )}`
     );
   } catch (error) {

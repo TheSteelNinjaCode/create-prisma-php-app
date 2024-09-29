@@ -117,3 +117,43 @@ function getBearerToken(): ?string
 
     return null;
 }
+
+/**
+ * Outputs the main layout head content.
+ *
+ * This function checks if the global variable $mainLayoutHead is an array.
+ * If it is, it concatenates the array elements into a single string separated by newlines
+ * and echoes the result. If $mainLayoutHead is not an array, it echoes an empty string.
+ *
+ * @global array|string $mainLayoutHead The main layout head content.
+ */
+function getMainLayoutHead()
+{
+    global $mainLayoutHead;
+
+    if (is_array($mainLayoutHead)) {
+        echo implode("\n", $mainLayoutHead);
+    } else {
+        echo '';
+    }
+}
+
+/**
+ * Outputs the main layout footer.
+ *
+ * This function checks if the global variable $mainLayoutFooter is an array.
+ * If it is, it concatenates the array elements into a single string separated by new lines
+ * and outputs it. If $mainLayoutFooter is not an array, it outputs an empty string.
+ *
+ * @global array|string $mainLayoutFooter The main layout footer content.
+ */
+function getMainLayoutFooter()
+{
+    global $mainLayoutFooter;
+
+    if (is_array($mainLayoutFooter)) {
+        echo implode("\n", $mainLayoutFooter);
+    } else {
+        echo '';
+    }
+}
