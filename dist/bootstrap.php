@@ -115,19 +115,19 @@ function getFilePrecedence()
 {
     global $_filesListRoutes;
 
-    // Normalize the file paths for consistent comparison
     foreach ($_filesListRoutes as $route) {
-        $normalizedRoute = str_replace('\\', '/', $route);
-        // First, check for route.php
-        if (preg_match('/^\.\/src\/app\/route\.php$/', $normalizedRoute)) {
+        // Check if the file has a .php extension
+        if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
+            continue; // Skip files that are not PHP files
+        }
+
+        // Check for route.php first
+        if (preg_match('/^\.\/src\/app\/route\.php$/', $route)) {
             return '/route.php';
         }
-    }
 
-    // If no route.php is found, check for index.php
-    foreach ($_filesListRoutes as $route) {
-        $normalizedRoute = str_replace('\\', '/', $route);
-        if (preg_match('/^\.\/src\/app\/index\.php$/', $normalizedRoute)) {
+        // If route.php is not found, check for index.php
+        if (preg_match('/^\.\/src\/app\/index\.php$/', $route)) {
             return '/index.php';
         }
     }
@@ -292,6 +292,10 @@ function matchGroupFolder($constructedPath): ?string
     $indexFile = "/src/app/$normalizedConstructedPath/index.php";
 
     foreach ($_filesListRoutes as $route) {
+        if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
+            continue;
+        }
+
         $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
 
         $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
@@ -340,6 +344,10 @@ function checkForDuplicateRoutes()
     global $_filesListRoutes;
     $normalizedRoutesMap = [];
     foreach ($_filesListRoutes as $route) {
+        if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
+            continue;
+        }
+
         $routeWithoutGroups = preg_replace('/\(.*?\)/', '', $route);
         $routeTrimmed = ltrim($routeWithoutGroups, '.\\/');
         $routeTrimmed = preg_replace('#/{2,}#', '/', $routeTrimmed);
