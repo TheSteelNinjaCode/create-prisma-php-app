@@ -18,9 +18,26 @@ date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
 
 function determineContentToInclude()
 {
-    $scriptUrl = $_SERVER['REQUEST_URI'];
-    $scriptUrl = explode('?', $scriptUrl, 2)[0];
-    $uri = $_SERVER['SCRIPT_URL'] ?? uriExtractor($scriptUrl);
+    /** 
+     * ============ URI Handling ============ 
+     * The $requestUri variable now contains the full URI including query parameters. 
+     * Examples: 
+     * - Home page: '/' 
+     * - Dynamic routes with parameters (e.g., '/dashboard?v=2' or '/profile?id=5') 
+     * ======================================
+     */
+    $requestUri = $_SERVER['REQUEST_URI'];
+    $requestUri = empty($_SERVER['SCRIPT_URL']) ? uriExtractor($requestUri) : $requestUri;
+    /** 
+     * ============ URI Path Handling ============ 
+     * The $uri variable now contains the URI path without query parameters and without the leading slash. 
+     * Examples: 
+     * - Home page: '' (empty string) 
+     * - Dynamic routes (e.g., '/dashboard?v=2' or '/profile?id=5') -> Only the path part is returned (e.g., 'dashboard' or 'profile'), without the query parameters. 
+     * ============================================
+     */
+    $scriptUrl = explode('?', $requestUri, 2)[0];
+    $uri = $_SERVER['SCRIPT_URL'] ?? $scriptUrl;
     $uri = ltrim($uri, '/');
     $baseDir = APP_PATH;
     $includePath = '';
@@ -46,7 +63,7 @@ function determineContentToInclude()
         }
 
         if (!$sameSiteFetch) {
-            return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri];
+            return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri, 'requestUri' => $requestUri];
         }
     }
 
@@ -108,7 +125,7 @@ function determineContentToInclude()
         $includePath = $baseDir . getFilePrecedence();
     }
 
-    return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri];
+    return ['path' => $includePath, 'layouts' => $layoutsToInclude, 'uri' => $uri, 'requestUri' => $requestUri];
 }
 
 function getFilePrecedence()
@@ -611,6 +628,54 @@ function modifyOutputLayoutForError($contentToAdd)
     exit;
 }
 
+function createUpdateRequestData()
+{
+    global $_requestUriForFilesIncludes;
+
+    $requestJsonData = SETTINGS_PATH . '/request-data.json';
+
+    // Check if the JSON file exists
+    if (file_exists($requestJsonData)) {
+        // Read the current data from the JSON file
+        $currentData = json_decode(file_get_contents($requestJsonData), true);
+    } else {
+        // If the file doesn't exist, initialize an empty array
+        $currentData = [];
+    }
+
+    // Get the list of included/required files
+    $includedFiles = get_included_files();
+
+    // Filter only the files inside the src/app directory
+    $srcAppFiles = [];
+    foreach ($includedFiles as $filename) {
+        if (strpos($filename, DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR) !== false) {
+            $srcAppFiles[] = $filename;
+        }
+    }
+
+    // Extract the current request URL
+    $currentUrl = $_requestUriForFilesIncludes;
+
+    // If the URL already exists in the data, merge new included files with the existing ones
+    if (isset($currentData[$currentUrl])) {
+        // Merge the existing and new included files, removing duplicates
+        $currentData[$currentUrl]['includedFiles'] = array_unique(
+            array_merge($currentData[$currentUrl]['includedFiles'], $srcAppFiles)
+        );
+    } else {
+        // If the URL doesn't exist, add a new entry
+        $currentData[$currentUrl] = [
+            'url' => $currentUrl,
+            'includedFiles' => $srcAppFiles,
+        ];
+    }
+
+    // Convert the array back to JSON and save it to the file
+    $jsonData = json_encode($currentData, JSON_PRETTY_PRINT);
+    file_put_contents($requestJsonData, $jsonData);
+}
+
 set_error_handler(function ($severity, $message, $file, $line) {
     if (!(error_reporting() & $severity)) {
         // This error code is not included in error_reporting
@@ -668,13 +733,9 @@ function authenticateUserToken()
  */
 $metadata = [];
 /**
- * @var string $uri The URI of the current request
- */
-$uri = "";
-/**
  * @var string $pathname The pathname of the current request
  */
-$pathname = "";
+$pathname = '';
 /**
  * @var array $dynamicRouteParams The dynamic route parameters
  */
@@ -682,11 +743,11 @@ $dynamicRouteParams = [];
 /**
  * @var string $content The content to be included in the main layout file
  */
-$content = "";
+$content = '';
 /**
  * @var string $childContent The child content to be included in the layout file
  */
-$childContent = "";
+$childContent = '';
 /**
  * @var array $mainLayoutHead The head content to be included in the main layout file
  */
@@ -695,18 +756,23 @@ $mainLayoutHead = [];
  * @var array $mainLayoutFooter The footer content to be included in the main layout file
  */
 $mainLayoutFooter = [];
+/**
+ * @var string $requestUrl - The request URL.
+ */
+$requestUri = '';
 
 try {
     $_determineContentToInclude = determineContentToInclude();
     $_contentToInclude = $_determineContentToInclude['path'] ?? '';
     $_layoutsToInclude = $_determineContentToInclude['layouts'] ?? [];
-    $uri = $_determineContentToInclude['uri'] ?? '';
-    $pathname = $uri ? "/" . $uri : "/";
+    $pathname = $_determineContentToInclude['uri'] ? '/' . $_determineContentToInclude['uri'] : '/';
+    $requestUri = $_determineContentToInclude['requestUri'] ? $_determineContentToInclude['requestUri'] : '/';
+    $_requestUriForFilesIncludes = $requestUri;
     $_fileToInclude = null;
     if (is_file($_contentToInclude)) {
         $_fileToInclude = basename($_contentToInclude); // returns the file name
     }
-    $metadata = $_metadataArray[$uri] ?? ($_metadataArray['default'] ?? []);
+    $metadata = $_metadataArray[$pathname] ?? ($_metadataArray['default'] ?? []);
 
     checkForDuplicateRoutes();
     authenticateUserToken();
@@ -723,7 +789,7 @@ try {
             exit;
         }
 
-        $filePath = APP_PATH . '/' . $uri;
+        $filePath = APP_PATH . $pathname;
         if (is_file($filePath)) {
             if (file_exists($filePath)) {
                 // Check if the file is a PHP file
@@ -799,15 +865,45 @@ try {
     }
 
     if (!$_isContentIncluded && !$_isChildContentIncluded) {
+        $secondRequestC69CD = $_data53C84['secondRequestC69CD'] ?? false;
+
+        if (!$secondRequestC69CD) {
+            createUpdateRequestData();
+        }
+
+        if ($isWire && !$secondRequestC69CD) {
+            $_requestFilesJson = SETTINGS_PATH . '/request-data.json';
+            $_requestFilesData = file_exists($_requestFilesJson) ? json_decode(file_get_contents($_requestFilesJson), true) : [];
+
+            if ($_requestFilesData[$_requestUriForFilesIncludes]) {
+                $_requestDataToLoop = $_requestFilesData[$_requestUriForFilesIncludes];
+
+                foreach ($_requestDataToLoop['includedFiles'] as $file) {
+                    if (file_exists($file)) {
+                        ob_start();
+                        require_once $file;
+                        $childContent .= ob_get_clean();
+                    }
+                }
+            }
+        }
+
         $content .= $childContent;
         $content .= getLoadingsFiles();
+
+        if ($secondRequestC69CD) {
+            echo $content;
+            return;
+        }
 
         ob_start();
         require_once APP_PATH . '/layout.php';
 
-        if ($isWire && !isset($_data53C84['secondRequestC69CD'])) {
+        if ($isWire && !$secondRequestC69CD) {
             ob_end_clean();
             wireCallback();
+        } else {
+            echo ob_get_clean();
         }
     } else {
         if ($_isContentIncluded) {

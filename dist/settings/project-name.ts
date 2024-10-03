@@ -1,4 +1,4 @@
-import { writeFile } from "fs";
+import { existsSync, unlink, writeFile } from "fs";
 import { join, basename, dirname, normalize, sep } from "path";
 import prismaPhpConfig from "../prisma-php.json";
 import { getFileMeta } from "./utils.js";
@@ -84,3 +84,13 @@ const configFilePath = join(__dirname, "..", "prisma-php.json");
 
 // Run the function with your config file path and the new project name
 updateProjectNameInConfig(configFilePath, newProjectName);
+
+const requestDataPath = join(__dirname, "request-data.json");
+if (existsSync(requestDataPath)) {
+  unlink(requestDataPath, (err) => {
+    if (err) {
+      // console.error("Error deleting request-data.json file:", err);
+      return;
+    }
+  });
+}
