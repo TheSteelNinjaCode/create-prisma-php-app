@@ -891,11 +891,6 @@ try {
         $content .= $childContent;
         $content .= getLoadingsFiles();
 
-        if ($secondRequestC69CD) {
-            echo $content;
-            return;
-        }
-
         ob_start();
         require_once APP_PATH . '/layout.php';
 

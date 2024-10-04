@@ -20,7 +20,7 @@
         </nav>
     </header>
     <main class="flex-1 flex justify-center items-center">
-        <section id="hero" class="w-full py-12 sm:py-24 md:py-32 lg:py-48">
+        <section id="hero" class="w-full">
             <div class="px-4 md:px-6">
                 <div class="flex flex-col items-center space-y-4 text-center">
                     <h1 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none flex items-center gap-3 justify-center">
