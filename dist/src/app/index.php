@@ -27,7 +27,7 @@
                         Welcome to Prisma PHP <img class="h-20 w-20 hidden sm:block" src="<?= $baseUrl ?>/assets/images/prisma-php.png" alt="Prisma PHP">
                     </h1>
                     <p class="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                        The Next Generation ORM for PHP
+                        Your Next Generation PHP Framework
                     </p>
                     <a class="inline-flex h-10 items-center justify-center rounded-md bg-gray-900 px-8 text-sm font-medium text-gray-50 shadow transition-colors hover:bg-gray-900/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-50/90 dark:focus-visible:ring-gray-300" href="https://prismaphp.tsnc.tech/docs?doc=get-started" target="_blank">
                         Get Started
