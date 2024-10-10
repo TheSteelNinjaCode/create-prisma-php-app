@@ -64,3 +64,6 @@ export async function swaggerConfig(): Promise<void> {
     console.error("Error saving Swagger JSON:", error);
   }
 }
+
+// Call the function to generate the Swagger JSON
+swaggerConfig();
