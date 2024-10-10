@@ -586,7 +586,6 @@ function modifyOutputLayoutForError($contentToAdd)
 {
     global
         $baseUrl,
-        $metadata,
         $content,
         $childContent,
         $uri,
@@ -712,8 +711,6 @@ $_filesListRoutes = getFilesListRoutes();
 
 require_once SETTINGS_PATH . '/public-functions.php';
 require_once SETTINGS_PATH . '/request-methods.php';
-$_metadataFile = APP_PATH . '/metadata.php';
-$_metadataArray = file_exists($_metadataFile) ? require_once $_metadataFile : [];
 $_fileToInclude = '';
 
 function authenticateUserToken()
@@ -728,10 +725,6 @@ function authenticateUserToken()
     }
 }
 
-/**
- * @var array $metadata Metadata information
- */
-$metadata = [];
 /**
  * @var string $pathname The pathname of the current request
  */
@@ -749,14 +742,6 @@ $content = '';
  */
 $childContent = '';
 /**
- * @var array $mainLayoutHead The head content to be included in the main layout file
- */
-$mainLayoutHead = [];
-/**
- * @var array $mainLayoutFooter The footer content to be included in the main layout file
- */
-$mainLayoutFooter = [];
-/**
  * @var string $requestUrl - The request URL.
  */
 $requestUri = '';
@@ -772,7 +757,6 @@ try {
     if (is_file($_contentToInclude)) {
         $_fileToInclude = basename($_contentToInclude); // returns the file name
     }
-    $metadata = $_metadataArray[$pathname] ?? ($_metadataArray['default'] ?? []);
 
     checkForDuplicateRoutes();
     authenticateUserToken();
@@ -791,7 +775,7 @@ try {
 
         $filePath = APP_PATH . $pathname;
         if (is_file($filePath)) {
-            if (file_exists($filePath)) {
+            if (file_exists($filePath) && $isXFilRequest) {
                 // Check if the file is a PHP file
                 if (pathinfo($filePath, PATHINFO_EXTENSION) === 'php') {
                     // Include the PHP file without setting the JSON header
@@ -890,6 +874,10 @@ try {
 
         $content .= $childContent;
         $content .= getLoadingsFiles();
+
+        if (!$_prismaPHPSettings['backendOnly']) {
+            $content .= '<script src="https://cdn.jsdelivr.net/npm/json5@2.2.3/dist/index.min.js"></script>';
+        }
 
         ob_start();
         require_once APP_PATH . '/layout.php';
