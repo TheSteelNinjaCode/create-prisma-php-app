@@ -1,3 +1,5 @@
+<?php use Lib\MainLayout; ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -9,7 +11,7 @@
 <body>
     <?= $content; ?>
     <!-- Dynamic Footer -->
-    <?= implode("\n", $mainLayoutFooter); ?>
+    <?= MainLayout::outputFooterScripts() ?>
 </body>
 
 </html>

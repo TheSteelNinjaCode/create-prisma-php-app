@@ -875,10 +875,6 @@ try {
         $content .= $childContent;
         $content .= getLoadingsFiles();
 
-        if (!$_prismaPHPSettings['backendOnly']) {
-            $content .= '<script src="https://cdn.jsdelivr.net/npm/json5@2.2.3/dist/index.min.js"></script>';
-        }
-
         ob_start();
         require_once APP_PATH . '/layout.php';
 
