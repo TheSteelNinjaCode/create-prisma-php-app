@@ -645,21 +645,6 @@ function authenticateUserToken()
     }
 }
 
-set_error_handler(function ($severity, $message, $file, $line) {
-    if (!(error_reporting() & $severity)) {
-        // This error code is not included in error_reporting
-        return;
-    }
-
-    // Capture the specific severity types, including warnings (E_WARNING)
-    $errorContent = "<div class='error'>Error: {$severity} - {$message} in {$file} on line {$line}</div>";
-
-    // If needed, log it or output immediately based on severity
-    if ($severity === E_WARNING || $severity === E_NOTICE) {
-        modifyOutputLayoutForError($errorContent);
-    }
-});
-
 set_exception_handler(function ($exception) {
     $errorContent = "<div class='error'>Exception: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
     modifyOutputLayoutForError($errorContent);
@@ -828,3 +813,26 @@ try {
     $_errorDetails = "<div class='error'>$_errorDetails</div>";
     modifyOutputLayoutForError($_errorDetails);
 }
+
+(function () {
+    $lastErrorCapture = error_get_last();
+    if ($lastErrorCapture !== null) {
+        $errorContent = "<div class='error'>Error: " . $lastErrorCapture['message'] . " in " . $lastErrorCapture['file'] . " on line " . $lastErrorCapture['line'] . "</div>";
+        modifyOutputLayoutForError($errorContent);
+    }
+})();
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) {
+        // This error code is not included in error_reporting
+        return;
+    }
+
+    // Capture the specific severity types, including warnings (E_WARNING)
+    $errorContent = "<div class='error'>Error: {$severity} - {$message} in {$file} on line {$line}</div>";
+
+    // If needed, log it or output immediately based on severity
+    if ($severity === E_WARNING || $severity === E_NOTICE) {
+        modifyOutputLayoutForError($errorContent);
+    }
+});
