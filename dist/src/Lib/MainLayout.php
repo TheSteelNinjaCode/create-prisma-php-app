@@ -4,22 +4,22 @@ namespace Lib;
 
 class MainLayout
 {
-    private static $headScripts = [];
-    private static $footerScripts = [];
-
-    // Default metadata properties
     public static string $title = '';
     public static string $description = '';
+    public static string $children = '';
+    public static string $childLayoutChildren = '';
 
-    // Custom metadata storage
+    private static $headScripts = [];
+    private static $footerScripts = [];
     private static array $customMetadata = [];
 
     /**
      * Adds one or more scripts to the head section if they are not already present.
      *
      * @param string ...$scripts The scripts to be added to the head section.
+     * @return void
      */
-    public static function addHeadScript(string ...$scripts)
+    public static function addHeadScript(string ...$scripts): void
     {
         foreach ($scripts as $script) {
             if (!in_array($script, self::$headScripts)) {
@@ -36,8 +36,9 @@ class MainLayout
      * it will be appended.
      *
      * @param string ...$scripts One or more scripts to be added to the footer.
+     * @return void
      */
-    public static function addFooterScript(string ...$scripts)
+    public static function addFooterScript(string ...$scripts): void
     {
         foreach ($scripts as $script) {
             if (!in_array($script, self::$footerScripts)) {
@@ -51,9 +52,19 @@ class MainLayout
      *
      * @return void
      */
-    public static function outputHeadScripts()
+    public static function outputHeadScripts(): void
     {
-        echo implode("\n", self::$headScripts);
+        $headScriptsWithAttributes = array_map(function ($tag) {
+            // Check if the tag is a <link> or <script> and add the dynamic attribute
+            if (strpos($tag, '<script') !== false) {
+                return str_replace('<script', '<script pp-dynamic-script="81D7D"', $tag);
+            } elseif (strpos($tag, '<link') !== false) {
+                return str_replace('<link', '<link pp-dynamic-link="81D7D"', $tag);
+            }
+            return $tag; // Return the tag unchanged if it's neither <script> nor <link>
+        }, self::$headScripts);
+
+        echo implode("\n", $headScriptsWithAttributes);
     }
 
     /**
@@ -61,7 +72,7 @@ class MainLayout
      *
      * @return void
      */
-    public static function outputFooterScripts()
+    public static function outputFooterScripts(): void
     {
         echo implode("\n", self::$footerScripts);
     }
@@ -71,7 +82,7 @@ class MainLayout
      *
      * @return void
      */
-    public static function clearHeadScripts()
+    public static function clearHeadScripts(): void
     {
         self::$headScripts = [];
     }
@@ -81,7 +92,7 @@ class MainLayout
      *
      * @return void
      */
-    public static function clearFooterScripts()
+    public static function clearFooterScripts(): void
     {
         self::$footerScripts = [];
     }
@@ -93,7 +104,7 @@ class MainLayout
      * @param string $value
      * @return void
      */
-    public static function addCustomMetadata(string $key, string $value)
+    public static function addCustomMetadata(string $key, string $value): void
     {
         self::$customMetadata[$key] = $value;
     }
@@ -114,15 +125,24 @@ class MainLayout
      *
      * @return void
      */
-    public static function outputMetadata()
+    public static function outputMetadata(): void
     {
         // Output standard metadata
         echo '<title>' . htmlspecialchars(self::$title) . '</title>' . "\n";
-        echo '<meta name="description" content="' . htmlspecialchars(self::$description) . '">' . "\n";
 
-        // Output custom metadata
+        // Ensure the description is included in custom metadata if not already present
+        if (!isset(self::$customMetadata['description'])) {
+            self::$customMetadata['description'] = self::$description;
+        }
+
+        $customMetadataContent = [];
         foreach (self::$customMetadata as $key => $value) {
-            echo '<meta name="' . htmlspecialchars($key) . '" content="' . htmlspecialchars($value) . '">' . "\n";
+            // Add the dynamic meta ID attribute to each <meta> tag
+            $customMetadataContent[] = '<meta name="' . htmlspecialchars($key) . '" content="' . htmlspecialchars($value) . '" pp-dynamic-meta="81D7D">';
+        }
+
+        if (!empty($customMetadataContent)) {
+            echo implode("\n", $customMetadataContent) . "\n";
         }
     }
 
@@ -131,7 +151,7 @@ class MainLayout
      *
      * @return void
      */
-    public static function clearCustomMetadata()
+    public static function clearCustomMetadata(): void
     {
         self::$customMetadata = [];
     }

@@ -4,7 +4,7 @@ namespace Lib\FileManager;
 
 class UploadFile
 {
-    protected string $destination;
+    protected string $destination = '';
     protected array $messages = [];
     protected array $errorCode = [];
     protected int $maxSize = 51200; // 50KB default
@@ -19,7 +19,7 @@ class UploadFile
     protected bool $typeCheckingOn = true;
     protected array $notTrusted = ['bin', 'cgi', 'exe', 'js', 'pl', 'php', 'py', 'sh'];
     protected string $suffix = '.upload';
-    protected bool $renameDuplicates;
+    protected bool $renameDuplicates = true;
 
     /**
      * Constructor for the UploadFile class.

@@ -5,10 +5,6 @@
  */
 define("SETTINGS_PATH", dirname(__FILE__));
 /**
- * @var string PUBLIC_PATH - The absolute path to the public directory ./public
- */
-define("PUBLIC_PATH", dirname(SETTINGS_PATH) . "/public");
-/**
  * @var string PRISMA_LIB_PATH - The absolute path to the Prisma library directory ./src/Lib/Prisma
  */
 define("PRISMA_LIB_PATH", dirname(SETTINGS_PATH) . "/src/Lib/Prisma");

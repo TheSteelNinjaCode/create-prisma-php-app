@@ -9,18 +9,19 @@ use DateTime;
 use Lib\Validator;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use Lib\Request;
 
 class Auth
 {
     public const PAYLOAD_NAME = 'role';
     public const ROLE_NAME = '';
-    public const PAYLOAD = 'payload_2183A';
+    public const PAYLOAD_SESSION_KEY = 'payload_2183A';
     public const COOKIE_NAME = 'pphp_aut_token_D36E5';
 
     private static ?Auth $instance = null;
     private const PPHPAUTH = 'pphpauth';
-    private $secretKey;
-    private $defaultTokenValidity = '1h'; // Default to 1 hour
+    private string $secretKey;
+    private string $defaultTokenValidity = '1h'; // Default to 1 hour
 
     /**
      * Private constructor to prevent direct instantiation.
@@ -62,16 +63,16 @@ class Auth
      * @throws InvalidArgumentException Thrown if the secret key is not set or if the duration format is invalid.
      *
      * Example:
-     *   $auth = new Authentication();
+     *   $auth = Auth::getInstance();
      *   $auth->setSecretKey('your_secret_key');
      *   try {
-     *       $jwt = $auth->authenticate('Admin', '1h');
+     *       $jwt = $auth->signIn('Admin', '1h');
      *       echo "JWT: " . $jwt;
      *   } catch (\InvalidArgumentException $e) {
      *       echo "Error: " . $e->getMessage();
      *   }
      */
-    public function authenticate($data, string $tokenValidity = null): string
+    public function signIn($data, string $tokenValidity = null): string
     {
         if (!$this->secretKey) {
             throw new \InvalidArgumentException("Secret key is required for authentication.");
@@ -89,7 +90,7 @@ class Auth
         ];
 
         // Set the payload in the session
-        $_SESSION[self::PAYLOAD] = $payload;
+        $_SESSION[self::PAYLOAD_SESSION_KEY] = $payload;
 
         // Encode the JWT
         $jwt = JWT::encode($payload, $this->secretKey, 'HS256');
@@ -109,15 +110,13 @@ class Auth
      */
     public function isAuthenticated(): bool
     {
-        global $_fileToInclude;
-
         if (!isset($_COOKIE[self::COOKIE_NAME])) {
-            unset($_SESSION[self::PAYLOAD]);
+            unset($_SESSION[self::PAYLOAD_SESSION_KEY]);
             return false;
         }
 
-        if ($_fileToInclude === 'route.php') {
-            $bearerToken = getBearerToken();
+        if (Request::$fileToInclude === 'route.php') {
+            $bearerToken = Request::getBearerToken();
             $verifyBearerToken = $this->verifyToken($bearerToken);
             if (!$verifyBearerToken) {
                 return false;
@@ -250,24 +249,24 @@ class Auth
      * @param string|null $redirect Optional parameter specifying the URL to redirect to after logging out.
      * 
      * Example:
-     *  $auth = new Authentication();
-     * $auth->logout('/login');
+     *  $auth = Auth::getInstance();
+     * $auth->signOut('/login');
      * 
      * @return void
      */
-    public function logout(string $redirect = null)
+    public function signOut(string $redirect = null)
     {
         if (isset($_COOKIE[self::COOKIE_NAME])) {
             unset($_COOKIE[self::COOKIE_NAME]);
             setcookie(self::COOKIE_NAME, '', time() - 3600, '/');
         }
 
-        if (isset($_SESSION[self::PAYLOAD])) {
-            unset($_SESSION[self::PAYLOAD]);
+        if (isset($_SESSION[self::PAYLOAD_SESSION_KEY])) {
+            unset($_SESSION[self::PAYLOAD_SESSION_KEY]);
         }
 
         if ($redirect) {
-            redirect($redirect);
+            Request::redirect($redirect);
         }
     }
 
@@ -279,8 +278,8 @@ class Auth
      */
     public function getPayload()
     {
-        if (isset($_SESSION[self::PAYLOAD])) {
-            $value = $_SESSION[self::PAYLOAD][self::PAYLOAD_NAME];
+        if (isset($_SESSION[self::PAYLOAD_SESSION_KEY])) {
+            $value = $_SESSION[self::PAYLOAD_SESSION_KEY][self::PAYLOAD_NAME];
             return is_array($value) ? new \ArrayObject($value, \ArrayObject::ARRAY_AS_PROPS) : $value;
         }
 
@@ -337,27 +336,27 @@ class Auth
      */
     public function authProviders(...$providers)
     {
-        global $isGet, $dynamicRouteParams;
+        $dynamicRouteParams = Request::$dynamicParams;
 
-        if ($isGet && in_array('signin', $dynamicRouteParams[self::PPHPAUTH])) {
+        if (Request::$isGet && in_array('signin', $dynamicRouteParams[self::PPHPAUTH])) {
             foreach ($providers as $provider) {
                 if ($provider instanceof GithubProvider && in_array('github', $dynamicRouteParams[self::PPHPAUTH])) {
                     $githubAuthUrl = "https://github.com/login/oauth/authorize?scope=user:email%20read:user&client_id={$provider->clientId}";
-                    redirect($githubAuthUrl);
+                    Request::redirect($githubAuthUrl);
                 } elseif ($provider instanceof GoogleProvider && in_array('google', $dynamicRouteParams[self::PPHPAUTH])) {
                     $googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?"
                         . "scope=" . urlencode('email profile') . "&"
                         . "response_type=code&"
                         . "client_id=" . urlencode($provider->clientId) . "&"
                         . "redirect_uri=" . urlencode($provider->redirectUri);
-                    redirect($googleAuthUrl);
+                    Request::redirect($googleAuthUrl);
                 }
             }
         }
 
         $authCode = Validator::string($_GET['code'] ?? '');
 
-        if ($isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)) {
+        if (Request::$isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)) {
             if (in_array('github', $dynamicRouteParams[self::PPHPAUTH])) {
                 $provider = $this->findProvider($providers, GithubProvider::class);
 
@@ -444,7 +443,7 @@ class Auth
                 ];
                 $userToAuthenticate = (object)$userToAuthenticate;
 
-                $this->authenticate($userToAuthenticate, $githubProvider->maxAge);
+                $this->signIn($userToAuthenticate, $githubProvider->maxAge);
             }
         }
     }
@@ -502,7 +501,7 @@ class Auth
                 ];
                 $userToAuthenticate = (object)$userToAuthenticate;
 
-                $this->authenticate($userToAuthenticate, $googleProvider->maxAge);
+                $this->signIn($userToAuthenticate, $googleProvider->maxAge);
             }
         }
     }

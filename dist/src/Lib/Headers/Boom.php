@@ -16,21 +16,21 @@ class Boom
      *
      * @var int
      */
-    protected int $statusCode;
+    protected int $statusCode = 500;
 
     /**
      * Error message.
      *
      * @var string
      */
-    protected string $errorMessage;
+    protected string $errorMessage = 'Internal Server Error';
 
     /**
      * Additional error details.
      *
      * @var array
      */
-    protected array $errorDetails;
+    protected array $errorDetails = [];
 
     /**
      * Boom constructor.

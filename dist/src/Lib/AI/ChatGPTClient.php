@@ -11,10 +11,10 @@ use Lib\Validator;
  */
 class ChatGPTClient
 {
-    private $client;
-    private $apiUrl;
-    private $apiKey;
-    private $cache = [];
+    private Client $client;
+    private string $apiUrl = '';
+    private string $apiKey = '';
+    private array $cache = [];
 
     /**
      * Constructor initializes the Guzzle HTTP client and sets up API configuration.
