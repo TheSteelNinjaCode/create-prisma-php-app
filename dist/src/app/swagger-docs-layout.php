@@ -14,7 +14,6 @@ MainLayout::$description = !empty(MainLayout::$description) ? MainLayout::$descr
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?= MainLayout::outputMetadata(); ?>
-    <?= MainLayout::outputHeadScripts(); ?>
 </head>
 
 <body>

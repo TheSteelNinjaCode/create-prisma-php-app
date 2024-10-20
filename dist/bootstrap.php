@@ -688,7 +688,7 @@ try {
 
         $_requestFilePath = APP_PATH . Request::$pathname;
         if (is_file($_requestFilePath)) {
-            if (file_exists($_requestFilePath) && $isXFileRequest) {
+            if (file_exists($_requestFilePath) && Request::$isXFileRequest) {
                 // Check if the file is a PHP file
                 if (pathinfo($_requestFilePath, PATHINFO_EXTENSION) === 'php') {
                     // Include the PHP file without setting the JSON header
