@@ -9,12 +9,12 @@ class PrismaPHPSettings
      */
     public static \ArrayObject $option;
 
-    public static array $routeFiles;
+    public static array $routeFiles = [];
 
     public static function init(): void
     {
         self::$option = self::getPrismaSettings();
-        self::$routeFiles = self::getRouteFileList();
+        self::$routeFiles = self::getRoutesFileList();
     }
 
     private static function getPrismaSettings(): \ArrayObject
@@ -33,7 +33,7 @@ class PrismaPHPSettings
         }
     }
 
-    private static function getRouteFileList(): array
+    private static function getRoutesFileList(): array
     {
         $jsonFileName = SETTINGS_PATH . '/files-list.json';
         $routeFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
