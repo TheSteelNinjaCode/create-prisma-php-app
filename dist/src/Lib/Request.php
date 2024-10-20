@@ -12,7 +12,7 @@ class Request
     const baseUrl = '/src/app';
 
     /**
-     * @var \ArrayObject $params A static property to hold request parameters.
+     * @var \stdClass $params A static property to hold request parameters.
      * 
      * This property is used to hold request parameters that are passed to the request.
      * 
@@ -31,7 +31,7 @@ class Request
     public static \ArrayObject $params;
 
     /**
-     * @var \ArrayObject $dynamicParams A static property to hold dynamic parameters.
+     * @var \stdClass $dynamicParams A static property to hold dynamic parameters.
      * 
      * This property is used to hold dynamic parameters that are passed to the request.
      * 
@@ -163,8 +163,8 @@ class Request
      */
     public static function init(): void
     {
-        self::$params = new \ArrayObject();
-        self::$dynamicParams = new \ArrayObject();
+        self::$params = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
+        self::$dynamicParams = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
 
         self::$referer = $_SERVER['HTTP_REFERER'] ?? 'Unknown';
         self::$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -227,7 +227,7 @@ class Request
      */
     private static function getParams(): \ArrayObject
     {
-        $params = new \ArrayObject();
+        $params = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
 
         if (self::$method === 'GET') {
             $params = new \ArrayObject($_GET, \ArrayObject::ARRAY_AS_PROPS);
