@@ -1,0 +1,7 @@
+{
+  "swaggerDocsDir": "src/app/swagger-docs/apis",
+  "skipDefaultName": ["autoincrement", "cuid", "uuid", "now"],
+  "skipFields": ["updatedAt"],
+  "generateEndpoints": false,
+  "generatePhpClasses": true
+}

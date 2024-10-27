@@ -9,8 +9,8 @@ class MainLayout
     public static string $children = '';
     public static string $childLayoutChildren = '';
 
-    private static $headScripts = [];
-    private static $footerScripts = [];
+    private static array $headScripts = [];
+    private static array $footerScripts = [];
     private static array $customMetadata = [];
 
     /**

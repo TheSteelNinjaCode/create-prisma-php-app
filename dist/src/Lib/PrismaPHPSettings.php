@@ -5,10 +5,21 @@ namespace Lib;
 class PrismaPHPSettings
 {
     /**
+     * The settings from the prisma-php.json file.
      * 
+     * @var \stdClass
+     * @access public
+     * @static
      */
     public static \ArrayObject $option;
 
+    /**
+     * The list of route files from the files-list.json file.
+     * 
+     * @var array
+     * @access public
+     * @static
+     */
     public static array $routeFiles = [];
 
     public static function init(): void
@@ -28,7 +39,7 @@ class PrismaPHPSettings
             if (json_last_error() === JSON_ERROR_NONE) {
                 return new \ArrayObject($decodedJson, \ArrayObject::ARRAY_AS_PROPS);
             } else {
-                return new \ArrayObject([]);
+                return new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
             }
         }
     }

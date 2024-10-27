@@ -161,7 +161,7 @@ function getFilePrecedence()
 
 function uriExtractor(string $scriptUrl): string
 {
-    $projectName = PrismaPHPSettings::$option['projectName'] ?? '';
+    $projectName = PrismaPHPSettings::$option->projectName ?? '';
     if (empty($projectName)) {
         return "/";
     }
@@ -675,7 +675,7 @@ try {
     authenticateUserToken();
 
     if (empty($_contentToInclude)) {
-        if (!Request::$isXFileRequest && PrismaPHPSettings::$option['backendOnly']) {
+        if (!Request::$isXFileRequest && PrismaPHPSettings::$option->backendOnly) {
             // Set the header and output a JSON response for permission denied
             header('Content-Type: application/json');
             echo json_encode([
@@ -701,7 +701,7 @@ try {
                 }
                 exit;
             }
-        } else if (PrismaPHPSettings::$option['backendOnly']) {
+        } else if (PrismaPHPSettings::$option->backendOnly) {
             // Set the header and output a JSON response for file not found
             header('Content-Type: application/json');
             echo json_encode([

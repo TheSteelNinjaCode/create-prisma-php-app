@@ -17,10 +17,6 @@ class Request
      * This property is used to hold request parameters that are passed to the request.
      * 
      * Example usage:
-     * ```php
-     * Request::$params = new \ArrayObject(['id' => 123]);
-     * ```
-     * 
      * The parameters can be accessed using the following syntax:
      * ```php
      * $id = Request::$params['id'];
@@ -36,16 +32,22 @@ class Request
      * This property is used to hold dynamic parameters that are passed to the request.
      * 
      * Example usage:
-     * 
      * Single parameter:
      * ```php
-     * Request::$dynamicParams = new \ArrayObject(['id' => 123]);
+     * $id = Request::$dynamicParams['id'];
+     * OR
+     * $id = Request::$dynamicParams->id;
      * ```
      * 
      * Multiple parameters:
      * ```php
-     * Request::$dynamicParams = new \ArrayObject(['url' => ['123', '456']]);
+     * $dynamicParams = Request::$dynamicParams;
+     * echo '<pre>';
+     * print_r($dynamicParams);
+     * echo '</pre>';
      * ```
+     * 
+     * The above code will output the dynamic parameters as an array, which can be useful for debugging purposes.
      */
     public static \ArrayObject $dynamicParams;
 
