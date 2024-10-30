@@ -2,7 +2,7 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 import { writeFileSync } from "fs";
 import chokidar from "chokidar";
 import browserSync, { BrowserSyncInstance } from "browser-sync";
-import prismaPhpConfig from "../prisma-php.json";
+import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
 import { join } from "path";
 import { getFileMeta } from "./utils.js";
@@ -43,7 +43,7 @@ bs.init(
         next();
       },
       createProxyMiddleware({
-        target: prismaPhpConfig.bsTarget,
+        target: prismaPhpConfigJson.bsTarget,
         changeOrigin: true,
         pathRewrite: {},
       }),

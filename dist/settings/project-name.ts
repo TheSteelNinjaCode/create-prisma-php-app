@@ -1,6 +1,6 @@
 import { existsSync, unlink, writeFile } from "fs";
 import { join, basename, dirname, normalize, sep } from "path";
-import prismaPhpConfig from "../prisma-php.json";
+import prismaPhpConfigJson from "../prisma-php.json";
 import { getFileMeta } from "./utils.js";
 
 const { __dirname } = getFileMeta();
@@ -15,20 +15,23 @@ function updateProjectNameInConfig(
   const filePathDir = dirname(filePath);
 
   // Update the projectName directly in the imported config
-  prismaPhpConfig.projectName = newProjectName;
+  prismaPhpConfigJson.projectName = newProjectName;
 
   // Update other paths
-  prismaPhpConfig.projectRootPath = filePathDir;
+  prismaPhpConfigJson.projectRootPath = filePathDir;
 
-  const targetPath = getTargetPath(filePathDir, prismaPhpConfig.phpEnvironment);
+  const targetPath = getTargetPath(
+    filePathDir,
+    prismaPhpConfigJson.phpEnvironment
+  );
 
-  prismaPhpConfig.bsTarget = `http://localhost${targetPath}`;
-  prismaPhpConfig.bsPathRewrite["^/"] = targetPath;
+  prismaPhpConfigJson.bsTarget = `http://localhost${targetPath}`;
+  prismaPhpConfigJson.bsPathRewrite["^/"] = targetPath;
 
   // Save the updated config back to the JSON file
   writeFile(
     filePath,
-    JSON.stringify(prismaPhpConfig, null, 2),
+    JSON.stringify(prismaPhpConfigJson, null, 2),
     "utf8",
     (err) => {
       if (err) {

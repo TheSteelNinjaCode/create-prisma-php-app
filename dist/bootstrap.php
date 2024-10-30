@@ -381,7 +381,11 @@ function checkForDuplicateRoutes()
     }
 
     if (!empty($errorMessages)) {
-        $errorMessageString = implode("<br>", $errorMessages);
+        if (isAjaxOrXFileRequestOrRouteFile()) {
+            $errorMessageString = implode("\n", $errorMessages);
+        } else {
+            $errorMessageString = implode("<br>", $errorMessages);
+        }
         modifyOutputLayoutForError($errorMessageString);
     }
 }
@@ -571,18 +575,36 @@ function modifyOutputLayoutForError($contentToAdd)
 
         $errorContent = $contentToAdd;
 
-        $layoutFile = APP_PATH . '/layout.php';
-        if (file_exists($layoutFile)) {
-
-            ob_start();
-            include_once $errorFile;
-            MainLayout::$children = ob_get_clean();
-            include $layoutFile;
+        if (isAjaxOrXFileRequestOrRouteFile()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error' => $errorContent
+            ]);
+            http_response_code(403);
         } else {
-            echo $errorContent;
+            $layoutFile = APP_PATH . '/layout.php';
+            if (file_exists($layoutFile)) {
+
+                ob_start();
+                require_once $errorFile;
+                MainLayout::$children = ob_get_clean();
+                require_once $layoutFile;
+            } else {
+                echo $errorContent;
+            }
         }
     } else {
-        echo $contentToAdd;
+        if (isAjaxOrXFileRequestOrRouteFile()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error' => $contentToAdd
+            ]);
+            http_response_code(403);
+        } else {
+            echo $contentToAdd;
+        }
     }
     exit;
 }
@@ -646,20 +668,33 @@ function authenticateUserToken()
 }
 
 set_exception_handler(function ($exception) {
-    $errorContent = "<div class='error'>Exception: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
+    if (isAjaxOrXFileRequestOrRouteFile()) {
+        $errorContent = "Exception: " . $exception->getMessage();
+    } else {
+        $errorContent = "<div class='error'>Exception: " . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . "</div>";
+    }
     modifyOutputLayoutForError($errorContent);
 });
 
 register_shutdown_function(function () {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR])) {
-        $formattedError = "<div class='error'>Fatal Error: " . htmlspecialchars($error['message'], ENT_QUOTES, 'UTF-8') .
-            " in " . htmlspecialchars($error['file'], ENT_QUOTES, 'UTF-8') .
-            " on line " . $error['line'] . "</div>";
-        $errorContent = $formattedError;
+
+        if (isAjaxOrXFileRequestOrRouteFile()) {
+            $errorContent = "Fatal Error: " . $error['message'] . " in " . $error['file'] . " on line " . $error['line'];
+        } else {
+            $errorContent = "<div class='error'>Fatal Error: " . htmlspecialchars($error['message'], ENT_QUOTES, 'UTF-8') .
+                " in " . htmlspecialchars($error['file'], ENT_QUOTES, 'UTF-8') .
+                " on line " . $error['line'] . "</div>";
+        }
         modifyOutputLayoutForError($errorContent);
     }
 });
+
+function isAjaxOrXFileRequestOrRouteFile(): bool
+{
+    return Request::$isAjax || Request::$isXFileRequest || Request::$fileToInclude === 'route.php';
+}
 
 try {
     $_determineContentToInclude = determineContentToInclude();
@@ -800,24 +835,42 @@ try {
         }
     } else {
         if ($_isContentIncluded) {
-            echo "<div class='error'>The parent layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; Or &lt;?= MainLayout::\$children ?&gt;<br>" . "<strong>$_parentLayoutPath</strong></div>";
+            if (isAjaxOrXFileRequestOrRouteFile()) {
+                $_errorDetails = "The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;<br><strong>$layoutPath</strong>";
+            } else {
+                $_errorDetails = "<div class='error'>The parent layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; Or &lt;?= MainLayout::\$children ?&gt;<br>" . "<strong>$_parentLayoutPath</strong></div>";
+            }
+            modifyOutputLayoutForError($_errorDetails);
         } else {
-            $_errorDetails = "<div class='error'>The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;<br><strong>$layoutPath</strong></div>";
+            if (isAjaxOrXFileRequestOrRouteFile()) {
+                $_errorDetails = "The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;<br><strong>$layoutPath</strong>";
+            } else {
+                $_errorDetails = "<div class='error'>The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;<br><strong>$layoutPath</strong></div>";
+            }
             modifyOutputLayoutForError($_errorDetails);
         }
     }
 } catch (Throwable $e) {
-    $_errorDetails = "Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
-    $_errorDetails .= "<br>File: " . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
-    $_errorDetails .= "<br>Line: " . htmlspecialchars($e->getLine(), ENT_QUOTES, 'UTF-8');
-    $_errorDetails = "<div class='error'>$_errorDetails</div>";
+    if (isAjaxOrXFileRequestOrRouteFile()) {
+        $_errorDetails = "Unhandled Exception: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine();
+    } else {
+        $_errorDetails = "Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+        $_errorDetails .= "<br>File: " . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
+        $_errorDetails .= "<br>Line: " . htmlspecialchars($e->getLine(), ENT_QUOTES, 'UTF-8');
+        $_errorDetails = "<div class='error'>$_errorDetails</div>";
+    }
     modifyOutputLayoutForError($_errorDetails);
 }
 
 (function () {
     $lastErrorCapture = error_get_last();
     if ($lastErrorCapture !== null) {
-        $errorContent = "<div class='error'>Error: " . $lastErrorCapture['message'] . " in " . $lastErrorCapture['file'] . " on line " . $lastErrorCapture['line'] . "</div>";
+
+        if (isAjaxOrXFileRequestOrRouteFile()) {
+            $errorContent = "Error: " . $lastErrorCapture['message'] . " in " . $lastErrorCapture['file'] . " on line " . $lastErrorCapture['line'];
+        } else {
+            $errorContent = "<div class='error'>Error: " . $lastErrorCapture['message'] . " in " . $lastErrorCapture['file'] . " on line " . $lastErrorCapture['line'] . "</div>";
+        }
         modifyOutputLayoutForError($errorContent);
     }
 })();
@@ -829,7 +882,11 @@ set_error_handler(function ($severity, $message, $file, $line) {
     }
 
     // Capture the specific severity types, including warnings (E_WARNING)
-    $errorContent = "<div class='error'>Error: {$severity} - {$message} in {$file} on line {$line}</div>";
+    if (isAjaxOrXFileRequestOrRouteFile()) {
+        $errorContent = "Error: {$severity} - {$message} in {$file} on line {$line}";
+    } else {
+        $errorContent = "<div class='error'>Error: {$message} in {$file} on line {$line}</div>";
+    }
 
     // If needed, log it or output immediately based on severity
     if ($severity === E_WARNING || $severity === E_NOTICE) {

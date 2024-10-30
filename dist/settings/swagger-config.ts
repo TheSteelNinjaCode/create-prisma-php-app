@@ -3,7 +3,8 @@ import { writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import { getFileMeta } from "./utils.js";
-import bsConnectionInfo from "./bs-config.json";
+import bsConfigJson from "./bs-config.json";
+import prismaPhpConfigJson from "../prisma-php.json";
 
 const { __dirname } = getFileMeta();
 
@@ -23,7 +24,7 @@ export async function swaggerConfig(): Promise<void> {
       },
       servers: [
         {
-          url: bsConnectionInfo.local, // For Development
+          url: bsConfigJson.local, // For Development
           description: "Development Server",
         },
         {
@@ -65,5 +66,5 @@ export async function swaggerConfig(): Promise<void> {
   }
 }
 
-// Call the function to generate the Swagger JSON
-swaggerConfig();
+if (prismaPhpConfigJson.swaggerDocs && !prismaPhpConfigJson.prisma)
+  swaggerConfig();

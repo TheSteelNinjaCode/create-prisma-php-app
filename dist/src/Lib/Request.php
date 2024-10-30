@@ -195,8 +195,36 @@ class Request
      */
     private static function isAjaxRequest(): bool
     {
-        return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
-            || in_array(strtoupper(self::$method), ['POST', 'PUT', 'PATCH', 'DELETE']);
+        $isAjax = false;
+
+        // Check for standard AJAX header
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            $isAjax = true;
+        }
+
+        // Check for common AJAX content types
+        if (!empty($_SERVER['CONTENT_TYPE'])) {
+            $ajaxContentTypes = [
+                'application/json',
+                'application/x-www-form-urlencoded',
+                'multipart/form-data',
+            ];
+
+            foreach ($ajaxContentTypes as $contentType) {
+                if (strpos($_SERVER['CONTENT_TYPE'], $contentType) !== false) {
+                    $isAjax = true;
+                    break;
+                }
+            }
+        }
+
+        // Check for common AJAX request methods
+        $ajaxMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+        if (in_array(strtoupper($_SERVER['REQUEST_METHOD']), $ajaxMethods)) {
+            $isAjax = true;
+        }
+
+        return $isAjax;
     }
 
     /**
@@ -217,8 +245,8 @@ class Request
     {
         $serverFetchSite = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
         if (isset($serverFetchSite) && $serverFetchSite === 'same-origin') {
-            $headers = getallheaders();
-            return isset($headers['http_pphp_x_file_request']) && strtolower($headers['http_pphp_x_file_request']) === 'true';
+            $headers = array_change_key_case(getallheaders(), CASE_LOWER);
+            return isset($headers['http_pphp_x_file_request']) && $headers['http_pphp_x_file_request'] === 'true';
         }
 
         return false;
