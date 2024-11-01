@@ -565,7 +565,11 @@ function modifyOutputLayoutForError($contentToAdd)
 
     if ($_ENV['SHOW_ERRORS'] === "false") {
         if ($errorFileExists) {
-            $contentToAdd = "<div class='error'>An error occurred</div>";
+            if (isAjaxOrXFileRequestOrRouteFile()) {
+                $contentToAdd = "An error occurred";
+            } else {
+                $contentToAdd = "<div class='error'>An error occurred</div>";
+            }
         } else {
             exit; // Exit if SHOW_ERRORS is false and no error file exists
         }
