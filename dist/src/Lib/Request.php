@@ -199,6 +199,11 @@ class Request
         return \trim($contentType);
     }
 
+    private static function isJson(): bool
+    {
+        return 1 === \preg_match('#^application/(|\S+\+)json($|[ ;])#', self::$contentType);
+    }
+
     /**
      * Checks if the request is an AJAX request.
      */
@@ -210,25 +215,20 @@ class Request
         }
 
         // Check for common AJAX content types
-        if (empty($_SERVER['CONTENT_TYPE']) ||
-            !\in_array(
-                \strtolower($_SERVER['CONTENT_TYPE']),
-                [
-                    'application/json',
-                    'application/x-www-form-urlencoded',
-                    'multipart/form-data',
-                ],
-                true
-            )
+        if (!match (self::$contentType) {
+                'application/x-www-form-urlencoded',
+                'multipart/form-data' => true,
+                default => false
+            } && !self::isJson()
         ) {
             return false;
         }
 
         // Check for common AJAX request methods
-        return \in_array(
-            \strtoupper($_SERVER['REQUEST_METHOD']),
-            ['POST', 'PUT', 'PATCH', 'DELETE']
-        );
+        return match (self::$method) {
+            'POST', 'PUT', 'PATCH', 'DELETE' => true,
+            default => false
+        };
     }
 
     /**
@@ -271,7 +271,7 @@ class Request
             return;
         }
 
-        if (\preg_match('#^application/(|\S+\+)json($|[ ;])#', self::$contentType)) {
+        if (self::isJson()) {
             $jsonInput = \file_get_contents('php://input');
             if (empty($jsonInput)) {
                 \header('HTTP/1.1 400 Bad Request');
