@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Lib;
 
@@ -6,16 +6,16 @@ class Request
 {
     /**
      * The base URL for the application.
-     * 
+     *
      * @var string
      */
     const baseUrl = '/src/app';
 
     /**
-     * @var \stdClass $params A static property to hold request parameters.
-     * 
+     * @var \ArrayObject $params A static property to hold request parameters.
+     *
      * This property is used to hold request parameters that are passed to the request.
-     * 
+     *
      * Example usage:
      * The parameters can be accessed using the following syntax:
      * ```php
@@ -28,9 +28,9 @@ class Request
 
     /**
      * @var \stdClass $dynamicParams A static property to hold dynamic parameters.
-     * 
+     *
      * This property is used to hold dynamic parameters that are passed to the request.
-     * 
+     *
      * Example usage:
      * Single parameter:
      * ```php
@@ -38,7 +38,7 @@ class Request
      * OR
      * $id = Request::$dynamicParams->id;
      * ```
-     * 
+     *
      * Multiple parameters:
      * ```php
      * $dynamicParams = Request::$dynamicParams;
@@ -46,7 +46,7 @@ class Request
      * print_r($dynamicParams);
      * echo '</pre>';
      * ```
-     * 
+     *
      * The above code will output the dynamic parameters as an array, which can be useful for debugging purposes.
      */
     public static \ArrayObject $dynamicParams;
@@ -165,12 +165,11 @@ class Request
      */
     public static function init(): void
     {
-        self::$params = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
         self::$dynamicParams = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
 
         self::$referer = $_SERVER['HTTP_REFERER'] ?? 'Unknown';
-        self::$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        self::$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        self::$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        self::$contentType = self::parseContentType();
         self::$domainName = $_SERVER['HTTP_HOST'] ?? '';
         self::$scriptName = dirname($_SERVER['SCRIPT_NAME']);
 
@@ -185,9 +184,19 @@ class Request
         self::$isWire = self::isWireRequest();
         self::$isAjax = self::isAjaxRequest();
         self::$isXFileRequest = self::isXFileRequest();
-        self::$params = self::getParams();
+        self::loadParams();
         self::$protocol = self::getProtocol();
         self::$documentUrl = self::$protocol . self::$domainName . self::$scriptName;
+    }
+
+    private static function parseContentType(): string
+    {
+        $contentType = ($_SERVER['CONTENT_TYPE'] ?? '');
+        if ($contentType === "") {
+            return "";
+        }
+        $contentType = \explode(';', $contentType, 2)[0];
+        return \trim($contentType);
     }
 
     /**
@@ -195,36 +204,31 @@ class Request
      */
     private static function isAjaxRequest(): bool
     {
-        $isAjax = false;
-
         // Check for standard AJAX header
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-            $isAjax = true;
+        if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || \strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest') {
+            return false;
         }
 
         // Check for common AJAX content types
-        if (!empty($_SERVER['CONTENT_TYPE'])) {
-            $ajaxContentTypes = [
-                'application/json',
-                'application/x-www-form-urlencoded',
-                'multipart/form-data',
-            ];
-
-            foreach ($ajaxContentTypes as $contentType) {
-                if (strpos($_SERVER['CONTENT_TYPE'], $contentType) !== false) {
-                    $isAjax = true;
-                    break;
-                }
-            }
+        if (empty($_SERVER['CONTENT_TYPE']) ||
+            !\in_array(
+                \strtolower($_SERVER['CONTENT_TYPE']),
+                [
+                    'application/json',
+                    'application/x-www-form-urlencoded',
+                    'multipart/form-data',
+                ],
+                true
+            )
+        ) {
+            return false;
         }
 
         // Check for common AJAX request methods
-        $ajaxMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
-        if (in_array(strtoupper($_SERVER['REQUEST_METHOD']), $ajaxMethods)) {
-            $isAjax = true;
-        }
-
-        return $isAjax;
+        return \in_array(
+            \strtoupper($_SERVER['REQUEST_METHOD']),
+            ['POST', 'PUT', 'PATCH', 'DELETE']
+        );
     }
 
     /**
@@ -232,7 +236,7 @@ class Request
      */
     private static function isWireRequest(): bool
     {
-        $headers = array_change_key_case(getallheaders(), CASE_LOWER);
+        $headers = array_change_key_case(getallheaders());
         return isset($headers['http_pphp_wire_request']) && strtolower($headers['http_pphp_wire_request']) === 'true';
     }
 
@@ -245,7 +249,7 @@ class Request
     {
         $serverFetchSite = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '';
         if (isset($serverFetchSite) && $serverFetchSite === 'same-origin') {
-            $headers = array_change_key_case(getallheaders(), CASE_LOWER);
+            $headers = array_change_key_case(getallheaders());
             return isset($headers['http_pphp_x_file_request']) && $headers['http_pphp_x_file_request'] === 'true';
         }
 
@@ -255,39 +259,56 @@ class Request
     /**
      * Get the request parameters.
      */
-    private static function getParams(): \ArrayObject
+    private static function loadParams(): void
     {
-        $params = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
-
         if (self::$method === 'GET') {
-            $params = new \ArrayObject($_GET, \ArrayObject::ARRAY_AS_PROPS);
+            self::$params = new \ArrayObject($_GET, \ArrayObject::ARRAY_AS_PROPS);
+            return;
         }
 
-        if (stripos(self::$contentType, 'application/json') !== false) {
-            $jsonInput = file_get_contents('php://input');
-            if (!empty($jsonInput)) {
-                self::$data = json_decode($jsonInput, true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $params = new \ArrayObject(self::$data, \ArrayObject::ARRAY_AS_PROPS);
-                } else {
-                    header('HTTP/1.1 400 Bad Request');
-                    echo json_encode(['error' => 'Invalid JSON body']);
-                    exit;
+        if (self::$method === 'POST' && self::$contentType === 'multipart/form-data') {
+            self::$params = new \ArrayObject($_POST, \ArrayObject::ARRAY_AS_PROPS);
+            return;
+        }
+
+        if (\preg_match('#^application/(|\S+\+)json($|[ ;])#', self::$contentType)) {
+            $jsonInput = \file_get_contents('php://input');
+            if (empty($jsonInput)) {
+                \header('HTTP/1.1 400 Bad Request');
+                echo '{"error":"Invalid JSON body"}';
+                exit;
+            }
+
+            self::$data = \json_decode($jsonInput, true);
+            if (\json_last_error() === JSON_ERROR_NONE) {
+                self::$params = new \ArrayObject(self::$data, \ArrayObject::ARRAY_AS_PROPS);
+                return;
+            }
+        }
+
+        if (self::$contentType === 'application/x-www-form-urlencoded') {
+
+            if (self::$method === 'POST') {
+                self::$params = new \ArrayObject($_POST, \ArrayObject::ARRAY_AS_PROPS);
+                return;
+            }
+
+            if (match (self::$method) {
+                'PUT', 'PATCH', 'DELETE' => true,
+                default => false
+            }) {
+                $rawInput = \file_get_contents('php://input');
+                if (false !== $rawInput) {
+                    \parse_str($rawInput, $parsedParams);
+                    unset($rawInput);
+
+                    self::$params = new \ArrayObject($parsedParams, \ArrayObject::ARRAY_AS_PROPS);
+                    return;
                 }
             }
         }
 
-        if (stripos(self::$contentType, 'application/x-www-form-urlencoded') !== false) {
-            if (in_array(self::$method, ['POST', 'PUT', 'PATCH', 'DELETE'])) {
-                $rawInput = file_get_contents('php://input');
-                parse_str($rawInput, $parsedParams);
-                $params = new \ArrayObject($parsedParams, \ArrayObject::ARRAY_AS_PROPS);
-            } else {
-                $params = new \ArrayObject($_POST, \ArrayObject::ARRAY_AS_PROPS);
-            }
-        }
-
-        return $params;
+        self::$params = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
     }
 
     /**
@@ -295,9 +316,9 @@ class Request
      */
     public static function getProtocol(): string
     {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-            (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-            $_SERVER['SERVER_PORT'] == 443 ? "https://" : "http://";
+        return (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') ||
+        strtolower((string)($server['HTTP_X_FORWARDED_PROTO'] ?? $server['REQUEST_SCHEME'] ?? '')) === 'https' ||
+        ($_SERVER['SERVER_PORT'] ?? '') == 443 ? "https://" : "http://";
     }
 
     /**
@@ -305,7 +326,7 @@ class Request
      */
     public static function getBearerToken(): ?string
     {
-        $headers = array_change_key_case(getallheaders(), CASE_LOWER);
+        $headers = array_change_key_case(getallheaders());
         $authHeader = $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null;
 
         if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
@@ -331,9 +352,12 @@ class Request
      */
     public static function checkAllowedMethods(): void
     {
-        if (!in_array(self::$method, ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])) {
-            header('HTTP/1.1 405 Method Not Allowed');
-            echo json_encode(['error' => 'Method not allowed']);
+        if (match (self::$method) {
+            'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS' => false,
+            default => true
+        }) {
+            \header('HTTP/1.1 405 Method Not Allowed');
+            echo '{"error":"Method not allowed"}';
             exit;
         }
     }
@@ -347,28 +371,34 @@ class Request
      *
      * @param string $url The URL to redirect to.
      * @param bool $replace Whether to replace the current header. Default is true.
-     * @param int $responseCode The HTTP response code to use for the redirection. Default is 0.
+     * @param int $responseCode The HTTP response code to use for the redirection. Default is 307.
      *
      * @return void
+     *
+     * @link https://github.com/httpsoft/http-response/blob/master/src/ResponseStatusCodeInterface.php Http Status Codes
+     * @link https://tools.ietf.org/html/rfc7231#section-6.4.7 307 Temporary Redirect
      */
-    public static function redirect(string $url, bool $replace = true, int $responseCode = 0): void
+    public static function redirect(string $url, bool $replace = true, int $responseCode = 307): void
     {
         // Clean (discard) any previous output
-        ob_clean();
+        \ob_clean();
 
         // Start a fresh output buffer
-        ob_start();
+        \ob_start();
 
         if (!self::$isWire && !self::$isAjax) {
             // Normal redirect for non-ajax/wire requests
-            ob_end_clean(); // End the buffer, don't send it
-            header("Location: $url", $replace, $responseCode); // Redirect using header
-        } else {
-            // For ajax/wire requests, send the custom redirect response
-            ob_clean(); // Clean any previous output
-            echo "redirect_7F834=$url"; // Output the redirect message
-            ob_end_flush(); // Flush and send the output buffer
+            \ob_end_clean(); // End the buffer, don't send it
+            \header("Location: $url", $replace, $responseCode); // Redirect using header
+
+            // Terminate the script to prevent any further output
+            exit;
         }
+
+        // For ajax/wire requests, send the custom redirect response
+        \ob_clean(); // Clean any previous output
+        echo "redirect_7F834=$url"; // Output the redirect message
+        \ob_end_flush(); // Flush and send the output buffer
 
         // Terminate the script to prevent any further output
         exit;
