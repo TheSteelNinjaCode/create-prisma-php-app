@@ -1,6 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Lib;
+
+use Lib\Headers\Boom;
 
 class Request
 {
@@ -161,6 +165,11 @@ class Request
     public static bool $isXFileRequest = false;
 
     /**
+     * @var string $requestedWith Holds the value of the X-Requested-With header.
+     */
+    public static string $requestedWith = '';
+
+    /**
      * Initialize the request by setting all static properties.
      */
     public static function init(): void
@@ -173,6 +182,7 @@ class Request
         self::$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
         self::$domainName = $_SERVER['HTTP_HOST'] ?? '';
         self::$scriptName = dirname($_SERVER['SCRIPT_NAME']);
+        self::$requestedWith = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
 
         self::$isGet = self::$method === 'GET';
         self::$isPost = self::$method === 'POST';
@@ -191,15 +201,18 @@ class Request
     }
 
     /**
-     * Checks if the request is an AJAX request.
+     * Determines if the current request is an AJAX request.
+     *
+     * @return bool True if the request is an AJAX request, false otherwise.
      */
     private static function isAjaxRequest(): bool
     {
-        $isAjax = false;
-
         // Check for standard AJAX header
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-            $isAjax = true;
+        if (
+            !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
+        ) {
+            return true;
         }
 
         // Check for common AJAX content types
@@ -211,20 +224,22 @@ class Request
             ];
 
             foreach ($ajaxContentTypes as $contentType) {
-                if (strpos($_SERVER['CONTENT_TYPE'], $contentType) !== false) {
-                    $isAjax = true;
-                    break;
+                if (stripos($_SERVER['CONTENT_TYPE'], $contentType) !== false) {
+                    return true;
                 }
             }
         }
 
         // Check for common AJAX request methods
         $ajaxMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
-        if (in_array(strtoupper($_SERVER['REQUEST_METHOD']), $ajaxMethods)) {
-            $isAjax = true;
+        if (
+            !empty($_SERVER['REQUEST_METHOD']) &&
+            in_array(strtoupper($_SERVER['REQUEST_METHOD']), $ajaxMethods, true)
+        ) {
+            return true;
         }
 
-        return $isAjax;
+        return false;
     }
 
     /**
@@ -254,37 +269,42 @@ class Request
 
     /**
      * Get the request parameters.
+     *
+     * @return \ArrayObject The request parameters as an \ArrayObject with properties.
      */
     private static function getParams(): \ArrayObject
     {
         $params = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
 
-        if (self::$method === 'GET') {
-            $params = new \ArrayObject($_GET, \ArrayObject::ARRAY_AS_PROPS);
-        }
-
-        if (stripos(self::$contentType, 'application/json') !== false) {
-            $jsonInput = file_get_contents('php://input');
-            if (!empty($jsonInput)) {
-                self::$data = json_decode($jsonInput, true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $params = new \ArrayObject(self::$data, \ArrayObject::ARRAY_AS_PROPS);
-                } else {
-                    header('HTTP/1.1 400 Bad Request');
-                    echo json_encode(['error' => 'Invalid JSON body']);
-                    exit;
+        switch (self::$method) {
+            case 'GET':
+                $params = new \ArrayObject($_GET, \ArrayObject::ARRAY_AS_PROPS);
+                break;
+            default:
+                // Handle JSON input with different variations (e.g., application/json, application/ld+json, etc.)
+                if (preg_match('#^application/(|\S+\+)json($|[ ;])#', self::$contentType)) {
+                    $jsonInput = file_get_contents('php://input');
+                    if ($jsonInput !== false && !empty($jsonInput)) {
+                        self::$data = json_decode($jsonInput, true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $params = new \ArrayObject(self::$data, \ArrayObject::ARRAY_AS_PROPS);
+                        } else {
+                            Boom::badRequest('Invalid JSON body')->toResponse();
+                        }
+                    }
                 }
-            }
-        }
 
-        if (stripos(self::$contentType, 'application/x-www-form-urlencoded') !== false) {
-            if (in_array(self::$method, ['POST', 'PUT', 'PATCH', 'DELETE'])) {
-                $rawInput = file_get_contents('php://input');
-                parse_str($rawInput, $parsedParams);
-                $params = new \ArrayObject($parsedParams, \ArrayObject::ARRAY_AS_PROPS);
-            } else {
-                $params = new \ArrayObject($_POST, \ArrayObject::ARRAY_AS_PROPS);
-            }
+                // Handle URL-encoded input
+                if (stripos(self::$contentType, 'application/x-www-form-urlencoded') !== false) {
+                    $rawInput = file_get_contents('php://input');
+                    if ($rawInput !== false && !empty($rawInput)) {
+                        parse_str($rawInput, $parsedParams);
+                        $params = new \ArrayObject($parsedParams, \ArrayObject::ARRAY_AS_PROPS);
+                    } else {
+                        $params = new \ArrayObject($_POST, \ArrayObject::ARRAY_AS_PROPS);
+                    }
+                }
+                break;
         }
 
         return $params;
@@ -293,7 +313,7 @@ class Request
     /**
      * Get the protocol of the request.
      */
-    public static function getProtocol(): string
+    private static function getProtocol(): string
     {
         return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
             (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
@@ -332,9 +352,7 @@ class Request
     public static function checkAllowedMethods(): void
     {
         if (!in_array(self::$method, ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])) {
-            header('HTTP/1.1 405 Method Not Allowed');
-            echo json_encode(['error' => 'Method not allowed']);
-            exit;
+            Boom::methodNotAllowed()->toResponse();
         }
     }
 
