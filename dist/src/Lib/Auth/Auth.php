@@ -181,7 +181,7 @@ class Auth
 
             $token = JWT::decode($jwt, new Key($this->secretKey, 'HS256'));
 
-            if (empty($token->role)) {
+            if (empty($token->{Auth::PAYLOAD_NAME})) {
                 return null;
             }
 
