@@ -35,7 +35,7 @@ function determineContentToInclude()
      * ======================================
      */
     $requestUri = $_SERVER['REQUEST_URI'];
-    $requestUri = empty($_SERVER['SCRIPT_URL']) ? uriExtractor($requestUri) : $requestUri;
+    $requestUri = empty($_SERVER['SCRIPT_URL']) ? trim(uriExtractor($requestUri)) : trim($requestUri);
     /** 
      * ============ URI Path Handling ============ 
      * The $uri variable now contains the URI path without query parameters and without the leading slash. 
@@ -46,7 +46,7 @@ function determineContentToInclude()
      */
     $scriptUrl = explode('?', $requestUri, 2)[0];
     $pathname = $_SERVER['SCRIPT_URL'] ?? $scriptUrl;
-    $pathname = ltrim($pathname, '/');
+    $pathname = trim($pathname, '/');
     $baseDir = APP_PATH;
     $includePath = '';
     $layoutsToInclude = [];

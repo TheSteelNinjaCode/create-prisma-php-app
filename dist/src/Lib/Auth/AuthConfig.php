@@ -20,14 +20,35 @@ final class AuthConfig
     public const ROLE_IDENTIFIER = 'role';
     public const IS_ROLE_BASE = false;
     public const IS_TOKEN_AUTO_REFRESH = false;
+    public const IS_ALL_ROUTES_PRIVATE = false;
 
     /**
+     * This is the (default) option for authentication. If IS_ALL_ROUTES_PRIVATE is set to false, 
      * An array of private routes that are accessible to all authenticated users
      * without specific role-based access control. Routes should be listed as string paths.
      * Example: public static $privateRoutes = ['/']; // This makes the home page private
      * Example: public static $privateRoutes = ['/profile', '/dashboard/settings']; // These routes are private
      */
-    public static $privateRoutes = [];
+    public static array $privateRoutes = [];
+
+    /**
+     * This is the (default) option for authentication. If IS_ALL_ROUTES_PRIVATE is set to true,
+     * An array of public routes that are accessible to all users, authenticated or not.
+     */
+    public const DEFAULT_SIGNIN_REDIRECT = '/dashboard'; // Default redirect route after sign in
+    public const API_AUTH_PREFIX = '/api/auth'; // Prefix for third-party API authentication routes (github, google, etc.)
+
+    /**
+     * An array of public routes that are accessible to all users, authenticated or not.
+     * Routes should be listed as string paths.
+     * Example: public static $publicRoutes = ['/']; // This makes the home page public
+     * Example: public static $publicRoutes = ['/about', '/contact']; // These routes are public
+     */
+    public static array $publicRoutes = ['/'];
+    public static array $authRoutes = [
+        '/signin',
+        '/signup',
+    ];
 
     /**
      * An associative array mapping specific routes to required user roles for access control.
@@ -41,17 +62,21 @@ final class AuthConfig
      *     'sales' => [self::ROLE_IDENTIFIER => [AuthRole::Admin, AuthRole::User]]
      * ];
      */
-    public static $roleBasedRoutes = [];
+    public static array $roleBasedRoutes = [];
 
     /**
      * Checks if the given user role is authorized to access a set of roles.
      * 
-     * @param string $userRole The role of the user attempting to access the route.
-     * @param array $roles An array of AuthRole instances specifying allowed roles.
-     * @return bool Returns true if the user role is in the allowed roles, false otherwise.
+     * @param \ArrayObject|string $userRole The user's role to check.
+     * @param array<AuthRole> $roles An array of AuthRole instances specifying allowed roles.
+     * @return bool Returns true if the user's role matches any of the allowed roles, false otherwise.
      */
-    public static function checkAuthRole($userRole, $roles)
+    public static function checkAuthRole(\ArrayObject|string $userRole, array $roles): bool
     {
+        if ($userRole instanceof \ArrayObject) {
+            $userRole = $userRole[Auth::ROLE_NAME] ?? '';
+        }
+
         foreach ($roles as $role) {
             if ($userRole === $role->value) {
                 return true;
