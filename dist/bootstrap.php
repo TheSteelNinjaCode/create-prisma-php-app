@@ -14,6 +14,7 @@ use Lib\StateManager;
 use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
 use Lib\MainLayout;
+use Lib\PHPX\TemplateCompiler;
 
 $dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
 $dotenv->load();
@@ -671,6 +672,11 @@ function authenticateUserToken()
     }
 }
 
+function isAjaxOrXFileRequestOrRouteFile(): bool
+{
+    return Request::$isAjax || Request::$isXFileRequest || Request::$fileToInclude === 'route.php';
+}
+
 set_exception_handler(function ($exception) {
     if (isAjaxOrXFileRequestOrRouteFile()) {
         $errorContent = "Exception: " . $exception->getMessage();
@@ -695,10 +701,43 @@ register_shutdown_function(function () {
     }
 });
 
-function isAjaxOrXFileRequestOrRouteFile(): bool
-{
-    return Request::$isAjax || Request::$isXFileRequest || Request::$fileToInclude === 'route.php';
-}
+spl_autoload_register(function ($class) {
+    // Path to the log file
+    $logFile = SETTINGS_PATH . '/class-log.json';
+
+    // Check if the file exists
+    if (!file_exists($logFile)) {
+        // Create an empty JSON file
+        file_put_contents($logFile, json_encode([]));
+    }
+
+    // Read the current log data (fresh start each time)
+    $logData = json_decode(file_get_contents($logFile), true) ?? [];
+
+    // Attempt to load the class file and get the file path
+    $classParts = explode('\\', $class);
+    $filePath = __DIR__ . '/src/' . implode('/', $classParts) . '.php';
+
+    // Require the file if it exists
+    if (file_exists($filePath)) {
+        require_once $filePath;
+
+        // Use reflection to get all declared classes and register them
+        $declaredClasses = get_declared_classes();
+        foreach ($declaredClasses as $declaredClass) {
+            $classNamespace = implode('\\', $classParts);
+            if (strpos($declaredClass, $classNamespace) !== false) {
+                $logData[$declaredClass] = [
+                    'class_name' => $declaredClass,
+                    'file_path' => $filePath,
+                ];
+            }
+        }
+    }
+
+    // Save back to the JSON file
+    file_put_contents($logFile, json_encode($logData, JSON_PRETTY_PRINT));
+}, true, true);
 
 try {
     $_determineContentToInclude = determineContentToInclude();
@@ -826,7 +865,7 @@ try {
 
         MainLayout::$children = MainLayout::$childLayoutChildren;
         MainLayout::$children .= getLoadingsFiles();
-        MainLayout::$children = '<div id="pphp-7CA7BB68A3656A88">' . MainLayout::$children . '</div>';
+        MainLayout::$children = '<div id="pphp-7CA7BB68A3656A88">' . TemplateCompiler::compile(MainLayout::$children) . '</div>';
 
         ob_start();
         require_once APP_PATH . '/layout.php';

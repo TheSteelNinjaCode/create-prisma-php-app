@@ -70,10 +70,18 @@ class PrismaPHPSettings
      */
     public static array $routeFiles = [];
 
+    /**
+     * The list of class log files.
+     * 
+     * @var array
+     */
+    public static array $classLogFiles = [];
+
     public static function init(): void
     {
         self::$option = self::getPrismaSettings();
         self::$routeFiles = self::getRoutesFileList();
+        self::$classLogFiles = self::getClassesLogFiles();
     }
 
     /**
@@ -106,5 +114,13 @@ class PrismaPHPSettings
         $routeFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
 
         return $routeFiles;
+    }
+
+    private static function getClassesLogFiles(): array
+    {
+        $jsonFileName = SETTINGS_PATH . '/class-log.json';
+        $classLogFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
+
+        return $classLogFiles;
     }
 }

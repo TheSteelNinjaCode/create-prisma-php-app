@@ -1,7 +1,8 @@
-import { existsSync, unlink, writeFile } from "fs";
+import { writeFile } from "fs";
 import { join, basename, dirname, normalize, sep } from "path";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { getFileMeta } from "./utils.js";
+import { promises as fsPromises } from "fs";
 
 const { __dirname } = getFileMeta();
 
@@ -88,12 +89,23 @@ const configFilePath = join(__dirname, "..", "prisma-php.json");
 // Run the function with your config file path and the new project name
 updateProjectNameInConfig(configFilePath, newProjectName);
 
-const requestDataPath = join(__dirname, "request-data.json");
-if (existsSync(requestDataPath)) {
-  unlink(requestDataPath, (err) => {
-    if (err) {
-      // console.error("Error deleting request-data.json file:", err);
-      return;
+const deleteFilesIfExist = async (filePaths: string[]): Promise<void> => {
+  for (const filePath of filePaths) {
+    try {
+      await fsPromises.unlink(filePath);
+      // console.log(`Deleted ${filePath}`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        // Ignore error if file doesn't exist
+        console.error(`Error deleting ${filePath}:`, error);
+      }
     }
-  });
-}
+  }
+};
+
+const filePaths = [
+  join(__dirname, "request-data.json"),
+  join(__dirname, "class-log.json"),
+];
+
+deleteFilesIfExist(filePaths);
