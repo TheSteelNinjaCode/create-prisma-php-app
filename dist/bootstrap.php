@@ -671,6 +671,15 @@ function authenticateUserToken()
     }
 }
 
+function isAjaxOrXFileRequestOrRouteFile(): bool
+{
+    if (Request::$fileToInclude === 'index.php') {
+        return false;
+    }
+
+    return Request::$isAjax || Request::$isXFileRequest || Request::$fileToInclude === 'route.php';
+}
+
 set_exception_handler(function ($exception) {
     if (isAjaxOrXFileRequestOrRouteFile()) {
         $errorContent = "Exception: " . $exception->getMessage();
@@ -694,11 +703,6 @@ register_shutdown_function(function () {
         modifyOutputLayoutForError($errorContent);
     }
 });
-
-function isAjaxOrXFileRequestOrRouteFile(): bool
-{
-    return Request::$isAjax || Request::$isXFileRequest || Request::$fileToInclude === 'route.php';
-}
 
 try {
     $_determineContentToInclude = determineContentToInclude();
@@ -826,7 +830,6 @@ try {
 
         MainLayout::$children = MainLayout::$childLayoutChildren;
         MainLayout::$children .= getLoadingsFiles();
-        MainLayout::$children = '<div id="pphp-7CA7BB68A3656A88">' . MainLayout::$children . '</div>';
 
         ob_start();
         require_once APP_PATH . '/layout.php';
