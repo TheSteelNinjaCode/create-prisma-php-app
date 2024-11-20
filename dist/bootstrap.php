@@ -674,6 +674,10 @@ function authenticateUserToken()
 
 function isAjaxOrXFileRequestOrRouteFile(): bool
 {
+    if (Request::$fileToInclude === 'index.php') {
+        return false;
+    }
+
     return Request::$isAjax || Request::$isXFileRequest || Request::$fileToInclude === 'route.php';
 }
 
