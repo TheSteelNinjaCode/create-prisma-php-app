@@ -865,7 +865,7 @@ try {
 
         MainLayout::$children = MainLayout::$childLayoutChildren;
         MainLayout::$children .= getLoadingsFiles();
-        MainLayout::$children = '<div id="pphp-7CA7BB68A3656A88">' . TemplateCompiler::compile(MainLayout::$children) . '</div>';
+        MainLayout::$children = TemplateCompiler::compile(MainLayout::$children);
 
         ob_start();
         require_once APP_PATH . '/layout.php';
