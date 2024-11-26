@@ -5,125 +5,159 @@ declare(strict_types=1);
 namespace Lib\PHPX;
 
 use Lib\PrismaPHPSettings;
+use DOMDocument;
+use DOMElement;
+use DOMComment;
 
 class TemplateCompiler
 {
-    public static function compile($templateContent)
+    protected static $classMappings = [];
+
+    public static function compile(string $templateContent): string
     {
-        // Updated pattern to match self-closing and regular tags, allowing for nested tags
-        $pattern = '/<([A-Z][a-zA-Z0-9]*)\b([^>]*)\/?>((?:.*?)<\/\1>)?/s';
+        if (empty(self::$classMappings)) {
+            self::initializeClassMappings();
+        }
 
-        $compiledContent = preg_replace_callback($pattern, function ($matches) {
-            $componentName = strtolower($matches[1]);
-            $attributes = $matches[2];
-            $hasClosingTag = isset($matches[3]) && !empty($matches[3]);
+        $dom = new DOMDocument();
+        libxml_use_internal_errors(true);
 
+        $wrappedContent = "<root>{$templateContent}</root>";
+
+        if (!$dom->loadXML($wrappedContent)) {
+            $errors = self::getXmlErrors();
+            throw new \RuntimeException('XML Parsing Failed: ' . implode('; ', $errors));
+        }
+        libxml_clear_errors();
+
+        $root = $dom->documentElement;
+        $output = '';
+        foreach ($root->childNodes as $child) {
+            $output .= self::processNode($child);
+        }
+
+        return $output;
+    }
+
+    protected static function getXmlErrors(): array
+    {
+        $errors = libxml_get_errors();
+        $errorMessages = [];
+
+        foreach ($errors as $error) {
+            $errorMessages[] = self::formatLibxmlError($error);
+        }
+
+        libxml_clear_errors();
+        return $errorMessages;
+    }
+
+    protected static function formatLibxmlError(\LibXMLError $error): string
+    {
+        $errorType = match ($error->level) {
+            LIBXML_ERR_WARNING => 'Warning',
+            LIBXML_ERR_ERROR => 'Error',
+            LIBXML_ERR_FATAL => 'Fatal',
+            default => 'Unknown',
+        };
+
+        // Highlight the tag name in the error message
+        $message = trim($error->message);
+        if (preg_match('/tag (.*?) /', $message, $matches)) {
+            $tag = $matches[1];
+            $message = str_replace($tag, "`{$tag}`", $message);
+        }
+
+        return sprintf(
+            '[%s] Line %d, Column %d: %s',
+            $errorType,
+            $error->line,
+            $error->column,
+            $message
+        );
+    }
+
+    protected static function processNode($node): string
+    {
+        $output = '';
+
+        if ($node instanceof DOMElement) {
+            $componentName = $node->nodeName;
+            $attributes = [];
+
+            // Extract attributes
+            foreach ($node->attributes as $attr) {
+                $attributes[$attr->name] = $attr->value;
+            }
+
+            // Process child nodes
             $innerContent = '';
-            if ($hasClosingTag) {
-                $innerContent = $matches[3];
-                // Recursively compile the inner content
-                $innerContent = self::compile($innerContent);
+            if ($node->hasChildNodes()) {
+                foreach ($node->childNodes as $child) {
+                    $innerContent .= self::processNode($child);
+                }
             }
 
-            // Parse attributes into an associative array
-            $attrArray = self::parseAttributes($attributes);
-
+            // Include inner content as 'children' if it's not empty
             if (trim($innerContent)) {
-                $attrArray['children'] = $innerContent;
+                $attributes['children'] = $innerContent;
             }
 
-            return self::processComponent($componentName, $attrArray, $innerContent);
-        }, $templateContent);
-
-        return $compiledContent;
-    }
-
-    protected static function parseAttributes($attributes)
-    {
-        // Regex to match attributes with and without values
-        $attrPattern = '/([a-zA-Z0-9\-]+)(?:="([^"]*)")?/';
-
-        // Capture attributes with and without values
-        preg_match_all($attrPattern, $attributes, $attrMatches, PREG_SET_ORDER);
-        $attrArray = [];
-
-        foreach ($attrMatches as $attr) {
-            if (isset($attr[2])) {
-                // Attribute with a value
-                $attrArray[$attr[1]] = $attr[2];
-            } else {
-                // Boolean attribute (e.g., disabled, checked)
-                $attrArray[$attr[1]] = true;
-            }
-        }
-
-        return $attrArray;
-    }
-
-    protected static function isClassLogged($componentName)
-    {
-        // Read the JSON content
-        $classLog = PrismaPHPSettings::$classLogFiles;
-
-        // Normalize the component name to ensure case-insensitive comparison
-        $normalizedComponent = strtolower($componentName);
-        // Loop through the class log to check for a match
-        foreach ($classLog as $classPath => $classInfo) {
-            $className = strtolower(pathinfo($classPath, PATHINFO_FILENAME));
-
-            if ($normalizedComponent === $className) {
-                return $classPath;
-            }
-        }
-
-        return false;
-    }
-
-    protected static function stripSpecificTags($content, $tags)
-    {
-        foreach ($tags as $tag) {
-            // Strip opening and closing tags, case insensitive
-            $content = preg_replace('/<' . $tag . '.*?>|<\/' . $tag . '>/i', '', $content);
-        }
-        return $content;
-    }
-
-    protected static function processComponent($componentName, $attrPhp, $innerContent)
-    {
-        // Start output buffering to capture dynamic content
-        ob_start();
-
-        // Check if the class is logged and exists
-        $classPath = self::isClassLogged($componentName);
-        if ($classPath && class_exists($classPath)) {
-            $componentInstance = new $classPath($attrPhp);
-            echo $componentInstance->render(); // Echo directly, which will be captured by output buffer
+            $output .= self::processComponent($componentName, $attributes, $innerContent);
+        } else if ($node instanceof DOMComment) {
+            $output .= "<!--{$node->textContent}-->";
         } else {
-            // If no class exists or it wasn't found in the log, render it as an HTML tag
-            $attributes = self::renderAttributes($attrPhp);
-
-            // Check if it's a self-closing tag by checking if there's no inner content
-            if ($innerContent === '') {
-                echo "<$componentName $attributes />";
-            } else {
-                echo "<$componentName $attributes>$innerContent</$componentName>";
-            }
+            // For text nodes and others
+            $output .= $node->textContent;
         }
 
-        // Capture and return the output buffer content
-        return ob_get_clean();
+        return $output;
     }
 
-    protected static function renderAttributes($attrArray)
+    protected static function initializeClassMappings()
     {
-        // Convert array back into HTML attributes
-        $attrString = '';
-        foreach ($attrArray as $key => $value) {
+        // Assuming PrismaPHPSettings::$classLogFiles is an associative array
+        // with class names as keys and class paths as values
+        foreach (PrismaPHPSettings::$classLogFiles as $classPath => $classInfo) {
+            $className = pathinfo($classPath, PATHINFO_FILENAME);
+            self::$classMappings[$className] = $classPath;
+        }
+    }
+
+    protected static function processComponent(string $componentName, array $attributes, string $innerContent): string
+    {
+        // Check if the component class exists in the mappings
+        if (isset(self::$classMappings[$componentName]) && class_exists(self::$classMappings[$componentName])) {
+            $classPath = self::$classMappings[$componentName];
+            // Instantiate the component
+            $componentInstance = new $classPath($attributes);
+            return $componentInstance->render();
+        } else {
+            // Render as an XML tag
+            $attributesString = self::renderAttributes($attributes);
+
+            // Self-closing tag if no inner content
+            if (empty($innerContent)) {
+                return "<$componentName $attributesString />";
+            } else {
+                return "<$componentName $attributesString>$innerContent</$componentName>";
+            }
+        }
+    }
+
+    protected static function renderAttributes(array $attributes): string
+    {
+        if (empty($attributes)) {
+            return '';
+        }
+
+        $attrArray = [];
+        foreach ($attributes as $key => $value) {
             if ($key !== 'children') {
-                $attrString .= "{$key}=\"{$value}\" ";
+                $attrArray[] = "{$key}=\"{$value}\"";
             }
         }
 
-        return trim($attrString);
+        return ' ' . implode(' ', $attrArray);
     }
 }
