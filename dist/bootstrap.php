@@ -15,6 +15,7 @@ use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
 use Lib\MainLayout;
 use Lib\PHPX\TemplateCompiler;
+use Lib\PHPX\IPHPX;
 
 $dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
 $dotenv->load();
@@ -715,7 +716,7 @@ spl_autoload_register(function ($class) {
         file_put_contents($logFile, json_encode([]));
     }
 
-    // Read the current log data (fresh start each time)
+    // Read the current log data
     $logData = json_decode(file_get_contents($logFile), true) ?? [];
 
     // Attempt to load the class file and get the file path
@@ -726,15 +727,21 @@ spl_autoload_register(function ($class) {
     if (file_exists($filePath)) {
         require_once $filePath;
 
-        // Use reflection to get all declared classes and register them
+        // After loading the file, check all declared classes
         $declaredClasses = get_declared_classes();
         foreach ($declaredClasses as $declaredClass) {
+            $reflectionClass = new ReflectionClass($declaredClass);
+
+            // Ensure the class is in the same namespace as the loaded class
             $classNamespace = implode('\\', $classParts);
-            if (strpos($declaredClass, $classNamespace) !== false) {
-                $logData[$declaredClass] = [
-                    'class_name' => $declaredClass,
-                    'file_path' => $filePath,
-                ];
+            if (strpos($declaredClass, $classNamespace) === 0) {
+                // Check if the class implements IPHPX
+                if ($reflectionClass->implementsInterface(IPHPX::class)) {
+                    $logData[$declaredClass] = [
+                        'class_name' => $declaredClass,
+                        'file_path' => $filePath,
+                    ];
+                }
             }
         }
     }
