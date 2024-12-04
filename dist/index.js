@@ -125,6 +125,7 @@ async function main() {
       "chalk",
       "npm-run-all",
       "browser-sync",
+      "@types/browser-sync",
     ];
     if (answer.swaggerDocs) {
       dependencies.push("swagger-jsdoc", "@types/swagger-jsdoc");
