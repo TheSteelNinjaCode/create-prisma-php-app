@@ -116,10 +116,9 @@ class TemplateCompiler
 
     protected static function initializeClassMappings()
     {
-        // Assuming PrismaPHPSettings::$classLogFiles is an associative array
-        // with class names as keys and class paths as values
         foreach (PrismaPHPSettings::$classLogFiles as $classPath => $classInfo) {
-            $className = pathinfo($classPath, PATHINFO_FILENAME);
+            $normalizedClassPath = str_replace('\\', '/', $classPath);
+            $className = pathinfo($normalizedClassPath, PATHINFO_FILENAME);
             self::$classMappings[$className] = $classPath;
         }
     }

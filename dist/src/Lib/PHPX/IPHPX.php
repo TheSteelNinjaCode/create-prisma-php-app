@@ -8,7 +8,8 @@ namespace Lib\PHPX;
  * The interface for the PHPX component classes.
  */
 
-interface IPHPX {
+interface IPHPX
+{
     /**
      * Constructor to initialize the component with the given properties.
      * 
@@ -18,8 +19,10 @@ interface IPHPX {
 
     /**
      * Registers or initializes any necessary components or settings. (Placeholder method).
+     * 
+     * @param array<string, mixed> $props Optional properties to customize the component.
      */
-    public static function init(): void;
+    public static function init(array $props = []): void;
 
     /**
      * Renders the component with the given properties and children.
