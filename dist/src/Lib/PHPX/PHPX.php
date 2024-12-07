@@ -47,17 +47,21 @@ class PHPX implements IPHPX
     /**
      * Combines and returns the CSS classes for the component.
      *
-     * This method merges the optional base CSS class with additional classes
-     * defined in the component's `$class` property. If no base class is provided,
-     * only the component's `$class` property will be used. It ensures that there 
-     * are no duplicate classes and the classes are properly formatted.
+     * This method merges the provided classes, which can be either strings or arrays of strings,
+     * with the component's `$class` property. It uses the `Utils::mergeClasses` method to ensure
+     * that the resulting CSS class string is optimized, with duplicate or conflicting classes removed.
      *
-     * @param string $baseClass The optional base CSS class to be merged. Defaults to an empty string.
-     * @return string The merged CSS class string.
+     * ### Features:
+     * - Accepts multiple arguments as strings or arrays of strings.
+     * - Automatically merges the provided classes with `$this->class`.
+     * - Ensures the final CSS class string is well-formatted and free of conflicts.
+     *
+     * @param string|array ...$classes The CSS classes to be merged. Each argument can be a string or an array of strings.
+     * @return string A single CSS class string with the merged and optimized classes, including `$this->class`.
      */
-    protected function getMergeClasses(string $baseClass = ''): string
+    protected function getMergeClasses(string|array ...$classes): string
     {
-        return TwMerge::mergeClasses($baseClass, $this->class);
+        return TwMerge::mergeClasses($classes, $this->class);
     }
 
     /**
