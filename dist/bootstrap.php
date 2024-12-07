@@ -706,49 +706,54 @@ register_shutdown_function(function () {
     }
 });
 
-spl_autoload_register(function ($class) {
-    // Path to the log file
-    $logFile = SETTINGS_PATH . '/class-log.json';
+spl_autoload_register(
+    function ($class) {
+        // Path to the log file
+        $logFile = SETTINGS_PATH . "/class-log.json";
 
-    // Check if the file exists
-    if (!file_exists($logFile)) {
-        // Create an empty JSON file
-        file_put_contents($logFile, json_encode([]));
-    }
+        // Ensure the log file exists
+        if (!file_exists($logFile)) {
+            file_put_contents($logFile, json_encode([]));
+        }
 
-    // Read the current log data
-    $logData = json_decode(file_get_contents($logFile), true) ?? [];
+        // Read the existing log data
+        $logData = json_decode(file_get_contents($logFile), true) ?? [];
 
-    // Attempt to load the class file and get the file path
-    $classParts = explode('\\', $class);
-    $filePath = __DIR__ . '/src/' . implode('/', $classParts) . '.php';
+        // Determine the file path for the class
+        $classParts = explode('\\', $class);
+        $filePath = __DIR__ . '/src/' . implode('/', $classParts) . '.php';
 
-    // Require the file if it exists
-    if (file_exists($filePath)) {
-        require_once $filePath;
+        // Attempt to load the file
+        if (file_exists($filePath)) {
+            // Track previously declared classes
+            $previousClasses = get_declared_classes();
 
-        // After loading the file, check all declared classes
-        $declaredClasses = get_declared_classes();
-        foreach ($declaredClasses as $declaredClass) {
-            $reflectionClass = new ReflectionClass($declaredClass);
+            // Require the file
+            require_once $filePath;
 
-            // Ensure the class is in the same namespace as the loaded class
-            $classNamespace = implode('\\', $classParts);
-            if (strpos($declaredClass, $classNamespace) === 0) {
+            // Find newly declared classes
+            $newClasses = array_diff(get_declared_classes(), $previousClasses);
+
+            // Process all new classes from the file
+            foreach ($newClasses as $newClass) {
+                $reflectionClass = new ReflectionClass($newClass);
+
                 // Check if the class implements IPHPX
                 if ($reflectionClass->implementsInterface(IPHPX::class)) {
-                    $logData[$declaredClass] = [
-                        'class_name' => $declaredClass,
+                    $logData[$newClass] = [
+                        'class_name' => $newClass,
                         'file_path' => $filePath,
                     ];
                 }
             }
         }
-    }
 
-    // Save back to the JSON file
-    file_put_contents($logFile, json_encode($logData, JSON_PRETTY_PRINT));
-}, true, true);
+        // Save back to the JSON file
+        file_put_contents($logFile, json_encode($logData, JSON_PRETTY_PRINT));
+    },
+    true,
+    true
+);
 
 try {
     $_determineContentToInclude = determineContentToInclude();
