@@ -52,10 +52,10 @@ class PHPX implements IPHPX
      * only the component's `$class` property will be used. It ensures that there 
      * are no duplicate classes and the classes are properly formatted.
      *
-     * @param string|null $baseClass The optional base CSS class to be merged. Defaults to `null`.
+     * @param string $baseClass The optional base CSS class to be merged. Defaults to an empty string.
      * @return string The merged CSS class string.
      */
-    protected function getMergeClasses(?string $baseClass = null): string
+    protected function getMergeClasses(string $baseClass = ''): string
     {
         return TwMerge::mergeClasses($baseClass, $this->class);
     }
