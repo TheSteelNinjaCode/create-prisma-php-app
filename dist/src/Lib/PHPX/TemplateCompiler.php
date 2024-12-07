@@ -12,6 +12,24 @@ use DOMComment;
 class TemplateCompiler
 {
     protected static $classMappings = [];
+    protected static $selfClosingTags = [
+        'area',
+        'base',
+        'br',
+        'col',
+        'command',
+        'embed',
+        'hr',
+        'img',
+        'input',
+        'keygen',
+        'link',
+        'meta',
+        'param',
+        'source',
+        'track',
+        'wbr'
+    ];
 
     public static function compile(string $templateContent): string
     {
@@ -26,12 +44,14 @@ class TemplateCompiler
 
         if (!$dom->loadXML($wrappedContent)) {
             $errors = self::getXmlErrors();
-            throw new \RuntimeException('XML Parsing Failed: ' . implode('; ', $errors));
+            throw new \RuntimeException(
+                "XML Parsing Failed: " . implode("; ", $errors)
+            );
         }
         libxml_clear_errors();
 
         $root = $dom->documentElement;
-        $output = '';
+        $output = "";
         foreach ($root->childNodes as $child) {
             $output .= self::processNode($child);
         }
@@ -55,21 +75,21 @@ class TemplateCompiler
     protected static function formatLibxmlError(\LibXMLError $error): string
     {
         $errorType = match ($error->level) {
-            LIBXML_ERR_WARNING => 'Warning',
-            LIBXML_ERR_ERROR => 'Error',
-            LIBXML_ERR_FATAL => 'Fatal',
-            default => 'Unknown',
+            LIBXML_ERR_WARNING => "Warning",
+            LIBXML_ERR_ERROR => "Error",
+            LIBXML_ERR_FATAL => "Fatal",
+            default => "Unknown",
         };
 
         // Highlight the tag name in the error message
         $message = trim($error->message);
-        if (preg_match('/tag (.*?) /', $message, $matches)) {
+        if (preg_match("/tag (.*?) /", $message, $matches)) {
             $tag = $matches[1];
             $message = str_replace($tag, "`{$tag}`", $message);
         }
 
         return sprintf(
-            '[%s] Line %d, Column %d: %s',
+            "[%s] Line %d, Column %d: %s",
             $errorType,
             $error->line,
             $error->column,
@@ -79,7 +99,7 @@ class TemplateCompiler
 
     protected static function processNode($node): string
     {
-        $output = '';
+        $output = "";
 
         if ($node instanceof DOMElement) {
             $componentName = $node->nodeName;
@@ -91,7 +111,7 @@ class TemplateCompiler
             }
 
             // Process child nodes
-            $innerContent = '';
+            $innerContent = "";
             if ($node->hasChildNodes()) {
                 foreach ($node->childNodes as $child) {
                     $innerContent .= self::processNode($child);
@@ -100,11 +120,15 @@ class TemplateCompiler
 
             // Include inner content as 'children' if it's not empty
             if (trim($innerContent)) {
-                $attributes['children'] = $innerContent;
+                $attributes["children"] = $innerContent;
             }
 
-            $output .= self::processComponent($componentName, $attributes, $innerContent);
-        } else if ($node instanceof DOMComment) {
+            $output .= self::processComponent(
+                $componentName,
+                $attributes,
+                $innerContent
+            );
+        } elseif ($node instanceof DOMComment) {
             $output .= "<!--{$node->textContent}-->";
         } else {
             // For text nodes and others
@@ -114,29 +138,38 @@ class TemplateCompiler
         return $output;
     }
 
-    protected static function initializeClassMappings()
+    protected static function initializeClassMappings(): void
     {
-        foreach (PrismaPHPSettings::$classLogFiles as $classPath => $classInfo) {
-            $normalizedClassPath = str_replace('\\', '/', $classPath);
+        foreach (
+            PrismaPHPSettings::$classLogFiles
+            as $classPath => $classInfo
+        ) {
+            $normalizedClassPath = str_replace("\\", "/", $classPath);
             $className = pathinfo($normalizedClassPath, PATHINFO_FILENAME);
             self::$classMappings[$className] = $classPath;
         }
     }
 
-    protected static function processComponent(string $componentName, array $attributes, string $innerContent): string
-    {
+    protected static function processComponent(
+        string $componentName,
+        array $attributes,
+        string $innerContent
+    ): string {
         // Check if the component class exists in the mappings
-        if (isset(self::$classMappings[$componentName]) && class_exists(self::$classMappings[$componentName])) {
+        if (
+            isset(self::$classMappings[$componentName]) &&
+            class_exists(self::$classMappings[$componentName])
+        ) {
             $classPath = self::$classMappings[$componentName];
             // Instantiate the component
             $componentInstance = new $classPath($attributes);
             return $componentInstance->render();
         } else {
-            // Render as an XML tag
+            // Render as an HTML tag
             $attributesString = self::renderAttributes($attributes);
 
-            // Self-closing tag if no inner content
-            if (empty($innerContent)) {
+            // Determine if the tag should be self-closing
+            if (in_array(strtolower($componentName), self::$selfClosingTags)) {
                 return "<$componentName $attributesString />";
             } else {
                 return "<$componentName $attributesString>$innerContent</$componentName>";
@@ -147,16 +180,16 @@ class TemplateCompiler
     protected static function renderAttributes(array $attributes): string
     {
         if (empty($attributes)) {
-            return '';
+            return "";
         }
 
         $attrArray = [];
         foreach ($attributes as $key => $value) {
-            if ($key !== 'children') {
+            if ($key !== "children") {
                 $attrArray[] = "{$key}=\"{$value}\"";
             }
         }
 
-        return ' ' . implode(' ', $attrArray);
+        return " " . implode(" ", $attrArray);
     }
 }

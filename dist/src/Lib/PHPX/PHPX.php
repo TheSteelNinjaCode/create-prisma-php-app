@@ -3,7 +3,7 @@
 namespace Lib\PHPX;
 
 use Lib\PHPX\IPHPX;
-use Lib\PHPX\Utils;
+use Lib\PHPX\TwMerge;
 
 class PHPX implements IPHPX
 {
@@ -57,7 +57,7 @@ class PHPX implements IPHPX
      */
     protected function getMergeClasses(?string $baseClass = null): string
     {
-        return Utils::mergeClasses($baseClass, $this->class);
+        return TwMerge::mergeClasses($baseClass, $this->class);
     }
 
     /**
@@ -93,7 +93,7 @@ class PHPX implements IPHPX
     public function render(): string
     {
         $attributes = $this->getAttributes();
-        $class = $this->class;
+        $class = $this->getMergeClasses();
 
         return <<<HTML
         <div class="$class" $attributes>{$this->children}</div>
@@ -101,12 +101,21 @@ class PHPX implements IPHPX
     }
 
     /**
-     * Converts the object to its string representation by rendering it.
+     * Converts the object to its string representation by rendering the component.
      *
-     * @return string The rendered HTML output of the component.
+     * This method allows the object to be used directly in string contexts, such as
+     * when echoing or concatenating, by automatically invoking the `render()` method.
+     * If an exception occurs during rendering, it safely returns an empty string
+     * to prevent runtime errors, ensuring robustness in all scenarios.
+     *
+     * @return string The rendered HTML output of the component, or an empty string if rendering fails.
      */
     public function __toString(): string
     {
-        return $this->render();
+        try {
+            return $this->render();
+        } catch (\Exception) {
+            return ''; // Return an empty string or a fallback message in case of errors
+        }
     }
 }
