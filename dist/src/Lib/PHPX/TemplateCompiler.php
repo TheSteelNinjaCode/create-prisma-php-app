@@ -37,6 +37,9 @@ class TemplateCompiler
             self::initializeClassMappings();
         }
 
+        // Escape `&` characters that are not part of valid XML entities
+        $templateContent = preg_replace('/&(?![a-zA-Z0-9#]+;)/', '&amp;', $templateContent);
+
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
 

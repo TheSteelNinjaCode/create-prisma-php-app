@@ -67,25 +67,39 @@ class PHPX implements IPHPX
     /**
      * Generates and returns a string of HTML attributes from the provided props.
      * Excludes 'class' and 'children' props from being added as attributes.
-     * 
-     * @return string The generated HTML attributes.
+     * Prioritizes attributes from `$this->props` if duplicates are found in `$params`.
+     *
+     * @param array $params Optional additional attributes to merge with props.
+     *
+     * @return string The generated HTML attributes as a space-separated string.
      */
-    protected function getAttributes(): string
+    protected function getAttributes(array $params = []): string
     {
         // Filter out 'class' and 'children' props
-        $filteredProps = array_filter($this->props, function ($key) {
-            return !in_array($key, ['class', 'children']);
-        }, ARRAY_FILTER_USE_KEY);
+        $filteredProps = array_filter(
+            $this->props,
+            function ($key) {
+                return !in_array($key, ["class", "children"]);
+            },
+            ARRAY_FILTER_USE_KEY
+        );
 
-        // Build attributes string by escaping keys and values
-        $attributes = [];
-        foreach ($filteredProps as $key => $value) {
-            $escapedKey = htmlspecialchars($key, ENT_QUOTES, 'UTF-8');
-            $escapedValue = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-            $attributes[] = "$escapedKey='$escapedValue'";
+        // Merge attributes, prioritizing props in case of duplicates
+        $attributes = array_merge($params, $filteredProps);
+
+        // Build the attributes string by escaping keys and values
+        $attributeStrings = [];
+        foreach ($attributes as $key => $value) {
+            $escapedKey = htmlspecialchars($key, ENT_QUOTES, "UTF-8");
+            $escapedValue = htmlspecialchars(
+                (string) $value,
+                ENT_QUOTES,
+                "UTF-8"
+            );
+            $attributeStrings[] = "$escapedKey='$escapedValue'";
         }
 
-        return implode(' ', $attributes);
+        return implode(" ", $attributeStrings);
     }
 
     /**
