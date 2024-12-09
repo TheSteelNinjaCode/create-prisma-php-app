@@ -23,6 +23,11 @@ class PHPX implements IPHPX
     protected string $class;
 
     /**
+     * @var array<string, mixed> The array representation of the HTML attributes.
+     */
+    protected array $attributesArray = [];
+
+    /**
      * Constructor to initialize the component with the given properties.
      * 
      * @param array<string, mixed> $props Optional properties to customize the component.
@@ -99,6 +104,7 @@ class PHPX implements IPHPX
             $attributeStrings[] = "$escapedKey='$escapedValue'";
         }
 
+        $this->attributesArray = $attributes;
         return implode(" ", $attributeStrings);
     }
 

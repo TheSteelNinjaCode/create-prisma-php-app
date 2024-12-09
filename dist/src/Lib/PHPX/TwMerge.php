@@ -30,14 +30,14 @@ class TwMerge
         // **Background color classes**
         "bg" => "/^bg-/",
 
-        // **Text size classes**
+        // **Text size classes
         "text-size" => '/^text-(xs|sm|base|lg|xl|[2-9]xl)$/',
-
-        // **Text color classes**
-        "text-color" => '/^text-(?!xs$|sm$|base$|lg$|xl$|[2-9]xl$).+$/',
 
         // **Text alignment classes**
         "text-alignment" => '/^text-(left|center|right|justify)$/',
+
+        // **Text color classes
+        "text-color" => '/^text-(?!xs$|sm$|base$|lg$|xl$|[2-9]xl$).+$/',
 
         // **Text transform classes**
         "text-transform" =>
@@ -70,6 +70,9 @@ class TwMerge
 
         // **Opacity classes
         "opacity" => '/^opacity(-[0-9]+)?$/',
+
+        // **Flexbox alignment classes**
+        "justify" => "/^justify-(start|end|center|between|around|evenly)$/",
 
         // **Other utility classes can be added here**
     ];
@@ -116,6 +119,9 @@ class TwMerge
 
         // **Opacity conflict group
         "opacity" => ["opacity"],
+
+        // **Flexbox alignment conflict group**
+        "justify" => ["justify"],
 
         // **Add other conflict groups as needed**
     ];

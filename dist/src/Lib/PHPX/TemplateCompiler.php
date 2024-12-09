@@ -37,6 +37,22 @@ class TemplateCompiler
             self::initializeClassMappings();
         }
 
+        // Convert template to valid XML
+        $dom = self::convertToXml($templateContent);
+
+        // Process the converted XML
+        $root = $dom->documentElement;
+        $output = "";
+
+        foreach ($root->childNodes as $child) {
+            $output .= self::processNode($child);
+        }
+
+        return $output;
+    }
+
+    public static function convertToXml(string $templateContent): DOMDocument
+    {
         // Escape `&` characters that are not part of valid XML entities
         $templateContent = preg_replace('/&(?![a-zA-Z0-9#]+;)/', '&amp;', $templateContent);
 
@@ -53,13 +69,7 @@ class TemplateCompiler
         }
         libxml_clear_errors();
 
-        $root = $dom->documentElement;
-        $output = "";
-        foreach ($root->childNodes as $child) {
-            $output .= self::processNode($child);
-        }
-
-        return $output;
+        return $dom;
     }
 
     protected static function getXmlErrors(): array
@@ -166,7 +176,18 @@ class TemplateCompiler
             $classPath = self::$classMappings[$componentName];
             // Instantiate the component
             $componentInstance = new $classPath($attributes);
-            return $componentInstance->render();
+
+            // Render the component
+            $renderedContent = $componentInstance->render();
+
+            // Check if the rendered content contains other components
+            if (strpos($renderedContent, '<') !== false) {
+                // Re-parse the rendered content
+                return self::compile($renderedContent);
+            }
+
+            // Return the plain rendered content if no components are detected
+            return $renderedContent;
         } else {
             // Render as an HTML tag
             $attributesString = self::renderAttributes($attributes);
