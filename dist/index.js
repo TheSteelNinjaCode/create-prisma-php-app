@@ -139,7 +139,8 @@ async function main() {
         "autoprefixer",
         "postcss",
         "postcss-cli",
-        "cssnano"
+        "cssnano",
+        "@jridgewell/gen-mapping"
       );
     }
     if (answer.websocket) {
@@ -253,7 +254,8 @@ async function main() {
           "autoprefixer",
           "postcss",
           "postcss-cli",
-          "cssnano"
+          "cssnano",
+          "@jridgewell/gen-mapping"
         );
       }
       if (!updateAnswer.websocket) {
