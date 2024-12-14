@@ -126,6 +126,7 @@ async function main() {
       "npm-run-all",
       "browser-sync",
       "@types/browser-sync",
+      "php-parser",
     ];
     if (answer.swaggerDocs) {
       dependencies.push("swagger-jsdoc", "@types/swagger-jsdoc");
