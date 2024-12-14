@@ -3,6 +3,8 @@ import { join, basename, dirname, normalize, sep } from "path";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { getFileMeta } from "./utils.js";
 import { promises as fsPromises } from "fs";
+import { updateAllClassLogs } from "./class-log";
+import { updateComponentImports } from "./class-imports";
 
 const { __dirname } = getFileMeta();
 
@@ -106,6 +108,9 @@ const deleteFilesIfExist = async (filePaths: string[]): Promise<void> => {
 const filePaths = [
   join(__dirname, "request-data.json"),
   join(__dirname, "class-log.json"),
+  join(__dirname, "class-imports.json"),
 ];
 
-deleteFilesIfExist(filePaths);
+await deleteFilesIfExist(filePaths);
+await updateAllClassLogs();
+await updateComponentImports();

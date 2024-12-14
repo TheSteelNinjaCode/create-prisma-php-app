@@ -85,6 +85,17 @@ final class Validator
     }
 
     /**
+     * Validate a CUID2.
+     *
+     * @param mixed $value The value to validate.
+     * @return string|null The valid CUID2 or null if invalid.
+     */
+    public static function cuid2($value): ?string
+    {
+        return preg_match('/^[0-9a-zA-Z_-]{21,}$/', $value) ? $value : null;
+    }
+
+    /**
      * Validate a size string (e.g., "10MB").
      *
      * @param mixed $value The value to validate.

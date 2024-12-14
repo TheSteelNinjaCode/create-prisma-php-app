@@ -5,7 +5,7 @@
   "description": "Prisma-PHP: A Revolutionary Library Bridging PHP with Prisma ORM",
   "autoload": {
     "psr-4": {
-      "Lib\\": "src/Lib"
+      "": "src/"
     }
   },
   "authors": [

@@ -131,10 +131,8 @@ class TemplateCompiler
                 }
             }
 
-            // Include inner content as 'children' if it's not empty
-            if (trim($innerContent)) {
-                $attributes["children"] = $innerContent;
-            }
+            // Include inner content as 'children' 
+            $attributes["children"] = $innerContent;
 
             $output .= self::processComponent(
                 $componentName,
@@ -153,13 +151,8 @@ class TemplateCompiler
 
     protected static function initializeClassMappings(): void
     {
-        foreach (
-            PrismaPHPSettings::$classLogFiles
-            as $classPath => $classInfo
-        ) {
-            $normalizedClassPath = str_replace("\\", "/", $classPath);
-            $className = pathinfo($normalizedClassPath, PATHINFO_FILENAME);
-            self::$classMappings[$className] = $classPath;
+        foreach (PrismaPHPSettings::$classLogFiles as $tagName => $fullyQualifiedClassName) {
+            self::$classMappings[$tagName] = $fullyQualifiedClassName;
         }
     }
 
