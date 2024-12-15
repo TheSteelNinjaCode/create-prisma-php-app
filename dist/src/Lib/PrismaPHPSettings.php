@@ -118,7 +118,7 @@ class PrismaPHPSettings
 
     private static function getClassesLogFiles(): array
     {
-        $jsonFileName = SETTINGS_PATH . '/class-log.json';
+        $jsonFileName = SETTINGS_PATH . '/class-imports.json';
         $classLogFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
 
         return $classLogFiles;
