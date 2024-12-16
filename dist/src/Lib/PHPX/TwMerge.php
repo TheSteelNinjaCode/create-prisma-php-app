@@ -74,6 +74,9 @@ class TwMerge
         // **Flexbox alignment classes**
         "justify" => "/^justify-(start|end|center|between|around|evenly)$/",
 
+        // **Width classes**
+        "w" => "/^w-(full|[0-9]+|\\[.+\\])$/",
+
         // **Other utility classes can be added here**
     ];
 
@@ -122,6 +125,9 @@ class TwMerge
 
         // **Flexbox alignment conflict group**
         "justify" => ["justify"],
+
+        // **Width conflict group**
+        "w" => ["w"],
 
         // **Add other conflict groups as needed**
     ];
