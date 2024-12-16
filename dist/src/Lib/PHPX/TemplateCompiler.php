@@ -161,26 +161,34 @@ class TemplateCompiler
         array $attributes,
         string $innerContent
     ): string {
-        // Check if the component class exists in the mappings
-        if (
-            isset(self::$classMappings[$componentName]) &&
-            class_exists(self::$classMappings[$componentName])
-        ) {
-            $classPath = self::$classMappings[$componentName];
-            // Instantiate the component
-            $componentInstance = new $classPath($attributes);
+        if (isset(self::$classMappings[$componentName])) {
+            $classMapping = self::$classMappings[$componentName];
 
-            // Render the component
-            $renderedContent = $componentInstance->render();
+            // Ensure the required file is included
+            require_once str_replace('\\', '/', SRC_PATH . '/' . $classMapping['filePath']);
 
-            // Check if the rendered content contains other components
-            if (strpos($renderedContent, '<') !== false) {
-                // Re-parse the rendered content
-                return self::compile($renderedContent);
+            // Use the fully qualified class name
+            $className = $classMapping['className'];
+
+            // Check if the class exists
+            if (class_exists($className)) {
+                // Instantiate the component
+                $componentInstance = new $className($attributes);
+
+                // Render the component
+                $renderedContent = $componentInstance->render();
+
+                // Check if the rendered content contains other components
+                if (strpos($renderedContent, '<') !== false) {
+                    // Re-parse the rendered content
+                    return self::compile($renderedContent);
+                }
+
+                // Return the plain rendered content if no components are detected
+                return $renderedContent;
+            } else {
+                throw new \RuntimeException("Class $className does not exist.");
             }
-
-            // Return the plain rendered content if no components are detected
-            return $renderedContent;
         } else {
             // Render as an HTML tag
             $attributesString = self::renderAttributes($attributes);

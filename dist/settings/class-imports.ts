@@ -7,7 +7,7 @@ const { __dirname } = getFileMeta();
 
 const parser = new Engine({
   parser: {
-    php7: true,
+    php8: true,
     extractDoc: true,
   },
   ast: {
@@ -29,7 +29,9 @@ async function loadImportsData(): Promise<Record<string, string>> {
   }
 }
 
-async function saveImportsData(data: Record<string, string>) {
+async function saveImportsData(
+  data: Record<string, { className: string; filePath: string }>
+) {
   await fs.writeFile(IMPORTS_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 
@@ -148,11 +150,17 @@ export async function updateComponentImports() {
   // Now filter using class-log.json
   const classLog = await loadClassLogData();
 
-  const filteredImports: Record<string, string> = {};
+  const filteredImports: Record<
+    string,
+    { className: string; filePath: string }
+  > = {};
   for (const [alias, fqn] of Object.entries(allImports)) {
     if (classLog[fqn]) {
       // console.log(`Including: ${alias} -> ${fqn}`);
-      filteredImports[alias] = fqn;
+      filteredImports[alias] = {
+        className: fqn,
+        filePath: classLog[fqn].filePath,
+      };
     } else {
       // console.log(`Excluding: ${alias} -> ${fqn}`);
     }

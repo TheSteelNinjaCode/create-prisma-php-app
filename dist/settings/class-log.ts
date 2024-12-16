@@ -12,7 +12,7 @@ const PHPX_BASE_CLASS = "PHPX";
 
 const parser = new Engine({
   parser: {
-    php7: true,
+    php8: true,
     extractDoc: true,
   },
   ast: {
@@ -113,8 +113,12 @@ async function updateClassLogForFile(
   for (const cls of classes) {
     if (cls.implementsIPHPX || cls.extendsPHPX) {
       const classFullName = await guessFullClassName(filePath, cls.name);
-      // Store only the class as a key and a null value
-      logData[classFullName] = {};
+      const relativePath = path
+        .relative(SRC_DIR, filePath)
+        .replace(/\\/g, "\\");
+      logData[classFullName] = {
+        filePath: relativePath,
+      };
     }
   }
 }

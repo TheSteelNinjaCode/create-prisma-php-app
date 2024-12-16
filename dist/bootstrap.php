@@ -15,7 +15,6 @@ use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
 use Lib\MainLayout;
 use Lib\PHPX\TemplateCompiler;
-use Lib\PHPX\IPHPX;
 
 $dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
 $dotenv->load();
@@ -705,55 +704,6 @@ register_shutdown_function(function () {
         modifyOutputLayoutForError($errorContent);
     }
 });
-
-spl_autoload_register(
-    function ($class) {
-        // Path to the log file
-        $logFile = SETTINGS_PATH . "/class-log.json";
-
-        // Ensure the log file exists
-        if (!file_exists($logFile)) {
-            file_put_contents($logFile, json_encode([]));
-        }
-
-        // Read the existing log data
-        $logData = json_decode(file_get_contents($logFile), true) ?? [];
-
-        // Determine the file path for the class
-        $classParts = explode('\\', $class);
-        $filePath = __DIR__ . '/src/' . implode('/', $classParts) . '.php';
-
-        // Attempt to load the file
-        if (file_exists($filePath)) {
-            // Track previously declared classes
-            $previousClasses = get_declared_classes();
-
-            // Require the file
-            require_once $filePath;
-
-            // Find newly declared classes
-            $newClasses = array_diff(get_declared_classes(), $previousClasses);
-
-            // Process all new classes from the file
-            foreach ($newClasses as $newClass) {
-                $reflectionClass = new ReflectionClass($newClass);
-
-                // Check if the class implements IPHPX
-                if ($reflectionClass->implementsInterface(IPHPX::class)) {
-                    $logData[$newClass] = [
-                        'class_name' => $newClass,
-                        'file_path' => $filePath,
-                    ];
-                }
-            }
-        }
-
-        // Save back to the JSON file
-        file_put_contents($logFile, json_encode($logData, JSON_PRETTY_PRINT));
-    },
-    true,
-    true
-);
 
 try {
     $_determineContentToInclude = determineContentToInclude();
