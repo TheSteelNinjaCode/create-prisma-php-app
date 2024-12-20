@@ -81,7 +81,7 @@ final class Validator
      */
     public static function cuid($value): ?string
     {
-        return preg_match('/^c[0-9a-z]{8,}$/', $value) ? $value : null;
+        return preg_match('/^c[0-9a-z]{24}$/', $value) ? $value : null;
     }
 
     /**
