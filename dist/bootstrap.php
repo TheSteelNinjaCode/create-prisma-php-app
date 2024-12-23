@@ -14,6 +14,7 @@ use Lib\StateManager;
 use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
 use Lib\MainLayout;
+use Lib\PHPX\TemplateCompiler;
 
 $dotenv = Dotenv::createImmutable(\DOCUMENT_PATH);
 $dotenv->load();
@@ -509,6 +510,10 @@ function wireCallback()
         // Output the JSON response only if the callbackResponse is not null
         if ($callbackResponse !== null) {
             echo json_encode($response);
+        } else {
+            if (isset($response['error'])) {
+                echo json_encode($response);
+            }
         }
     } catch (Throwable $e) {
         // Handle any exceptions and prepare an error response
@@ -812,8 +817,7 @@ try {
         }
 
         if (Request::$isWire && !$_secondRequestC69CD) {
-            $_requestFilesJson = SETTINGS_PATH . '/request-data.json';
-            $_requestFilesData = file_exists($_requestFilesJson) ? json_decode(file_get_contents($_requestFilesJson), true) : [];
+            $_requestFilesData = PrismaPHPSettings::$includeFiles;
 
             if ($_requestFilesData[Request::$uri]) {
                 $_requestDataToLoop = $_requestFilesData[Request::$uri];
@@ -830,6 +834,7 @@ try {
 
         MainLayout::$children = MainLayout::$childLayoutChildren;
         MainLayout::$children .= getLoadingsFiles();
+        MainLayout::$children = '<div id="pphp-7CA7BB68A3656A88">' . MainLayout::$children . '</div>';
 
         ob_start();
         require_once APP_PATH . '/layout.php';

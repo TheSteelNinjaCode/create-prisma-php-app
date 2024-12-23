@@ -12,7 +12,9 @@ class MainLayout
     public static string $childLayoutChildren = '';
 
     private static array $headScripts = [];
+    private static array $headScriptsMap = [];
     private static array $footerScripts = [];
+    private static array $footerScriptsMap = [];
     private static array $customMetadata = [];
 
     /**
@@ -24,8 +26,9 @@ class MainLayout
     public static function addHeadScript(string ...$scripts): void
     {
         foreach ($scripts as $script) {
-            if (!in_array($script, self::$headScripts)) {
+            if (!isset(self::$headScriptsMap[$script])) {
                 self::$headScripts[] = $script;
+                self::$headScriptsMap[$script] = true;
             }
         }
     }
@@ -43,8 +46,9 @@ class MainLayout
     public static function addFooterScript(string ...$scripts): void
     {
         foreach ($scripts as $script) {
-            if (!in_array($script, self::$footerScripts)) {
+            if (!isset(self::$footerScriptsMap[$script])) {
                 self::$footerScripts[] = $script;
+                self::$footerScriptsMap[$script] = true;
             }
         }
     }

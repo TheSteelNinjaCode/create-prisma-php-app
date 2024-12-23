@@ -338,14 +338,14 @@ class Auth
      */
     public function authProviders(...$providers)
     {
-        $dynamicRouteParams = Request::$dynamicParams;
+        $dynamicRouteParams = Request::$dynamicParams[self::PPHPAUTH] ?? [];
 
-        if (Request::$isGet && in_array('signin', $dynamicRouteParams[self::PPHPAUTH])) {
+        if (Request::$isGet && in_array('signin', $dynamicRouteParams)) {
             foreach ($providers as $provider) {
-                if ($provider instanceof GithubProvider && in_array('github', $dynamicRouteParams[self::PPHPAUTH])) {
+                if ($provider instanceof GithubProvider && in_array('github', $dynamicRouteParams)) {
                     $githubAuthUrl = "https://github.com/login/oauth/authorize?scope=user:email%20read:user&client_id={$provider->clientId}";
                     Request::redirect($githubAuthUrl);
-                } elseif ($provider instanceof GoogleProvider && in_array('google', $dynamicRouteParams[self::PPHPAUTH])) {
+                } elseif ($provider instanceof GoogleProvider && in_array('google', $dynamicRouteParams)) {
                     $googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?"
                         . "scope=" . urlencode('email profile') . "&"
                         . "response_type=code&"
@@ -358,8 +358,8 @@ class Auth
 
         $authCode = Validator::string($_GET['code'] ?? '');
 
-        if (Request::$isGet && in_array('callback', $dynamicRouteParams[self::PPHPAUTH]) && isset($authCode)) {
-            if (in_array('github', $dynamicRouteParams[self::PPHPAUTH])) {
+        if (Request::$isGet && in_array('callback', $dynamicRouteParams) && isset($authCode)) {
+            if (in_array('github', $dynamicRouteParams)) {
                 $provider = $this->findProvider($providers, GithubProvider::class);
 
                 if (!$provider) {
@@ -367,7 +367,7 @@ class Auth
                 }
 
                 return $this->githubProvider($provider, $authCode);
-            } elseif (in_array('google', $dynamicRouteParams[self::PPHPAUTH])) {
+            } elseif (in_array('google', $dynamicRouteParams)) {
                 $provider = $this->findProvider($providers, GoogleProvider::class);
 
                 if (!$provider) {

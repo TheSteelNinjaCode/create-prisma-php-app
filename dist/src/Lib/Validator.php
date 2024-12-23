@@ -81,7 +81,18 @@ final class Validator
      */
     public static function cuid($value): ?string
     {
-        return preg_match('/^c[0-9a-z]{8,}$/', $value) ? $value : null;
+        return preg_match('/^c[0-9a-z]{24}$/', $value) ? $value : null;
+    }
+
+    /**
+     * Validate a CUID2.
+     *
+     * @param mixed $value The value to validate.
+     * @return string|null The valid CUID2 or null if invalid.
+     */
+    public static function cuid2($value): ?string
+    {
+        return preg_match('/^[0-9a-zA-Z_-]{21,}$/', $value) ? $value : null;
     }
 
     /**

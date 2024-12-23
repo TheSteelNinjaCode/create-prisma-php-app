@@ -6,6 +6,8 @@ import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
 import { join } from "path";
 import { getFileMeta } from "./utils.js";
+import { updateAllClassLogs } from "./class-log.js";
+import { updateComponentImports } from "./class-imports";
 
 const { __dirname } = getFileMeta();
 
@@ -19,17 +21,18 @@ const watcher = chokidar.watch("src/app/**/*", {
   interval: 1000,
 });
 
+// On changes, generate file list and also update the class log
+const handleFileChange = async () => {
+  generateFileListJson();
+  await updateAllClassLogs();
+  await updateComponentImports();
+};
+
 // Perform specific actions for file events
 watcher
-  .on("add", () => {
-    generateFileListJson();
-  })
-  .on("change", () => {
-    generateFileListJson();
-  })
-  .on("unlink", () => {
-    generateFileListJson();
-  });
+  .on("add", handleFileChange)
+  .on("change", handleFileChange)
+  .on("unlink", handleFileChange);
 
 // BrowserSync initialization
 bs.init(

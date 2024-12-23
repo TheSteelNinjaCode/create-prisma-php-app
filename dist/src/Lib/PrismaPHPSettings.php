@@ -70,10 +70,26 @@ class PrismaPHPSettings
      */
     public static array $routeFiles = [];
 
+    /**
+     * The list of class log files.
+     * 
+     * @var array
+     */
+    public static array $classLogFiles = [];
+
+    /**
+     * The list of include files.
+     *
+     * @var array
+     */
+    public static array $includeFiles = [];
+
     public static function init(): void
     {
         self::$option = self::getPrismaSettings();
         self::$routeFiles = self::getRoutesFileList();
+        self::$classLogFiles = self::getClassesLogFiles();
+        self::$includeFiles = self::getIncludeFiles();
     }
 
     /**
@@ -106,5 +122,23 @@ class PrismaPHPSettings
         $routeFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
 
         return $routeFiles;
+    }
+
+    private static function getClassesLogFiles(): array
+    {
+        $jsonFileName = SETTINGS_PATH . '/class-imports.json';
+        $classLogFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
+
+        return $classLogFiles;
+    }
+
+    private static function getIncludeFiles(): array
+    {
+        $jsonFileName = SETTINGS_PATH . "/request-data.json";
+        $includeFiles = file_exists($jsonFileName)
+            ? json_decode(file_get_contents($jsonFileName), true)
+            : [];
+
+        return $includeFiles;
     }
 }
