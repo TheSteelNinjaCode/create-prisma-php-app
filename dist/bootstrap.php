@@ -510,6 +510,10 @@ function wireCallback()
         // Output the JSON response only if the callbackResponse is not null
         if ($callbackResponse !== null) {
             echo json_encode($response);
+        } else {
+            if (isset($response['error'])) {
+                echo json_encode($response);
+            }
         }
     } catch (Throwable $e) {
         // Handle any exceptions and prepare an error response
@@ -813,8 +817,7 @@ try {
         }
 
         if (Request::$isWire && !$_secondRequestC69CD) {
-            $_requestFilesJson = SETTINGS_PATH . '/request-data.json';
-            $_requestFilesData = file_exists($_requestFilesJson) ? json_decode(file_get_contents($_requestFilesJson), true) : [];
+            $_requestFilesData = PrismaPHPSettings::$includeFiles;
 
             if ($_requestFilesData[Request::$uri]) {
                 $_requestDataToLoop = $_requestFilesData[Request::$uri];
