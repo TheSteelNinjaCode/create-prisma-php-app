@@ -54,7 +54,22 @@ class TemplateCompiler
     public static function convertToXml(string $templateContent): DOMDocument
     {
         // Escape `&` characters that are not part of valid XML entities
-        $templateContent = preg_replace('/&(?![a-zA-Z0-9#]+;)/', '&amp;', $templateContent);
+        $templateContent = preg_replace_callback(
+            '/&(.*?)/',
+            function ($matches) {
+                $str = $matches[0];
+
+                // If it already looks like a valid entity, leave it alone.
+                // This check can be as simple or as robust as you need.
+                if (preg_match('/^&(?:[a-zA-Z]+|#[0-9]+|#x[0-9A-Fa-f]+);$/', $str)) {
+                    return $str;
+                }
+
+                // Otherwise, escape it.
+                return '&amp;' . substr($str, 1);
+            },
+            $templateContent
+        );
 
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
