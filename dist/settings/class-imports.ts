@@ -8,10 +8,10 @@ const { __dirname } = getFileMeta();
 const parser = new Engine({
   parser: {
     php8: true,
-    extractDoc: true,
+    suppressErrors: true,
   },
   ast: {
-    withPositions: true,
+    withPositions: false,
   },
 });
 
@@ -58,10 +58,6 @@ async function getAllPhpFiles(dir: string): Promise<string[]> {
   return files;
 }
 
-function preprocessPhpCode(code: string): string {
-  return code.replace(/<<<['"]?[A-Z_]+['"]?[\s\S]*?[A-Z_]+\s*;/g, "'';");
-}
-
 function combineNamespaces(
   baseNamespace: string,
   subNamespace: string
@@ -74,10 +70,7 @@ function combineNamespaces(
 async function analyzeImportsInFile(
   filePath: string
 ): Promise<Record<string, string>> {
-  let code = await fs.readFile(filePath, "utf-8");
-
-  // Preprocess the PHP code
-  code = preprocessPhpCode(code);
+  const code = await fs.readFile(filePath, "utf-8");
 
   try {
     // Parse the PHP file to AST

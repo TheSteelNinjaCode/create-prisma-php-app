@@ -13,10 +13,10 @@ const PHPX_BASE_CLASS = "PHPX";
 const parser = new Engine({
   parser: {
     php8: true,
-    extractDoc: true,
+    suppressErrors: true,
   },
   ast: {
-    withPositions: true,
+    withPositions: false,
   },
 });
 
@@ -33,16 +33,8 @@ async function saveLogData(logData: Record<string, any>) {
   await fs.writeFile(LOG_FILE, JSON.stringify(logData, null, 2));
 }
 
-function preprocessPhpCode(code: string): string {
-  // Match heredocs and nowdocs and replace them with placeholders
-  return code.replace(/<<<['"]?[A-Z_]+['"]?[\s\S]*?[A-Z_]+\s*;/g, "'';");
-}
-
 async function analyzePhpFile(filePath: string) {
-  let code = await fs.readFile(filePath, "utf-8");
-
-  // Preprocess the PHP code
-  code = preprocessPhpCode(code);
+  const code = await fs.readFile(filePath, "utf-8");
 
   try {
     // Parse the PHP file to AST
