@@ -18,6 +18,15 @@ final class AuthMiddleware
             $isPublicRoute = self::matches($requestPathname, AuthConfig::$publicRoutes);
             $isAuthRoute = self::matches($requestPathname, AuthConfig::$authRoutes);
 
+            // Check if the user is authenticated and refresh the token if necessary
+            if (AuthConfig::IS_TOKEN_AUTO_REFRESH) {
+                $auth = Auth::getInstance();
+                if (isset($_COOKIE[Auth::COOKIE_NAME])) {
+                    $jwt = $_COOKIE[Auth::COOKIE_NAME];
+                    $jwt = $auth->refreshToken($jwt);
+                }
+            }
+
             // Skip the middleware if the route is api auth route
             if ($isApiAuthRoute) {
                 return;
