@@ -819,7 +819,7 @@ try {
         if (Request::$isWire && !$_secondRequestC69CD) {
             $_requestFilesData = PrismaPHPSettings::$includeFiles;
 
-            if ($_requestFilesData[Request::$uri]) {
+            if (isset($_requestFilesData[Request::$uri])) {
                 $_requestDataToLoop = $_requestFilesData[Request::$uri];
 
                 foreach ($_requestDataToLoop['includedFiles'] as $file) {
