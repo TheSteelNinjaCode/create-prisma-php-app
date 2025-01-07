@@ -81,6 +81,12 @@ final class Validator
      */
     public static function cuid($value): ?string
     {
+        // Ensure the value is a string
+        if (!is_string($value)) {
+            return null;
+        }
+
+        // Perform the CUID validation
         return preg_match('/^c[0-9a-z]{24}$/', $value) ? $value : null;
     }
 
@@ -92,6 +98,12 @@ final class Validator
      */
     public static function cuid2($value): ?string
     {
+        // Ensure the value is a string
+        if (!is_string($value)) {
+            return null;
+        }
+
+        // Perform the CUID2 validation
         return preg_match('/^[0-9a-zA-Z_-]{21,}$/', $value) ? $value : null;
     }
 
@@ -179,15 +191,21 @@ final class Validator
     }
 
     /**
-     * Validate a datetime in a given format.
+     * Validate and format a datetime value in a given format or ISO 8601 by default.
      *
      * @param mixed $value The value to validate.
-     * @param string $format The datetime format.
-     * @return string|null The valid datetime string or null if invalid.
+     * @param string $format The desired datetime format (default is database-friendly 'Y-m-d H:i:s.u').
+     * @return string|null The valid datetime string for the database or null if invalid.
      */
-    public static function dateTime($value, string $format = 'Y-m-d H:i:s'): ?string
+    public static function dateTime($value, string $format = 'Y-m-d H:i:s.u'): ?string
     {
-        return self::date($value, $format);
+        try {
+            $date = new \DateTime($value);
+        } catch (\Exception) {
+            return null;
+        }
+
+        return $date->format($format);
     }
 
     // Boolean Validation
