@@ -233,7 +233,7 @@ final class PPHPUtility
 
     private static function processIncludeValue($key, $value, &$relatedEntityFields, $fields, $modelName, $parentKey)
     {
-        if (isset($value['select'])) {
+        if (isset($value['select']) || isset($value['where'])) {
             $relatedEntityFields[$parentKey] = $value;
         } elseif (is_array($value)) {
             if (empty($value)) {
