@@ -208,6 +208,10 @@ final class PPHPUtility
     {
         if (isset($include) && is_array($include)) {
             foreach ($include as $key => $value) {
+                if (is_array($value) && array_key_exists('join.type', $value)) {
+                    continue;
+                }
+
                 self::processIncludeValue($key, $value, $relatedEntityFields, $fields, $modelName, $key);
 
                 if (is_numeric($key) && is_string($value)) {
@@ -575,9 +579,17 @@ final class PPHPUtility
         mixed $pdo,
         string $dbType,
         ?object $model = null,
+        string $defaultJoinType = 'INNER JOIN' // Default join type
     ) {
         foreach ($include as $relationName => $relationOptions) {
 
+            $joinType = isset($relationOptions['join.type'])
+                ? strtoupper($relationOptions['join.type']) . ' JOIN'
+                : $defaultJoinType;
+
+            if (!in_array($joinType, ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN'], true)) {
+                throw new \Exception("Invalid join type: $joinType (expected 'INNER JOIN', 'LEFT JOIN', or 'RIGHT JOIN')");
+            }
             // Check for nested includes (like ['include' => [ ... ]])
             $nestedInclude = [];
             if (is_array($relationOptions) && isset($relationOptions['include']) && is_array($relationOptions['include'])) {
@@ -666,10 +678,11 @@ final class PPHPUtility
                 throw new \Exception("Relation or inverseRelation not properly defined for '$relationName'.");
             }
 
-            // 5. Add the LEFT JOIN statement
+            // 5. Add the JOIN statement dynamically
             $joinTableQuoted = PPHPUtility::quoteColumnName($dbType, $joinTable);
             $joins[] = sprintf(
-                'LEFT JOIN %s AS %s ON %s',
+                '%s %s AS %s ON %s',
+                $joinType,
                 $joinTableQuoted,
                 $newAliasQuoted,
                 $joinCondition
