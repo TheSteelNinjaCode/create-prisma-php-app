@@ -500,8 +500,14 @@ function wireCallback()
                     ];
                 }
             } else {
-                // Invalid callback provided
-                $response['error'] = 'Invalid callback';
+                if ($callbackName === 'appState_59E13') {
+                    $response = [
+                        'success' => true,
+                        'response' => 'localStorage updated'
+                    ];
+                } else {
+                    $response['error'] = 'Invalid callback';
+                }
             }
         } else {
             $response['error'] = 'No callback provided';
@@ -869,6 +875,7 @@ try {
         $_errorDetails = "Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
         $_errorDetails .= "<br>File: " . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
         $_errorDetails .= "<br>Line: " . htmlspecialchars($e->getLine(), ENT_QUOTES, 'UTF-8');
+        $_errorDetails .= "<br/>TraceAsString: " . htmlspecialchars($e->getTraceAsString(), ENT_QUOTES, 'UTF-8');
         $_errorDetails = "<div class='error'>$_errorDetails</div>";
     }
     modifyOutputLayoutForError($_errorDetails);

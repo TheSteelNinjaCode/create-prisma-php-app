@@ -56,6 +56,21 @@ class Request
     public static \ArrayObject $dynamicParams;
 
     /**
+     * @var \stdClass $localStorage A static property to hold request parameters.
+     * 
+     * This property is used to hold request parameters that are passed to the request.
+     * 
+     * Example usage:
+     * The parameters can be accessed using the following syntax:
+     * ```php
+     * $id = Request::$localStorage['id'];
+     * OR
+     * $id = Request::$localStorage->id;
+     * ```
+     */
+    public static \ArrayObject $localStorage;
+
+    /**
      * @var mixed $data Holds request data (e.g., JSON body).
      */
     public static mixed $data = null;
@@ -196,6 +211,7 @@ class Request
         self::$isAjax = self::isAjaxRequest();
         self::$isXFileRequest = self::isXFileRequest();
         self::$params = self::getParams();
+        self::$localStorage = self::getLocalStorage();
         self::$protocol = self::getProtocol();
         self::$documentUrl = self::$protocol . self::$domainName . self::$scriptName;
     }
@@ -308,6 +324,55 @@ class Request
         }
 
         return $params;
+    }
+
+    /**
+     * Retrieves the local storage data from the session or initializes it if not present.
+     *
+     * This method checks if the local storage data is available in the static data array or the session.
+     * If the data is found, it is decoded from JSON if necessary and returned as an \ArrayObject.
+     * If the data is not found, an empty \ArrayObject is returned.
+     *
+     * @return \ArrayObject The local storage data as an \ArrayObject.
+     */
+    private static function getLocalStorage(): \ArrayObject
+    {
+        $sessionKey = 'appState_59E13';
+        $localStorage = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
+
+        if (isset(self::$data[$sessionKey])) {
+            $data = self::$data[$sessionKey];
+
+            if (is_array($data)) {
+                $_SESSION[$sessionKey] = $data;
+                $localStorage = new \ArrayObject($data, \ArrayObject::ARRAY_AS_PROPS);
+            } else {
+                $decodedData = json_decode($data, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $_SESSION[$sessionKey] = $data;
+                    $localStorage = new \ArrayObject($decodedData, \ArrayObject::ARRAY_AS_PROPS);
+                } else {
+                    Boom::badRequest('Invalid JSON body')->toResponse();
+                }
+            }
+        } else {
+            if (isset($_SESSION[$sessionKey])) {
+                $sessionData = $_SESSION[$sessionKey];
+
+                if (is_array($sessionData)) {
+                    $localStorage = new \ArrayObject($sessionData, \ArrayObject::ARRAY_AS_PROPS);
+                } else {
+                    $decodedData = json_decode($sessionData, true);
+
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $localStorage = new \ArrayObject($decodedData, \ArrayObject::ARRAY_AS_PROPS);
+                    }
+                }
+            }
+        }
+
+        return $localStorage;
     }
 
     /**

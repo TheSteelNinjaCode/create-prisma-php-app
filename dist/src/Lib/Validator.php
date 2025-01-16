@@ -6,6 +6,8 @@ namespace Lib;
 
 use HTMLPurifier;
 use HTMLPurifier_Config;
+use DateTime;
+use Exception;
 
 final class Validator
 {
@@ -186,22 +188,30 @@ final class Validator
      */
     public static function date($value, string $format = 'Y-m-d'): ?string
     {
-        $date = \DateTime::createFromFormat($format, $value);
+        $date = DateTime::createFromFormat($format, $value);
         return $date && $date->format($format) === $value ? $value : null;
     }
 
     /**
-     * Validate and format a datetime value in a given format or ISO 8601 by default.
+     * Validates and formats a date-time value.
      *
-     * @param mixed $value The value to validate.
-     * @param string $format The desired datetime format (default is database-friendly 'Y-m-d H:i:s.u').
-     * @return string|null The valid datetime string for the database or null if invalid.
+     * This method attempts to create a DateTime object from the given value and formats it
+     * according to the specified format. If the value is already a DateTime object, it uses
+     * it directly. If the value cannot be parsed into a DateTime object, the method returns null.
+     *
+     * @param mixed $value The value to be validated and formatted. It can be a string or a DateTime object.
+     * @param string $format The format to use for the output date-time string. Default is 'Y-m-d H:i:s.u'.
+     * @return string|null The formatted date-time string, or null if the value could not be parsed.
      */
     public static function dateTime($value, string $format = 'Y-m-d H:i:s.u'): ?string
     {
         try {
-            $date = new \DateTime($value);
-        } catch (\Exception) {
+            if ($value instanceof DateTime) {
+                $date = $value;
+            } else {
+                $date = new DateTime($value);
+            }
+        } catch (Exception) {
             return null;
         }
 
@@ -512,7 +522,7 @@ final class Validator
             case 'date':
                 return self::date($value, $parameter ?: 'Y-m-d') ? true : "This field must be a valid date.";
             case 'dateFormat':
-                if (!\DateTime::createFromFormat($parameter, $value)) {
+                if (!DateTime::createFromFormat($parameter, $value)) {
                     return "This field must match the format $parameter.";
                 } else {
                     return true;
