@@ -8,11 +8,12 @@ use Lib\PrismaPHPSettings;
 use DOMDocument;
 use DOMElement;
 use DOMComment;
+use DOMNode;
 
 class TemplateCompiler
 {
-    protected static $classMappings = [];
-    protected static $selfClosingTags = [
+    protected static array $classMappings = [];
+    protected static array $selfClosingTags = [
         'area',
         'base',
         'br',
@@ -44,11 +45,12 @@ class TemplateCompiler
         $root = $dom->documentElement;
         $output = "";
 
+        $outputParts = [];
         foreach ($root->childNodes as $child) {
-            $output .= self::processNode($child);
+            $outputParts[] = self::processNode($child);
         }
 
-        return $output;
+        return implode('', $outputParts);
     }
 
     public static function convertToXml(string $templateContent): DOMDocument
@@ -83,6 +85,7 @@ class TemplateCompiler
             );
         }
         libxml_clear_errors();
+        libxml_use_internal_errors(false);
 
         return $dom;
     }
@@ -125,43 +128,36 @@ class TemplateCompiler
         );
     }
 
-    protected static function processNode($node): string
+    protected static function processNode(DOMNode $node): string
     {
-        $output = "";
-
         if ($node instanceof DOMElement) {
             $componentName = $node->nodeName;
             $attributes = [];
 
-            // Extract attributes
+            // Gather element attributes
             foreach ($node->attributes as $attr) {
                 $attributes[$attr->name] = $attr->value;
             }
 
-            // Process child nodes
-            $innerContent = "";
-            if ($node->hasChildNodes()) {
-                foreach ($node->childNodes as $child) {
-                    $innerContent .= self::processNode($child);
-                }
+            // Recursively get child content
+            $childOutput = [];
+            foreach ($node->childNodes as $child) {
+                $childOutput[] = self::processNode($child);
             }
+            $innerContent = implode('', $childOutput);
 
-            // Include inner content as 'children' 
-            $attributes["children"] = $innerContent;
+            // We'll store 'children' for potential component logic
+            $attributes['children'] = $innerContent;
 
-            $output .= self::processComponent(
-                $componentName,
-                $attributes,
-                $innerContent
-            );
+            // Pass to processComponent for final decision
+            return self::processComponent($componentName, $attributes);
         } elseif ($node instanceof DOMComment) {
-            $output .= "<!--{$node->textContent}-->";
-        } else {
-            // For text nodes and others
-            $output .= $node->textContent;
+            // Preserve HTML comments
+            return "<!--{$node->textContent}-->";
         }
 
-        return $output;
+        // For text/cdata nodes, return text
+        return $node->textContent;
     }
 
     protected static function initializeClassMappings(): void
@@ -171,50 +167,45 @@ class TemplateCompiler
         }
     }
 
-    protected static function processComponent(
-        string $componentName,
-        array $attributes,
-        string $innerContent
-    ): string {
+    protected static function processComponent(string $componentName, array $attributes): string
+    {
         if (isset(self::$classMappings[$componentName])) {
-            $classMapping = self::$classMappings[$componentName];
+            $className = self::$classMappings[$componentName]['className'];
+            $filePath = self::$classMappings[$componentName]['filePath'];
 
             // Ensure the required file is included
-            require_once str_replace('\\', '/', SRC_PATH . '/' . $classMapping['filePath']);
+            require_once str_replace('\\', '/', SRC_PATH . '/' . $filePath);
 
-            // Use the fully qualified class name
-            $className = $classMapping['className'];
-
-            // Check if the class exists
-            if (class_exists($className)) {
-                // Instantiate the component
-                $componentInstance = new $className($attributes);
-
-                // Render the component
-                $renderedContent = $componentInstance->render();
-
-                // Check if the rendered content contains other components
-                if (strpos($renderedContent, '<') !== false) {
-                    // Re-parse the rendered content
-                    return self::compile($renderedContent);
-                }
-
-                // Return the plain rendered content if no components are detected
-                return $renderedContent;
-            } else {
+            if (!class_exists($className)) {
                 throw new \RuntimeException("Class $className does not exist.");
             }
-        } else {
-            // Render as an HTML tag
-            $attributesString = self::renderAttributes($attributes);
 
-            // Determine if the tag should be self-closing
-            if (in_array(strtolower($componentName), self::$selfClosingTags)) {
-                return "<$componentName $attributesString />";
-            } else {
-                return "<$componentName $attributesString>$innerContent</$componentName>";
+            // Instantiate the component
+            $componentInstance = new $className($attributes);
+            $renderedContent = $componentInstance->render();
+
+            // re-compile to handle further components
+            if (strpos($renderedContent, '<') !== false) {
+                return self::compile($renderedContent);
             }
+            return $renderedContent;
         }
+
+        return self::renderAsHtml($componentName, $attributes);
+    }
+
+    protected static function renderAsHtml(string $tagName, array $attributes): string
+    {
+        $attrs = self::renderAttributes($attributes);
+
+        // Check if it's self-closing
+        if (in_array(strtolower($tagName), self::$selfClosingTags)) {
+            return "<{$tagName}{$attrs} />";
+        }
+
+        // Normal open/close
+        $innerContent = $attributes['children'] ?? '';
+        return "<{$tagName}{$attrs}>{$innerContent}</{$tagName}>";
     }
 
     protected static function renderAttributes(array $attributes): string

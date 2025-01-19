@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
@@ -290,7 +292,7 @@ function dynamicRoute($pathname)
 
 function isGroupIdentifier($segment): bool
 {
-    return preg_match('/^\(.*\)$/', $segment);
+    return (bool)preg_match('/^\(.*\)$/', $segment);
 }
 
 function matchGroupFolder($constructedPath): ?string
@@ -323,6 +325,11 @@ function matchGroupFolder($constructedPath): ?string
 function getGroupFolder($pathname): string
 {
     $lastSlashPos = strrpos($pathname, '/');
+
+    if ($lastSlashPos === false) {
+        return "";
+    }
+
     $pathWithoutFile = substr($pathname, 0, $lastSlashPos);
 
     if (preg_match('/\(([^)]+)\)[^()]*$/', $pathWithoutFile, $matches)) {
@@ -874,7 +881,7 @@ try {
     } else {
         $_errorDetails = "Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
         $_errorDetails .= "<br>File: " . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
-        $_errorDetails .= "<br>Line: " . htmlspecialchars($e->getLine(), ENT_QUOTES, 'UTF-8');
+        $_errorDetails .= "<br>Line: " . htmlspecialchars((string)$e->getLine(), ENT_QUOTES, 'UTF-8');
         $_errorDetails .= "<br/>TraceAsString: " . htmlspecialchars($e->getTraceAsString(), ENT_QUOTES, 'UTF-8');
         $_errorDetails = "<div class='error'>$_errorDetails</div>";
     }
