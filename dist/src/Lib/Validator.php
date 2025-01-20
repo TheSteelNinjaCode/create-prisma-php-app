@@ -180,16 +180,32 @@ final class Validator
     // Date Validation
 
     /**
-     * Validate a date in a given format.
+     * Validate and format a date in a given format.
      *
-     * @param mixed $value The value to validate.
-     * @param string $format The date format.
-     * @return string|null The valid date string or null if invalid.
+     * This function attempts to parse the input value as a date according to the specified format.
+     * If the value is valid, it returns the formatted date string. Otherwise, it returns null.
+     *
+     * @param mixed $value The value to validate. It can be a string or a DateTime object.
+     * @param string $format The expected date format (default is 'Y-m-d').
+     * @return string|null The formatted date string if valid, or null if invalid.
      */
     public static function date($value, string $format = 'Y-m-d'): ?string
     {
-        $date = DateTime::createFromFormat($format, $value);
-        return $date && $date->format($format) === $value ? $value : null;
+        try {
+            if ($value instanceof DateTime) {
+                $date = $value;
+            } else {
+                $date = DateTime::createFromFormat($format, (string)$value);
+            }
+
+            if ($date && $date->format($format) === (string)$value) {
+                return $date->format($format);
+            }
+        } catch (Exception) {
+            return null;
+        }
+
+        return null;
     }
 
     /**
@@ -203,7 +219,7 @@ final class Validator
      * @param string $format The format to use for the output date-time string. Default is 'Y-m-d H:i:s.u'.
      * @return string|null The formatted date-time string, or null if the value could not be parsed.
      */
-    public static function dateTime($value, string $format = 'Y-m-d H:i:s.u'): ?string
+    public static function dateTime($value, string $format = 'Y-m-d H:i:s'): ?string
     {
         try {
             if ($value instanceof DateTime) {
