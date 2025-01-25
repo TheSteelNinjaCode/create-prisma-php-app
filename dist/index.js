@@ -136,7 +136,7 @@ async function main() {
     }
     if (answer.tailwindcss) {
       dependencies.push(
-        "tailwindcss",
+        "tailwindcss@^3.4.17",
         "autoprefixer",
         "postcss",
         "postcss-cli",
