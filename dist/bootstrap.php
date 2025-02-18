@@ -863,12 +863,12 @@ try {
             ? Bootstrap::$parentLayoutPath
             : (Bootstrap::$layoutsToInclude[0] ?? '');
 
-        $message = "The layout file does not contain <?= MainLayout::\$childLayoutChildren ?>\n<strong>$layoutPath</strong>";
-        $htmlMessage = "<div class='error'>The layout file does not contain <?= MainLayout::\$childLayoutChildren ?><br><strong>$layoutPath</strong></div>";
+        $message = "The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;\n<strong>$layoutPath</strong>";
+        $htmlMessage = "<div class='error'>The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;<br><strong>$layoutPath</strong></div>";
 
         if (Bootstrap::$isContentIncluded) {
-            $message = "The parent layout file does not contain <?= MainLayout::\$children ?> or <?= MainLayout::\$childLayoutChildren ?><br><strong>$layoutPath</strong>";
-            $htmlMessage = "<div class='error'>The parent layout file does not contain <?= MainLayout::\$children ?> or <?= MainLayout::\$childLayoutChildren ?><br><strong>$layoutPath</strong></div>";
+            $message = "The parent layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; Or &lt;?= MainLayout::\$children ?&gt;<br><strong>$layoutPath</strong>";
+            $htmlMessage = "<div class='error'>The parent layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; Or &lt;?= MainLayout::\$children ?&gt;<br><strong>$layoutPath</strong></div>";
         }
 
         $errorDetails = Bootstrap::isAjaxOrXFileRequestOrRouteFile() ? $message : $htmlMessage;
