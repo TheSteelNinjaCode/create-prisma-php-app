@@ -22,3 +22,7 @@ export const prismaSdk = async (): Promise<void> => {
     console.error("Error parsing schema:", error);
   }
 };
+
+if (process.argv[1] && process.argv[1].endsWith("prisma-sdk.ts")) {
+  prismaSdk();
+}

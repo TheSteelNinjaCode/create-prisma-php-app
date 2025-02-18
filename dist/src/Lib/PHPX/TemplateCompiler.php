@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Lib\PHPX;
 
 use Lib\PrismaPHPSettings;
+use Lib\MainLayout;
 use DOMDocument;
 use DOMElement;
 use DOMComment;
 use DOMNode;
+use RuntimeException;
 
 class TemplateCompiler
 {
@@ -38,12 +40,9 @@ class TemplateCompiler
             self::initializeClassMappings();
         }
 
-        // Convert template to valid XML
         $dom = self::convertToXml($templateContent);
 
-        // Process the converted XML
         $root = $dom->documentElement;
-        $output = "";
 
         $outputParts = [];
         foreach ($root->childNodes as $child) {
@@ -53,25 +52,61 @@ class TemplateCompiler
         return implode('', $outputParts);
     }
 
-    public static function convertToXml(string $templateContent): DOMDocument
+    public static function injectDynamicContent(string $htmlContent): string
     {
-        // Escape `&` characters that are not part of valid XML entities
-        $templateContent = preg_replace_callback(
+        $patternHeadOpen = '/(<head\b[^>]*>)/i';
+        if (preg_match($patternHeadOpen, $htmlContent)) {
+            $htmlContent = preg_replace(
+                $patternHeadOpen,
+                '$1' . MainLayout::outputMetadata(),
+                $htmlContent,
+                1
+            );
+        }
+
+        $patternHeadClose = '/(<\/head\s*>)/i';
+        if (preg_match($patternHeadClose, $htmlContent)) {
+            $htmlContent = preg_replace(
+                $patternHeadClose,
+                MainLayout::outputHeadScripts() . '$1',
+                $htmlContent,
+                1
+            );
+        }
+
+        $patternBodyClose = '/(<\/body\s*>)/i';
+        if (preg_match($patternBodyClose, $htmlContent)) {
+            $htmlContent = preg_replace(
+                $patternBodyClose,
+                MainLayout::outputFooterScripts() . '$1',
+                $htmlContent,
+                1
+            );
+        }
+
+        return $htmlContent;
+    }
+
+    private static function escapeAmpersands(string $content): string
+    {
+        return preg_replace_callback(
             '/&(.*?)/',
             function ($matches) {
                 $str = $matches[0];
 
-                // If it already looks like a valid entity, leave it alone.
-                // This check can be as simple or as robust as you need.
                 if (preg_match('/^&(?:[a-zA-Z]+|#[0-9]+|#x[0-9A-Fa-f]+);$/', $str)) {
                     return $str;
                 }
 
-                // Otherwise, escape it.
                 return '&amp;' . substr($str, 1);
             },
-            $templateContent
+            $content
         );
+    }
+
+    public static function convertToXml(string $templateContent): DOMDocument
+    {
+        $templateContent = self::escapeAmpersands($templateContent);
 
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
@@ -80,7 +115,7 @@ class TemplateCompiler
 
         if (!$dom->loadXML($wrappedContent)) {
             $errors = self::getXmlErrors();
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "XML Parsing Failed: " . implode("; ", $errors)
             );
         }
@@ -112,7 +147,6 @@ class TemplateCompiler
             default => "Unknown",
         };
 
-        // Highlight the tag name in the error message
         $message = trim($error->message);
         if (preg_match("/tag (.*?) /", $message, $matches)) {
             $tag = $matches[1];
@@ -134,29 +168,23 @@ class TemplateCompiler
             $componentName = $node->nodeName;
             $attributes = [];
 
-            // Gather element attributes
             foreach ($node->attributes as $attr) {
                 $attributes[$attr->name] = $attr->value;
             }
 
-            // Recursively get child content
             $childOutput = [];
             foreach ($node->childNodes as $child) {
                 $childOutput[] = self::processNode($child);
             }
             $innerContent = implode('', $childOutput);
 
-            // We'll store 'children' for potential component logic
             $attributes['children'] = $innerContent;
 
-            // Pass to processComponent for final decision
             return self::processComponent($componentName, $attributes);
         } elseif ($node instanceof DOMComment) {
-            // Preserve HTML comments
             return "<!--{$node->textContent}-->";
         }
 
-        // For text/cdata nodes, return text
         return $node->textContent;
     }
 
@@ -173,18 +201,15 @@ class TemplateCompiler
             $className = self::$classMappings[$componentName]['className'];
             $filePath = self::$classMappings[$componentName]['filePath'];
 
-            // Ensure the required file is included
             require_once str_replace('\\', '/', SRC_PATH . '/' . $filePath);
 
             if (!class_exists($className)) {
-                throw new \RuntimeException("Class $className does not exist.");
+                throw new RuntimeException("Class $className does not exist.");
             }
 
-            // Instantiate the component
             $componentInstance = new $className($attributes);
             $renderedContent = $componentInstance->render();
 
-            // re-compile to handle further components
             if (strpos($renderedContent, '<') !== false) {
                 return self::compile($renderedContent);
             }
@@ -198,12 +223,10 @@ class TemplateCompiler
     {
         $attrs = self::renderAttributes($attributes);
 
-        // Check if it's self-closing
         if (in_array(strtolower($tagName), self::$selfClosingTags)) {
             return "<{$tagName}{$attrs} />";
         }
 
-        // Normal open/close
         $innerContent = $attributes['children'] ?? '';
         return "<{$tagName}{$attrs}>{$innerContent}</{$tagName}>";
     }

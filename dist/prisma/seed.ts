@@ -22,7 +22,7 @@
 //   },
 // ];
 
-async function main() {
+// async function main() {
   // ========================================
   // Code for PostgreSQL
   // ----------------------------------------
@@ -63,7 +63,7 @@ async function main() {
   // await prisma.user.deleteMany();
   // await prisma.user.createMany({ data: userData });
   // ========================================
-}
+// }
 
 // main()
 //   .catch((e) => {

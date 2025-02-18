@@ -10,6 +10,7 @@ class MainLayout
     public static string $description = '';
     public static string $children = '';
     public static string $childLayoutChildren = '';
+    public static string $html = '';
 
     private static array $headScripts = [];
     private static array $headScriptsMap = [];
@@ -54,33 +55,35 @@ class MainLayout
     }
 
     /**
-     * Output all the head scripts
+     * Generate all the head scripts with dynamic attributes.
      *
-     * @return void
+     * @return string
      */
-    public static function outputHeadScripts(): void
+    public static function outputHeadScripts(): string
     {
         $headScriptsWithAttributes = array_map(function ($tag) {
-            // Check if the tag is a <link> or <script> and add the dynamic attribute
+            // Check if the tag is a <script>, <link>, or <style> and add the dynamic attribute
             if (strpos($tag, '<script') !== false) {
                 return str_replace('<script', '<script pp-dynamic-script="81D7D"', $tag);
             } elseif (strpos($tag, '<link') !== false) {
                 return str_replace('<link', '<link pp-dynamic-link="81D7D"', $tag);
+            } elseif (strpos($tag, '<style') !== false) {
+                return str_replace('<style', '<style pp-dynamic-style="81D7D"', $tag);
             }
-            return $tag; // Return the tag unchanged if it's neither <script> nor <link>
+            return $tag;
         }, self::$headScripts);
 
-        echo implode("\n", $headScriptsWithAttributes);
+        return implode("\n", $headScriptsWithAttributes);
     }
 
     /**
-     * Output all the footer scripts
+     * Generate all the footer scripts.
      *
-     * @return void
+     * @return string
      */
-    public static function outputFooterScripts(): void
+    public static function outputFooterScripts(): string
     {
-        echo implode("\n", self::$footerScripts);
+        return implode("\n", self::$footerScripts);
     }
 
     /**
@@ -127,29 +130,27 @@ class MainLayout
     }
 
     /**
-     * Output the metadata as meta tags for the head section
+     * Generate the metadata as meta tags for the head section.
      *
-     * @return void
+     * @return string
      */
-    public static function outputMetadata(): void
+    public static function outputMetadata(): string
     {
-        // Output standard metadata
-        echo '<title>' . htmlspecialchars(self::$title) . '</title>' . "\n";
+        $metadataContent = [
+            '<meta charset="UTF-8">',
+            '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        ];
+        $metadataContent[] = '<title>' . htmlspecialchars(self::$title) . '</title>';
 
-        // Ensure the description is included in custom metadata if not already present
         if (!isset(self::$customMetadata['description'])) {
             self::$customMetadata['description'] = self::$description;
         }
 
-        $customMetadataContent = [];
         foreach (self::$customMetadata as $key => $value) {
-            // Add the dynamic meta ID attribute to each <meta> tag
-            $customMetadataContent[] = '<meta name="' . htmlspecialchars($key) . '" content="' . htmlspecialchars($value) . '" pp-dynamic-meta="81D7D">';
+            $metadataContent[] = '<meta name="' . htmlspecialchars($key) . '" content="' . htmlspecialchars($value) . '" pp-dynamic-meta="81D7D">';
         }
 
-        if (!empty($customMetadataContent)) {
-            echo implode("\n", $customMetadataContent) . "\n";
-        }
+        return implode("\n", $metadataContent);
     }
 
     /**

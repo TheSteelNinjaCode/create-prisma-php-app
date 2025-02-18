@@ -8,20 +8,17 @@ MainLayout::$description = !empty(MainLayout::$description) ? MainLayout::$descr
 
 ?>
 
-<!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <?= MainLayout::outputMetadata(); ?>
-    <link rel="icon" href="<?= Request::baseUrl; ?>/favicon.ico" type="image/x-icon" sizes="16x16">
+    <!-- Dynamic Meta Tags -->
+    <link rel="icon" href="<?= Request::baseUrl; ?>/favicon.ico" type="image/x-icon" sizes="16x16" />
+    <!-- Dynamic Header Scripts -->
 </head>
 
 <body>
     <?= MainLayout::$children; ?>
-    <!-- Dynamic Footer -->
-    <?= MainLayout::outputFooterScripts(); ?>
+    <!-- Dynamic Footer Scripts -->
 </body>
 
 </html>

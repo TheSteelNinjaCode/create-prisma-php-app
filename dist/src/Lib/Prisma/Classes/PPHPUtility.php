@@ -3,6 +3,14 @@
 namespace Lib\Prisma\Classes;
 
 use Lib\Validator;
+use ReflectionClass;
+use InvalidArgumentException;
+use DateTime;
+use Brick\Math\BigDecimal;
+use Brick\Math\BigInteger;
+use ReflectionUnionType;
+use ReflectionNamedType;
+use Exception;
 
 enum ArrayType: string
 {
@@ -24,7 +32,7 @@ final class PPHPUtility
      * @param string $modelName The name of the model being checked.
      * @param string $timestamp The timestamp field name to be ignored during the check.
      *
-     * @throws \Exception If a field does not exist in the model or if the selection format is incorrect.
+     * @throws Exception If a field does not exist in the model or if the selection format is incorrect.
      */
     public static function checkFieldsExistWithReferences(
         array $select,
@@ -41,17 +49,17 @@ final class PPHPUtility
 
                 if (is_numeric($key) && is_string($value)) {
                     if (array_key_exists($value, $fields))
-                        throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true]");
+                        throw new Exception("The '$value' is indexed, waiting example: ['$value' => true]");
                 }
 
                 if (isset($value) && empty($value) || !is_bool($value)) {
                     if (is_string($key) && !array_key_exists($key, $fields)) {
-                        throw new \Exception("The field '$key' does not exist in the $modelName model.");
+                        throw new Exception("The field '$key' does not exist in the $modelName model.");
                     }
 
                     if (is_string($key) && array_key_exists($key, $fields)) {
                         if (!is_bool($value) && !is_array($value)) {
-                            throw new \Exception("The '$key' is indexed, waiting example: ['$key' => true]");
+                            throw new Exception("The '$key' is indexed, waiting example: ['$key' => true]");
                         }
                     }
 
@@ -67,7 +75,7 @@ final class PPHPUtility
                             $relatedEntityFields[$key] = [$key];
                         } else {
                             if (!is_bool($value) || empty($value)) {
-                                throw new \Exception("The '$key' is indexed, waiting example: ['$key' => true] or ['$key' => ['select' => ['field1' => true, 'field2' => true]]]");
+                                throw new Exception("The '$key' is indexed, waiting example: ['$key' => true] or ['$key' => ['select' => ['field1' => true, 'field2' => true]]]");
                             }
                         }
                     }
@@ -78,7 +86,7 @@ final class PPHPUtility
 
                         if (!array_key_exists($fieldName, $fields)) {
                             $availableFields = implode(', ', array_keys($fields));
-                            throw new \Exception("The field '$fieldName' does not exist in the $modelName model. Available fields are: $availableFields");
+                            throw new Exception("The field '$fieldName' does not exist in the $modelName model. Available fields are: $availableFields");
                         }
 
                         if (
@@ -116,19 +124,19 @@ final class PPHPUtility
      * @param array $fields The array of fields available in the model.
      * @param string $modelName The name of the model being checked.
      *
-     * @throws \Exception If a field in the select array does not exist in the fields array.
+     * @throws Exception If a field in the select array does not exist in the fields array.
      */
     public static function checkFieldsExist(array $select, array $fields, string $modelName)
     {
         foreach ($select as $key => $value) {
             if (is_numeric($key) && is_string($value)) {
-                if (array_key_exists($value, $fields))
-                    throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true]");
+                if (self::fieldExists($key, $fields))
+                    throw new Exception("The '$value' is indexed, waiting example: ['$value' => true]");
             }
 
             if (isset($value) && empty($value) || !is_bool($value)) {
-                if (is_string($key) && !array_key_exists($key, $fields)) {
-                    throw new \Exception("The field '$key' does not exist in the $modelName model.");
+                if (is_string($key) && !self::fieldExists($key, $fields)) {
+                    throw new Exception("The field '$key' does not exist in the $modelName model.");
                 }
 
                 if (is_array($value) && !empty($value)) {
@@ -136,11 +144,12 @@ final class PPHPUtility
                     $isRelatedModel = false;
 
                     foreach ($fields as $field) {
-                        $relation = $field['decorators']['relation'] ?? null;
-                        $inverseRelation = $field['decorators']['inverseRelation'] ?? null;
-                        $implicitRelation = $field['decorators']['implicitRelation'] ?? null;
+                        $isObject = $field['kind'] === 'object' ? true : false;
+                        $fieldName = $field['name'];
 
-                        if (isset($relation['name']) && $relation['name'] == $key || isset($inverseRelation['fromField']) && $inverseRelation['fromField'] == $key || isset($implicitRelation['fromField']) && $implicitRelation['fromField'] == $key) $isRelatedModel = true;
+                        if ($isObject && $fieldName === $key) {
+                            $isRelatedModel = true;
+                        }
                     }
 
                     if ($isRelatedModel) continue;
@@ -148,8 +157,8 @@ final class PPHPUtility
                     $keys = array_keys($value);
                     foreach ($keys as $fieldName) {
                         $fieldName = trim($fieldName);
-                        if (!array_key_exists($fieldName, $fields)) {
-                            throw new \Exception("The field '$fieldName' does not exist in the $modelName model.");
+                        if (!self::fieldExists($fieldName, $fields)) {
+                            throw new Exception("The field '$fieldName' does not exist in the $modelName model.");
                         }
                     }
                 }
@@ -159,11 +168,21 @@ final class PPHPUtility
 
             foreach (explode(',', $key) as $fieldName) {
                 $fieldName = trim($fieldName);
-                if (!array_key_exists($fieldName, $fields)) {
-                    throw new \Exception("The field '$fieldName' does not exist in the $modelName model.");
+                if (!self::fieldExists($fieldName, $fields)) {
+                    throw new Exception("The field '$fieldName' does not exist in the $modelName model.");
                 }
             }
         }
+    }
+
+    private static function fieldExists(string $key, array $fields): bool
+    {
+        foreach ($fields as $field) {
+            if (isset($field['name']) && $field['name'] === $key) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -202,7 +221,7 @@ final class PPHPUtility
      * @param array $fields The array of fields in the model.
      * @param string $modelName The name of the model being processed.
      *
-     * @throws \Exception If an include value is indexed incorrectly or if a field does not exist in the model.
+     * @throws Exception If an include value is indexed incorrectly or if a field does not exist in the model.
      */
     public static function checkIncludes(array $include, array &$relatedEntityFields, array &$includes, array $fields, string $modelName)
     {
@@ -215,7 +234,7 @@ final class PPHPUtility
                 self::processIncludeValue($key, $value, $relatedEntityFields, $fields, $modelName, $key);
 
                 if (is_numeric($key) && is_string($value)) {
-                    throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true]");
+                    throw new Exception("The '$value' is indexed, waiting example: ['$value' => true]");
                 }
 
                 if (isset($value) && empty($value) || !is_bool($value)) {
@@ -223,7 +242,7 @@ final class PPHPUtility
                 }
 
                 if (!array_key_exists($key, $fields)) {
-                    throw new \Exception("The field '$key' does not exist in the $modelName model.");
+                    throw new Exception("The field '$key' does not exist in the $modelName model.");
                 }
 
                 $includes[$key] = $value;
@@ -249,7 +268,7 @@ final class PPHPUtility
             }
         } else {
             if (!is_bool($value) || empty($value)) {
-                throw new \Exception("The '$value' is indexed, waiting example: ['$value' => true] or ['$value' => ['select' => ['field1' => true, 'field2' => true]]]");
+                throw new Exception("The '$value' is indexed, waiting example: ['$value' => true] or ['$value' => ['select' => ['field1' => true, 'field2' => true]]]");
             }
         }
     }
@@ -357,7 +376,7 @@ final class PPHPUtility
                         break;
                     default:
                         // Handle other conditions or log an error/warning for unsupported conditions
-                        throw new \Exception("Unsupported condition: $condition");
+                        throw new Exception("Unsupported condition: $condition");
                         break;
                 }
             }
@@ -392,13 +411,13 @@ final class PPHPUtility
      * @param array $fields The array of allowed field names.
      * @param string $modelName The name of the model being checked.
      *
-     * @throws \Exception If an invalid key is found in the data array.
+     * @throws Exception If an invalid key is found in the data array.
      */
     public static function checkForInvalidKeys(array $data, array $fields, string $modelName)
     {
         foreach ($data as $key => $value) {
             if (!empty($key) && !in_array($key, $fields)) {
-                throw new \Exception("The field '$key' does not exist in the $modelName model. Accepted fields: " . implode(', ', $fields));
+                throw new Exception("The field '$key' does not exist in the $modelName model. Accepted fields: " . implode(', ', $fields));
             }
         }
     }
@@ -569,7 +588,7 @@ final class PPHPUtility
      * @param string $dbType The type of the database (e.g., 'mysql', 'pgsql').
      * @param object|null $model The model object containing metadata about the relations.
      *
-     * @throws \Exception If relation metadata is not defined or if required fields/references are missing.
+     * @throws Exception If relation metadata is not defined or if required fields/references are missing.
      */
     public static function buildJoinsRecursively(
         array $include,
@@ -579,18 +598,19 @@ final class PPHPUtility
         mixed $pdo,
         string $dbType,
         ?object $model = null,
-        string $defaultJoinType = 'INNER JOIN' // Default join type
+        string $defaultJoinType = 'INNER JOIN',
+        string $pathPrefix = ''
     ) {
         foreach ($include as $relationName => $relationOptions) {
-
             $joinType = isset($relationOptions['join.type'])
                 ? strtoupper($relationOptions['join.type']) . ' JOIN'
                 : $defaultJoinType;
 
             if (!in_array($joinType, ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN'], true)) {
-                throw new \Exception("Invalid join type: $joinType (expected 'INNER JOIN', 'LEFT JOIN', or 'RIGHT JOIN')");
+                throw new Exception("Invalid join type: $joinType (expected 'INNER JOIN', 'LEFT JOIN', or 'RIGHT JOIN')");
             }
-            // Check for nested includes (like ['include' => [ ... ]])
+
+            // Extract nested includes
             $nestedInclude = [];
             if (is_array($relationOptions) && isset($relationOptions['include']) && is_array($relationOptions['include'])) {
                 $nestedInclude = $relationOptions['include'];
@@ -598,87 +618,69 @@ final class PPHPUtility
             $isNested = !empty($nestedInclude);
 
             // 1. Fetch metadata
-            if (!isset($model->fields[$relationName]['decorators'])) {
-                throw new \Exception(
-                    "Relation metadata not defined for '$relationName' in " . get_class($model)
-                );
+            if (!isset($model->fields[$relationName])) {
+                throw new Exception("Relation metadata not defined for '$relationName' in " . get_class($model));
             }
-            $decorator = $model->fields[$relationName]['decorators'];
 
-            // 2. Determine the actual DB table
-            $joinTable = $decorator['relation']['relationTableName']
-                ?? $decorator['inverseRelation']['toTableName']
-                ?? $decorator['implicitRelation']['tableName']
-                ?? null;
+            // 2. Identify related class
+            $relatedClassName = "Lib\\Prisma\\Classes\\" . $model->fields[$relationName]['type'] ?? null;
+            $relatedClass = new $relatedClassName($pdo);
+            if (!$relatedClass) {
+                throw new Exception("Could not instantiate class for relation '$relationName'.");
+            }
+
+            // 3. Determine DB table
+            $joinTable = $relatedClass->tableName ?? null;
             if (!$joinTable) {
-                throw new \Exception("No valid table name found for relation '$relationName'.");
+                throw new Exception("No valid table name found for relation '$relationName'.");
             }
-
-            // 3. Figure out the relation type in one place
-            $relationType = $decorator['relation']['type']
-                ?? $decorator['inverseRelation']['type']
-                ?? $decorator['implicitRelation']['type']
-                ?? null;
-            // Decide the alias separator: OneToOne/ManyToOne => '.', else '._.'
-            $separator = ($relationType === 'OneToOne' || $relationType === 'ManyToOne')
-                ? '.'
-                : '._.';
 
             $newAliasQuoted = PPHPUtility::quoteColumnName($dbType, $relationName);
 
-            // 4. Build the ON condition
-            $joinCondition = '';
-            if (isset($decorator['relation'])) {
-                $relationField = $decorator['relation']['references'][0] ?? null;
-                $referenceKey  = $decorator['relation']['fields'][0]    ?? null;
+            // 5. Build the ON condition
+            $joinConditions = [];
+            $fieldsRelatedWithKeys = $model->fieldsRelatedWithKeys[$relationName] ?? null;
+            if ($fieldsRelatedWithKeys) {
+                $relationToFields = $fieldsRelatedWithKeys['relationToFields'] ?? [];
+                $relationFromFields = $fieldsRelatedWithKeys['relationFromFields'] ?? [];
 
-                if (!$relationField || !$referenceKey) {
-                    throw new \Exception("Missing 'references' or 'fields' for relation '$relationName'.");
+                if (count($relationToFields) !== count($relationFromFields)) {
+                    throw new Exception("Mismatched 'references' and 'fields' for '$relationName'.");
                 }
 
-                // The join pattern is the same whether OneToOne, ManyToOne, etc.
-                $joinCondition = sprintf(
-                    '%s.%s = %s.%s',
-                    $parentAlias,
-                    PPHPUtility::quoteColumnName($dbType, $referenceKey),
-                    $newAliasQuoted,
-                    PPHPUtility::quoteColumnName($dbType, $relationField)
-                );
-            } elseif (isset($decorator['inverseRelation'])) {
-                $relationField = $decorator['inverseRelation']['fields'][0] ?? null;
-                $referenceKey  = $decorator['inverseRelation']['references'][0] ?? null;
+                foreach ($relationToFields as $index => $toField) {
+                    $fromField = $relationFromFields[$index] ?? null;
+                    if (!$toField || !$fromField) {
+                        throw new Exception("Missing references/fields for '$relationName' at index $index.");
+                    }
 
-                if (!$relationField || !$referenceKey) {
-                    throw new \Exception("Missing 'fields' or 'references' for inverseRelation '$relationName'.");
+                    $fromFieldExists = array_key_exists($fromField, $model->fields);
+
+                    if ($fromFieldExists) {
+                        $joinConditions[] = sprintf(
+                            '%s.%s = %s.%s',
+                            $parentAlias,
+                            PPHPUtility::quoteColumnName($dbType, $fromField),
+                            $newAliasQuoted,
+                            PPHPUtility::quoteColumnName($dbType, $toField)
+                        );
+                    } else {
+                        $joinConditions[] = sprintf(
+                            '%s.%s = %s.%s',
+                            $parentAlias,
+                            PPHPUtility::quoteColumnName($dbType, $toField),
+                            $newAliasQuoted,
+                            PPHPUtility::quoteColumnName($dbType, $fromField)
+                        );
+                    }
                 }
-
-                $joinCondition = sprintf(
-                    '%s.%s = %s.%s',
-                    $parentAlias,
-                    PPHPUtility::quoteColumnName($dbType, $referenceKey),
-                    $newAliasQuoted,
-                    PPHPUtility::quoteColumnName($dbType, $relationField)
-                );
-            } elseif (isset($decorator['implicitRelation'])) {
-                $relationField = $decorator['implicitRelation']['fields'][0] ?? null;
-                $referenceKey  = $decorator['implicitRelation']['references'][0] ?? null;
-
-                if (!$relationField || !$referenceKey) {
-                    throw new \Exception("Missing 'fields' or 'references' for implicitRelation '$relationName'.");
-                }
-
-                $joinCondition = sprintf(
-                    '%s.%s = %s.%s',
-                    $parentAlias,
-                    PPHPUtility::quoteColumnName($dbType, $referenceKey),
-                    $newAliasQuoted,
-                    PPHPUtility::quoteColumnName($dbType, $relationField)
-                );
             } else {
-                throw new \Exception("Relation or inverseRelation not properly defined for '$relationName'.");
+                throw new Exception("Relation '$relationName' not properly defined.");
             }
 
-            // 5. Add the JOIN statement dynamically
+            $joinCondition = implode(' AND ', $joinConditions);
+
+            // 6. Add the JOIN statement
             $joinTableQuoted = PPHPUtility::quoteColumnName($dbType, $joinTable);
             $joins[] = sprintf(
                 '%s %s AS %s ON %s',
@@ -688,18 +690,19 @@ final class PPHPUtility
                 $joinCondition
             );
 
-            // 6. Identify the related class
-            $relatedClass = PPHPFactory::getRelatedClass($relationName, $pdo) ?? null;
-            if (!$relatedClass) {
-                throw new \Exception("Could not instantiate class for relation '$relationName'.");
-            }
+            // 7. ADD COLUMNS (with the *full path prefix*).
+            //    e.g. if pathPrefix="" and relationName="post", then childPathPrefix="post".
+            //         if pathPrefix="post" and relationName="categories", => "post.categories".
+            $childPathPrefix = $pathPrefix
+                ? $pathPrefix . '.' . $relationName
+                : $relationName;
 
-            // 7. Add columns from the joined table
             $fieldsOnly = $relatedClass->fieldsOnly ?? [];
             foreach ($fieldsOnly as $field) {
                 $quotedField       = PPHPUtility::quoteColumnName($dbType, $field);
-                $columnAlias       = sprintf('%s%s%s', $relationName, $separator, $field);
+                $columnAlias       = $childPathPrefix . '.' . $field;      // e.g. "post.categories.id"
                 $columnAliasQuoted = PPHPUtility::quoteColumnName($dbType, $columnAlias);
+
                 $selectFields[] = sprintf(
                     '%s.%s AS %s',
                     $newAliasQuoted,
@@ -712,14 +715,140 @@ final class PPHPUtility
             if ($isNested) {
                 self::buildJoinsRecursively(
                     $nestedInclude,
-                    $newAliasQuoted,
+                    $newAliasQuoted,   // use this for the next level's JOIN
                     $joins,
                     $selectFields,
                     $pdo,
                     $dbType,
-                    $relatedClass
+                    $relatedClass,
+                    $defaultJoinType,
+                    $childPathPrefix   // pass down the updated path
                 );
             }
+        }
+    }
+
+    public static function arrayToObjectRecursive($data)
+    {
+        // If it's not an array, there's nothing to convert; just return as-is
+        if (!is_array($data)) {
+            return $data;
+        }
+
+        // Convert each item in the array and then convert the array itself
+        foreach ($data as $key => $value) {
+            $data[$key] = self::arrayToObjectRecursive($value);
+        }
+
+        return (object) $data;
+    }
+
+    public static function arrayToClassRecursive(array $data, string $class)
+    {
+        if (!class_exists($class)) {
+            throw new InvalidArgumentException("Class {$class} does not exist.");
+        }
+
+        $reflection = new ReflectionClass($class);
+        $instance = $reflection->newInstanceWithoutConstructor();
+        $properties = $reflection->getProperties();
+
+        foreach ($properties as $property) {
+            $propertyName = $property->getName();
+
+            if (array_key_exists($propertyName, $data)) {
+                $propertyType = $property->getType();
+                $typeNames = [];
+
+                if ($propertyType instanceof ReflectionUnionType) {
+                    $typeNames = array_map(fn($t) => $t->getName(), $propertyType->getTypes());
+                } elseif ($propertyType instanceof ReflectionNamedType) {
+                    $typeNames[] = $propertyType->getName();
+                }
+
+                if (in_array(DateTime::class, $typeNames)) {
+                    $instance->$propertyName = (new DateTime($data[$propertyName]))->format('Y-m-d H:i:s');
+                } elseif (in_array(BigDecimal::class, $typeNames)) {
+                    $instance->$propertyName = BigDecimal::of($data[$propertyName]);
+                } elseif (in_array(BigInteger::class, $typeNames)) {
+                    $instance->$propertyName = BigInteger::of($data[$propertyName]);
+                } elseif (count(array_intersect($typeNames, ['int', 'float', 'string', 'bool'])) > 0) {
+                    $instance->$propertyName = $data[$propertyName];
+                } elseif (in_array('array', $typeNames) && isset($data[$propertyName]) && is_array($data[$propertyName])) {
+                    // Check array type
+                    $arrayType = self::checkArrayContents($data[$propertyName]);
+
+                    // Handle array-to-object conversion
+                    $docComment = $property->getDocComment();
+                    if ($docComment && preg_match('/@var\s+([^\s\[\]]+)\[]/', $docComment, $matches)) {
+                        $elementType = $matches[1];
+                        if (class_exists($elementType)) {
+                            if ($arrayType === ArrayType::Indexed) {
+                                $instance->$propertyName = array_map(
+                                    fn($item) => self::arrayToClassRecursive($item, $elementType),
+                                    $data[$propertyName]
+                                );
+                            } else {
+                                // If associative, keep as array
+                                $instance->$propertyName = $data[$propertyName];
+                            }
+                        } else {
+                            $instance->$propertyName = $data[$propertyName]; // Default to raw array
+                        }
+                    } else {
+                        $instance->$propertyName = $data[$propertyName]; // Default to raw array
+                    }
+                } else {
+                    foreach ($typeNames as $typeName) {
+                        if (class_exists($typeName)) {
+                            if (is_array($data[$propertyName])) {
+                                $arrayType = self::checkArrayContents($data[$propertyName]);
+
+                                if ($arrayType === ArrayType::Associative) {
+                                    $instance->$propertyName = self::arrayToClassRecursive($data[$propertyName], $typeName);
+                                } elseif ($arrayType === ArrayType::Indexed) {
+                                    $instance->$propertyName = array_map(
+                                        fn($item) => self::arrayToClassRecursive($item, $typeName),
+                                        $data[$propertyName] ?? []
+                                    );
+                                }
+                            } elseif ($data[$propertyName] instanceof $typeName) {
+                                $instance->$propertyName = $data[$propertyName];
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Recursively sets a value in a multi-dimensional array
+     * based on an array of keys. E.g.:
+     *   setNestedValue($arr, ['post','categories','id'], 'some-id')
+     * becomes
+     *   $arr['post']['categories']['id'] = 'some-id';
+     */
+    public static function setNestedValue(array &$array, array $keys, $value)
+    {
+        // Take the first key from the array
+        $key = array_shift($keys);
+
+        // If this key doesn't exist yet, initialize it
+        if (!isset($array[$key])) {
+            // Decide if you want an empty array or some default
+            $array[$key] = [];
+        }
+
+        // If there are no more keys left, this is where we set the final value
+        if (empty($keys)) {
+            $array[$key] = $value;
+        } else {
+            // Otherwise, we recurse deeper
+            self::setNestedValue($array[$key], $keys, $value);
         }
     }
 }

@@ -102,15 +102,39 @@ const deleteFilesIfExist = async (filePaths: string[]): Promise<void> => {
         console.error(`Error deleting ${filePath}:`, error);
       }
     }
+
+    // If the file is 'request-data.json', recreate it as an empty file
+    if (filePath.endsWith("request-data.json")) {
+      try {
+        await fsPromises.writeFile(filePath, ""); // Create an empty file
+        // console.log(`Created empty ${filePath}`);
+      } catch (error) {
+        console.error(`Error creating empty ${filePath}:`, error);
+      }
+    }
   }
 };
 
-const filePaths = [
+async function deleteDirectoriesIfExist(dirPaths: string[]): Promise<void> {
+  for (const dirPath of dirPaths) {
+    try {
+      await fsPromises.rm(dirPath, { recursive: true, force: true });
+      console.log(`Deleted directory: ${dirPath}`);
+    } catch (error) {
+      console.error(`Error deleting directory (${dirPath}):`, error);
+    }
+  }
+}
+
+const filesToDelete = [
   join(__dirname, "request-data.json"),
   join(__dirname, "class-log.json"),
   join(__dirname, "class-imports.json"),
 ];
 
-await deleteFilesIfExist(filePaths);
+const dirsToDelete = [join(__dirname, "..", "caches")];
+
+await deleteFilesIfExist(filesToDelete);
+await deleteDirectoriesIfExist(dirsToDelete);
 await updateAllClassLogs();
 await updateComponentImports();

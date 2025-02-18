@@ -40,7 +40,6 @@ class PrismaSettings
         $this->projectRootPath = $data['projectRootPath'] ?? '';
         $this->phpEnvironment = $data['phpEnvironment'] ?? '';
         $this->phpRootPathExe = $data['phpRootPathExe'] ?? '';
-        $this->phpGenerateClassPath = $data['phpGenerateClassPath'] ?? '';
         $this->bsTarget = $data['bsTarget'] ?? '';
         $this->bsPathRewrite = new BSPathRewrite($data['bsPathRewrite'] ?? []);
         $this->backendOnly = $data['backendOnly'] ?? false;
@@ -84,12 +83,20 @@ class PrismaPHPSettings
      */
     public static array $includeFiles = [];
 
+    /**
+     * The local storage key for the app state.
+     *
+     * @var string
+     */
+    public static string $localStoreKey;
+
     public static function init(): void
     {
         self::$option = self::getPrismaSettings();
         self::$routeFiles = self::getRoutesFileList();
         self::$classLogFiles = self::getClassesLogFiles();
         self::$includeFiles = self::getIncludeFiles();
+        self::$localStoreKey = self::getLocalStorageKey();
     }
 
     /**
@@ -119,26 +126,54 @@ class PrismaPHPSettings
     private static function getRoutesFileList(): array
     {
         $jsonFileName = SETTINGS_PATH . '/files-list.json';
-        $routeFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
+        if (!file_exists($jsonFileName)) {
+            return [];
+        }
 
-        return $routeFiles;
+        $jsonContent = file_get_contents($jsonFileName);
+        if ($jsonContent === false || empty(trim($jsonContent))) {
+            return [];
+        }
+
+        $routeFiles = json_decode($jsonContent, true);
+        return is_array($routeFiles) ? $routeFiles : [];
     }
 
     private static function getClassesLogFiles(): array
     {
         $jsonFileName = SETTINGS_PATH . '/class-imports.json';
-        $classLogFiles = file_exists($jsonFileName) ? json_decode(file_get_contents($jsonFileName), true) : [];
+        if (!file_exists($jsonFileName)) {
+            return [];
+        }
 
-        return $classLogFiles;
+        $jsonContent = file_get_contents($jsonFileName);
+        if ($jsonContent === false || empty(trim($jsonContent))) {
+            return [];
+        }
+
+        $classLogFiles = json_decode($jsonContent, true);
+        return is_array($classLogFiles) ? $classLogFiles : [];
     }
 
     private static function getIncludeFiles(): array
     {
         $jsonFileName = SETTINGS_PATH . "/request-data.json";
-        $includeFiles = file_exists($jsonFileName)
-            ? json_decode(file_get_contents($jsonFileName), true)
-            : [];
+        if (!file_exists($jsonFileName)) {
+            return [];
+        }
 
-        return $includeFiles;
+        $jsonContent = file_get_contents($jsonFileName);
+        if ($jsonContent === false || empty(trim($jsonContent))) {
+            return [];
+        }
+
+        $includeFiles = json_decode($jsonContent, true);
+        return is_array($includeFiles) ? $includeFiles : [];
+    }
+
+    private static function getLocalStorageKey(): string
+    {
+        $localStorageKey = $_ENV['LOCALSTORE_KEY'] ?? 'pphp_local_store_59e13';
+        return strtolower(preg_replace('/\s+/', '_', trim($localStorageKey)));
     }
 }

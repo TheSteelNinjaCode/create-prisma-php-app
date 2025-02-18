@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import chalk from"chalk";import{spawn}from"child_process";import fs from"fs";import path from"path";import prompts from"prompts";import{fileURLToPath}from"url";const __filename=fileURLToPath(import.meta.url),__dirname=path.dirname(__filename),args=process.argv.slice(2),readJsonFile=e=>{const t=fs.readFileSync(e,"utf8");return JSON.parse(t)},executeCommand=(e,t=[],o={})=>new Promise(((r,a)=>{const s=spawn(e,t,{stdio:"inherit",shell:!0,...o});s.on("error",(e=>{a(e)})),s.on("close",(e=>{0===e?r():a(new Error(`Process exited with code ${e}`))}))}));async function getAnswer(){const e=[{type:"toggle",name:"shouldProceed",message:`This command will update the ${chalk.blue("create-prisma-php-app")} package and overwrite all default files. ${chalk.blue("Do you want to proceed")}?`,initial:!1,active:"Yes",inactive:"No"}],t=await prompts(e,{onCancel:()=>{process.exit(0)}});return 0===Object.keys(t).length?null:t}const commandsToExecute={generateClass:"npx php generate class",update:"npx php update project"};
+import chalk from"chalk";import{spawn}from"child_process";import fs from"fs";import path from"path";import prompts from"prompts";const args=process.argv.slice(2),readJsonFile=e=>{const o=fs.readFileSync(e,"utf8");return JSON.parse(o)},executeCommand=(e,o=[],t={})=>new Promise(((r,s)=>{const a=spawn(e,o,{stdio:"inherit",shell:!0,...t});a.on("error",(e=>{s(e)})),a.on("close",(e=>{0===e?r():s(new Error(`Process exited with code ${e}`))}))}));async function getAnswer(){const e=[{type:"toggle",name:"shouldProceed",message:`This command will update the ${chalk.blue("create-prisma-php-app")} package and overwrite all default files. ${chalk.blue("Do you want to proceed")}?`,initial:!1,active:"Yes",inactive:"No"}],o=await prompts(e,{onCancel:()=>{process.exit(0)}});return 0===Object.keys(o).length?null:o}const commandsToExecute={update:"npx php update project"};
 const main = async () => {
   if (args.length === 0) {
     console.log("No command provided.");
@@ -53,46 +53,6 @@ const main = async () => {
       } else {
         console.error("Error in script execution:", error);
       }
-    }
-  }
-  if (formattedCommand === commandsToExecute.generateClass) {
-    try {
-      const currentDir = process.cwd();
-      const configPath = path.join(currentDir, "prisma-php.json");
-      if (!fs.existsSync(configPath)) {
-        console.error(
-          chalk.red(
-            "The configuration file 'prisma-php.json' was not found in the current directory."
-          )
-        );
-        return;
-      }
-      const localSettings = readJsonFile(configPath);
-      if (!localSettings.prisma) {
-        console.error(
-          chalk.red(
-            "Install the 'Prisma PHP ORM' package by running the command 'npx php update project'."
-          )
-        );
-        return;
-      }
-      const prismaClientPath = path.join(
-        __dirname,
-        "prisma-client-php",
-        "index.js"
-      );
-      if (!fs.existsSync(prismaClientPath)) {
-        console.error(
-          chalk.red(
-            "The 'prisma-client-php' package was not found in the current directory."
-          )
-        );
-        return;
-      }
-      console.log("Executing command...\n");
-      await executeCommand("node", [prismaClientPath]);
-    } catch (error) {
-      console.error("Error in script execution:", error);
     }
   }
 };

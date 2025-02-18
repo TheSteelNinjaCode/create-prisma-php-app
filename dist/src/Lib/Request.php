@@ -13,7 +13,7 @@ class Request
      * 
      * @var string
      */
-    const baseUrl = '/src/app';
+    public const baseUrl = '/src/app';
 
     /**
      * @var \stdClass $params A static property to hold request parameters.

@@ -8,6 +8,12 @@ use HTMLPurifier;
 use HTMLPurifier_Config;
 use DateTime;
 use Exception;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Uid\Ulid;
+use Brick\Math\BigDecimal;
+use Brick\Math\BigInteger;
+use Brick\Math\Exception\MathException;
+use Brick\Math\RoundingMode;
 
 final class Validator
 {
@@ -72,7 +78,18 @@ final class Validator
      */
     public static function uuid($value): ?string
     {
-        return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $value) ? $value : null;
+        return Uuid::isValid($value) ? $value : null;
+    }
+
+    /**
+     * Validates if the given value is a valid ULID (Universally Unique Lexicographically Sortable Identifier).
+     *
+     * @param string $value The value to be validated.
+     * @return string|null Returns the value if it is a valid ULID, otherwise returns null.
+     */
+    public static function ulid($value): ?string
+    {
+        return Ulid::isValid($value) ? $value : null;
     }
 
     /**
@@ -148,11 +165,15 @@ final class Validator
      * Validate a big integer value.
      *
      * @param mixed $value The value to validate.
-     * @return int|null The integer value or null if invalid.
+     * @return BigInteger|null The big integer value or null if invalid.
      */
-    public static function bigInt($value): ?int
+    public static function bigInt($value): ?BigInteger
     {
-        return self::int($value);
+        try {
+            return BigInteger::of($value);
+        } catch (MathException) {
+            return null;
+        }
     }
 
     /**
@@ -170,11 +191,16 @@ final class Validator
      * Validate a decimal value.
      *
      * @param mixed $value The value to validate.
-     * @return float|null The float value or null if invalid.
+     * @param int $scale The number of decimal places (default is 30).
+     * @return BigDecimal|null The decimal value or null if invalid.
      */
-    public static function decimal($value): ?float
+    public static function decimal($value, int $scale = 30): ?BigDecimal
     {
-        return self::float($value);
+        try {
+            return BigDecimal::of($value)->toScale($scale, RoundingMode::HALF_UP);
+        } catch (MathException) {
+            return null;
+        }
     }
 
     // Date Validation
@@ -498,6 +524,8 @@ final class Validator
                 return self::ip($value) ? true : "This field must be a valid IP address.";
             case 'uuid':
                 return self::uuid($value) ? true : "This field must be a valid UUID.";
+            case 'ulid':
+                return self::ulid($value) ? true : "This field must be a valid ULID.";
             case 'cuid':
                 return self::cuid($value) ? true : "This field must be a valid CUID.";
             case 'int':

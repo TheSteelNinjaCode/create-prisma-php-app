@@ -18,7 +18,7 @@ class TwMerge
         "px" => "/^px-/",
         "py" => "/^py-/",
 
-        // **Margin classes (similar logic)**
+        // **Margin classes**
         "m" => "/^m-/",
         "mt" => "/^mt-/",
         "mr" => "/^mr-/",
@@ -74,6 +74,9 @@ class TwMerge
         // **Flexbox alignment classes**
         "justify" => "/^justify-(start|end|center|between|around|evenly)$/",
 
+        // **Flexbox alignment classes**
+        "items" => "/^items-(start|end|center|baseline|stretch)$/",
+
         // **Width classes**
         "w" => "/^w-(full|[0-9]+|\\[.+\\])$/",
 
@@ -125,6 +128,9 @@ class TwMerge
 
         // **Flexbox alignment conflict group**
         "justify" => ["justify"],
+
+        // **Flexbox alignment conflict group**
+        "items" => ["items"],
 
         // **Width conflict group**
         "w" => ["w"],
