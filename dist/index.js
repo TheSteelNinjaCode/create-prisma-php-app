@@ -174,7 +174,11 @@ async function main() {
       dependencies.push(pkg("chokidar-cli"));
     }
     if (answer.prisma) {
-      dependencies.push(pkg("prisma"), pkg("@prisma/client"));
+      dependencies.push(
+        pkg("prisma"),
+        pkg("@prisma/client"),
+        pkg("@prisma/internals")
+      );
       execSync("npm install -g prisma-client-php", { stdio: "inherit" });
     }
     await installDependencies(projectPath, dependencies, true);
@@ -309,7 +313,11 @@ async function main() {
         updateUninstallDependencies.push("chokidar-cli");
       }
       if (!updateAnswer.prisma) {
-        updateUninstallDependencies.push("prisma", "@prisma/client");
+        updateUninstallDependencies.push(
+          "prisma",
+          "@prisma/client",
+          "@prisma/internals"
+        );
       }
       if (!updateAnswer.docker) {
         const dockerFiles = [
