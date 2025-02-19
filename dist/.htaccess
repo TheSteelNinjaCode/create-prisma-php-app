@@ -14,6 +14,24 @@ RewriteEngine On
     Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
 </IfModule>
 
+# Set Content-Type with charset UTF-8 for HTML, CSS, and JS files
+<IfModule mod_headers.c>
+    # For HTML files
+    <FilesMatch "\.(html|htm)$">
+        Header set Content-Type "text/html; charset=UTF-8"
+    </FilesMatch>
+
+    # For CSS files
+    <FilesMatch "\.(css)$">
+        Header set Content-Type "text/css; charset=UTF-8"
+    </FilesMatch>
+
+    # For JavaScript files
+    <FilesMatch "\.(js)$">
+        Header set Content-Type "application/javascript; charset=UTF-8"
+    </FilesMatch>
+</IfModule>
+
 # Exclude static files from being redirected
 RewriteCond %{REQUEST_URI} !\.(css|js|png|jpe?g|gif|svg|webp|woff2?|ttf|eot|ico|pdf|mp4|webm|mp3|ogg)$ [NC]
 RewriteCond %{REQUEST_URI} !^/bootstrap.php
