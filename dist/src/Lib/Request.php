@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Lib;
 
 use Lib\Headers\Boom;
+use ArrayObject;
+use stdClass;
+use Lib\PrismaPHPSettings;
 
 class Request
 {
@@ -16,7 +19,7 @@ class Request
     public const baseUrl = '/src/app';
 
     /**
-     * @var \stdClass $params A static property to hold request parameters.
+     * @var stdClass $params A static property to hold request parameters.
      * 
      * This property is used to hold request parameters that are passed to the request.
      * 
@@ -28,10 +31,10 @@ class Request
      * $id = Request::$params->id;
      * ```
      */
-    public static \ArrayObject $params;
+    public static ArrayObject $params;
 
     /**
-     * @var \stdClass $dynamicParams A static property to hold dynamic parameters.
+     * @var stdClass $dynamicParams A static property to hold dynamic parameters.
      * 
      * This property is used to hold dynamic parameters that are passed to the request.
      * 
@@ -53,10 +56,10 @@ class Request
      * 
      * The above code will output the dynamic parameters as an array, which can be useful for debugging purposes.
      */
-    public static \ArrayObject $dynamicParams;
+    public static ArrayObject $dynamicParams;
 
     /**
-     * @var \stdClass $localStorage A static property to hold request parameters.
+     * @var stdClass $localStorage A static property to hold request parameters.
      * 
      * This property is used to hold request parameters that are passed to the request.
      * 
@@ -68,7 +71,7 @@ class Request
      * $id = Request::$localStorage->id;
      * ```
      */
-    public static \ArrayObject $localStorage;
+    public static ArrayObject $localStorage;
 
     /**
      * @var mixed $data Holds request data (e.g., JSON body).
@@ -189,8 +192,8 @@ class Request
      */
     public static function init(): void
     {
-        self::$params = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
-        self::$dynamicParams = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
+        self::$params = new ArrayObject([], ArrayObject::ARRAY_AS_PROPS);
+        self::$dynamicParams = new ArrayObject([], ArrayObject::ARRAY_AS_PROPS);
 
         self::$referer = $_SERVER['HTTP_REFERER'] ?? 'Unknown';
         self::$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -286,15 +289,15 @@ class Request
     /**
      * Get the request parameters.
      *
-     * @return \ArrayObject The request parameters as an \ArrayObject with properties.
+     * @return ArrayObject The request parameters as an ArrayObject with properties.
      */
-    private static function getParams(): \ArrayObject
+    private static function getParams(): ArrayObject
     {
-        $params = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
+        $params = new ArrayObject([], ArrayObject::ARRAY_AS_PROPS);
 
         switch (self::$method) {
             case 'GET':
-                $params = new \ArrayObject($_GET, \ArrayObject::ARRAY_AS_PROPS);
+                $params = new ArrayObject($_GET, ArrayObject::ARRAY_AS_PROPS);
                 break;
             default:
                 // Handle JSON input with different variations (e.g., application/json, application/ld+json, etc.)
@@ -303,7 +306,7 @@ class Request
                     if ($jsonInput !== false && !empty($jsonInput)) {
                         self::$data = json_decode($jsonInput, true);
                         if (json_last_error() === JSON_ERROR_NONE) {
-                            $params = new \ArrayObject(self::$data, \ArrayObject::ARRAY_AS_PROPS);
+                            $params = new ArrayObject(self::$data, ArrayObject::ARRAY_AS_PROPS);
                         } else {
                             Boom::badRequest('Invalid JSON body')->toResponse();
                         }
@@ -315,9 +318,9 @@ class Request
                     $rawInput = file_get_contents('php://input');
                     if ($rawInput !== false && !empty($rawInput)) {
                         parse_str($rawInput, $parsedParams);
-                        $params = new \ArrayObject($parsedParams, \ArrayObject::ARRAY_AS_PROPS);
+                        $params = new ArrayObject($parsedParams, ArrayObject::ARRAY_AS_PROPS);
                     } else {
-                        $params = new \ArrayObject($_POST, \ArrayObject::ARRAY_AS_PROPS);
+                        $params = new ArrayObject($_POST, ArrayObject::ARRAY_AS_PROPS);
                     }
                 }
                 break;
@@ -330,28 +333,28 @@ class Request
      * Retrieves the local storage data from the session or initializes it if not present.
      *
      * This method checks if the local storage data is available in the static data array or the session.
-     * If the data is found, it is decoded from JSON if necessary and returned as an \ArrayObject.
-     * If the data is not found, an empty \ArrayObject is returned.
+     * If the data is found, it is decoded from JSON if necessary and returned as an ArrayObject.
+     * If the data is not found, an empty ArrayObject is returned.
      *
-     * @return \ArrayObject The local storage data as an \ArrayObject.
+     * @return ArrayObject The local storage data as an ArrayObject.
      */
-    private static function getLocalStorage(): \ArrayObject
+    private static function getLocalStorage(): ArrayObject
     {
-        $sessionKey = 'appState_59E13';
-        $localStorage = new \ArrayObject([], \ArrayObject::ARRAY_AS_PROPS);
+        $sessionKey = PrismaPHPSettings::$localStoreKey;
+        $localStorage = new ArrayObject([], ArrayObject::ARRAY_AS_PROPS);
 
         if (isset(self::$data[$sessionKey])) {
             $data = self::$data[$sessionKey];
 
             if (is_array($data)) {
                 $_SESSION[$sessionKey] = $data;
-                $localStorage = new \ArrayObject($data, \ArrayObject::ARRAY_AS_PROPS);
+                $localStorage = new ArrayObject($data, ArrayObject::ARRAY_AS_PROPS);
             } else {
                 $decodedData = json_decode($data, true);
 
                 if (json_last_error() === JSON_ERROR_NONE) {
                     $_SESSION[$sessionKey] = $data;
-                    $localStorage = new \ArrayObject($decodedData, \ArrayObject::ARRAY_AS_PROPS);
+                    $localStorage = new ArrayObject($decodedData, ArrayObject::ARRAY_AS_PROPS);
                 } else {
                     Boom::badRequest('Invalid JSON body')->toResponse();
                 }
@@ -361,12 +364,12 @@ class Request
                 $sessionData = $_SESSION[$sessionKey];
 
                 if (is_array($sessionData)) {
-                    $localStorage = new \ArrayObject($sessionData, \ArrayObject::ARRAY_AS_PROPS);
+                    $localStorage = new ArrayObject($sessionData, ArrayObject::ARRAY_AS_PROPS);
                 } else {
                     $decodedData = json_decode($sessionData, true);
 
                     if (json_last_error() === JSON_ERROR_NONE) {
-                        $localStorage = new \ArrayObject($decodedData, \ArrayObject::ARRAY_AS_PROPS);
+                        $localStorage = new ArrayObject($decodedData, ArrayObject::ARRAY_AS_PROPS);
                     }
                 }
             }
@@ -436,24 +439,17 @@ class Request
      */
     public static function redirect(string $url, bool $replace = true, int $responseCode = 0): void
     {
-        // Clean (discard) any previous output
         ob_clean();
-
-        // Start a fresh output buffer
         ob_start();
 
         if (!self::$isWire && !self::$isAjax) {
-            // Normal redirect for non-ajax/wire requests
-            ob_end_clean(); // End the buffer, don't send it
-            header("Location: $url", $replace, $responseCode); // Redirect using header
+            header("Location: $url", $replace, $responseCode);
         } else {
-            // For ajax/wire requests, send the custom redirect response
-            ob_clean(); // Clean any previous output
-            echo "redirect_7F834=$url"; // Output the redirect message
-            ob_end_flush(); // Flush and send the output buffer
+            ob_clean();
+            echo "redirect_7F834=$url";
+            ob_end_flush();
         }
 
-        // Terminate the script to prevent any further output
         exit;
     }
 }
