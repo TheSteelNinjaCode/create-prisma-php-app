@@ -31,7 +31,7 @@ class StateManager
      * @param mixed $initialValue The initial value to set if the key does not exist.
      * @return mixed The state value for the specified key.
      */
-    public static function getState(string $key = null, mixed $initialValue = null): mixed
+    public static function getState(?string $key = null, mixed $initialValue = null): mixed
     {
         if ($key === null) {
             return new \ArrayObject(self::$state, \ArrayObject::ARRAY_AS_PROPS);
@@ -100,7 +100,7 @@ class StateManager
      *
      * @param string|null $key The key of the state value to reset.
      */
-    public static function resetState(string $key = null): void
+    public static function resetState(?string $key = null): void
     {
         if ($key !== null) {
             if (array_key_exists($key, self::$state)) {
