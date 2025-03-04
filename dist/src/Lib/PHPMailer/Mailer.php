@@ -51,7 +51,7 @@ class Mailer
             // Validate and sanitize inputs
             $to = Validator::email($to);
             if (!$to) {
-                throw new \Exception('Invalid email address for the main recipient');
+                throw new Exception('Invalid email address for the main recipient');
             }
 
             $subject = Validator::string($subject);
@@ -83,8 +83,8 @@ class Mailer
 
             // Send the email
             return $this->mail->send();
-        } catch (\Exception $e) {
-            throw new \Exception($e->getMessage());
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
         }
     }
 
@@ -107,7 +107,7 @@ class Mailer
                     if ($recipient) {
                         $this->mail->{$method}($recipient);
                     } else {
-                        throw new \Exception("Invalid email address in $type");
+                        throw new Exception("Invalid email address in $type");
                     }
                 }
             } else {
@@ -115,7 +115,7 @@ class Mailer
                 if ($recipient) {
                     $this->mail->{$method}($recipient);
                 } else {
-                    throw new \Exception("Invalid email address in $type");
+                    throw new Exception("Invalid email address in $type");
                 }
             }
         }
@@ -138,19 +138,19 @@ class Mailer
                     $file = $attachment['path'] ?? null;
                     $name = $attachment['name'] ?? '';
                     if (!$file || !file_exists($file)) {
-                        throw new \Exception("Attachment file does not exist: " . ($file ?? 'unknown'));
+                        throw new Exception("Attachment file does not exist: " . ($file ?? 'unknown'));
                     }
                     $this->mail->addAttachment($file, $name);
                 } else {
                     if (!file_exists($attachment)) {
-                        throw new \Exception("Attachment file does not exist: $attachment");
+                        throw new Exception("Attachment file does not exist: $attachment");
                     }
                     $this->mail->addAttachment($attachment);
                 }
             }
         } else {
             if (!file_exists($attachments)) {
-                throw new \Exception("Attachment file does not exist: $attachments");
+                throw new Exception("Attachment file does not exist: $attachments");
             }
             $this->mail->addAttachment($attachments);
         }
