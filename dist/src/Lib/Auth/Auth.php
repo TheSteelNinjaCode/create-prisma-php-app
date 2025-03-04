@@ -317,7 +317,7 @@ class Auth
     private function findProvider(array $providers, string $type): ?object
     {
         foreach ($providers as $provider) {
-            if ($provider instanceof $type) {
+            if (is_object($provider) && get_class($provider) === $type) {
                 return $provider;
             }
         }
