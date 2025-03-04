@@ -38,7 +38,8 @@ class Mailer
      * @param string $to The recipient's email address.
      * @param string $subject The subject of the email.
      * @param string $body The HTML body of the email.
-     * @param array $options (optional) Additional email options like name, altBody, CC, and BCC.
+     * @param array $options (optional) Additional email options like name, altBody, CC, BCC, and attachments.
+     *                       - attachments: A string or an array of file paths, or an array of associative arrays with keys 'path' and 'name'.
      *
      * @return bool Returns true if the email is sent successfully, false otherwise.
      *
@@ -60,6 +61,7 @@ class Mailer
             $name = $options['name'] ?? '';
             $addCC = $options['addCC'] ?? [];
             $addBCC = $options['addBCC'] ?? [];
+            $attachments = $options['attachments'] ?? [];
 
             $name = Validator::string($name);
 
@@ -67,6 +69,10 @@ class Mailer
             $this->handleRecipients($addCC, 'CC');
             // Handle BCC recipients
             $this->handleRecipients($addBCC, 'BCC');
+            // Handle file attachments if provided
+            if (!empty($attachments)) {
+                $this->handleAttachments($attachments);
+            }
 
             // Set the main recipient and other email properties
             $this->mail->addAddress($to, $name);
@@ -112,6 +118,41 @@ class Mailer
                     throw new \Exception("Invalid email address in $type");
                 }
             }
+        }
+    }
+
+    /**
+     * Handle adding file attachments.
+     *
+     * @param string|array $attachments File path(s) to attach.
+     *                                  You can pass a string for a single file or an array of file paths.
+     *                                  Alternatively, each attachment can be an array with keys 'path' and 'name' for custom naming.
+     *
+     * @throws Exception Throws an exception if any attachment file is not found.
+     */
+    private function handleAttachments(string|array $attachments): void
+    {
+        if (is_array($attachments)) {
+            foreach ($attachments as $attachment) {
+                if (is_array($attachment)) {
+                    $file = $attachment['path'] ?? null;
+                    $name = $attachment['name'] ?? '';
+                    if (!$file || !file_exists($file)) {
+                        throw new \Exception("Attachment file does not exist: " . ($file ?? 'unknown'));
+                    }
+                    $this->mail->addAttachment($file, $name);
+                } else {
+                    if (!file_exists($attachment)) {
+                        throw new \Exception("Attachment file does not exist: $attachment");
+                    }
+                    $this->mail->addAttachment($attachment);
+                }
+            }
+        } else {
+            if (!file_exists($attachments)) {
+                throw new \Exception("Attachment file does not exist: $attachments");
+            }
+            $this->mail->addAttachment($attachments);
         }
     }
 
