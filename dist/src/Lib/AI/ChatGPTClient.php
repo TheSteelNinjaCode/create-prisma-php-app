@@ -16,7 +16,7 @@ class ChatGPTClient
     private string $apiKey = '';
     private array $cache = [];
 
-    public function __construct(Client $client = null)
+    public function __construct(?Client $client = null)
     {
         // Initialize the Guzzle HTTP client, allowing for dependency injection
         $this->client = $client ?: new Client();

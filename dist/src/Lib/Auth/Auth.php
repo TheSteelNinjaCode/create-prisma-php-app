@@ -74,7 +74,7 @@ class Auth
      *       echo "Error: " . $e->getMessage();
      *   }
      */
-    public function signIn($data, string $tokenValidity = null): string
+    public function signIn($data, ?string $tokenValidity = null): string
     {
         if (!$this->secretKey) {
             throw new \InvalidArgumentException("Secret key is required for authentication.");
@@ -210,7 +210,7 @@ class Auth
      * 
      * @throws InvalidArgumentException Thrown if the token is invalid.
      */
-    public function refreshToken(string $jwt, string $tokenValidity = null): string
+    public function refreshToken(string $jwt, ?string $tokenValidity = null): string
     {
         $decodedToken = $this->verifyToken($jwt);
 
@@ -256,7 +256,7 @@ class Auth
      * 
      * @return void
      */
-    public function signOut(string $redirect = null)
+    public function signOut(?string $redirect = null)
     {
         if (isset($_COOKIE[self::COOKIE_NAME])) {
             unset($_COOKIE[self::COOKIE_NAME]);

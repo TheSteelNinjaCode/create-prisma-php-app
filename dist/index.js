@@ -34,14 +34,15 @@ async function installDependencies(baseDir, dependencies, isDev = false) {
 const pinnedVersions = {
   "@prisma/client": "^6.4.1",
   "@prisma/internals": "^6.4.1",
-  "@tailwindcss/postcss": "^4.0.8",
+  "@tailwindcss/postcss": "^4.0.9",
   "@types/browser-sync": "^2.29.0",
-  "@types/node": "^22.13.5",
+  "@types/node": "^22.13.8",
   "@types/prompts": "^2.4.9",
   autoprefixer: "^10.4.20",
   "browser-sync": "^3.0.3",
   chalk: "^5.4.1",
   "chokidar-cli": "^3.0.0",
+  cssnano: "^7.0.6",
   "http-proxy-middleware": "^3.0.3",
   "npm-run-all": "^4.1.5",
   "php-parser": "^3.2.2",
@@ -49,9 +50,9 @@ const pinnedVersions = {
   "postcss-cli": "^11.0.0",
   prisma: "^6.4.1",
   prompts: "^2.4.2",
-  tailwindcss: "^4.0.8",
+  tailwindcss: "^4.0.9",
   tsx: "^4.19.3",
-  typescript: "^5.7.3",
+  typescript: "^5.8.2",
 };
 function pkg(name) {
   return pinnedVersions[name] ? `${name}@${pinnedVersions[name]}` : name;
@@ -165,7 +166,8 @@ async function main() {
         pkg("tailwindcss"),
         pkg("postcss"),
         pkg("postcss-cli"),
-        pkg("@tailwindcss/postcss")
+        pkg("@tailwindcss/postcss"),
+        pkg("cssnano")
       );
     }
     if (answer.websocket) {
@@ -274,7 +276,8 @@ async function main() {
           "tailwindcss",
           "postcss",
           "postcss-cli",
-          "@tailwindcss/postcss"
+          "@tailwindcss/postcss",
+          "cssnano"
         );
       }
       if (!updateAnswer.websocket) {

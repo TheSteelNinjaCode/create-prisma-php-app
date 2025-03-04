@@ -6,6 +6,8 @@ namespace Lib\Websocket;
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
+use Exception;
+use SplObjectStorage;
 
 class ConnectionManager implements MessageComponentInterface
 {
@@ -13,7 +15,7 @@ class ConnectionManager implements MessageComponentInterface
 
     public function __construct()
     {
-        $this->clients = new \SplObjectStorage;
+        $this->clients = new SplObjectStorage;
     }
 
     public function onOpen(ConnectionInterface $conn)
@@ -33,7 +35,7 @@ class ConnectionManager implements MessageComponentInterface
         echo "Connection {$conn->resourceId} has disconnected";
     }
 
-    public function onError(ConnectionInterface $conn, \Exception $e)
+    public function onError(ConnectionInterface $conn, Exception $e)
     {
         echo "An error has occurred: {$e->getMessage()}";
         $conn->close();

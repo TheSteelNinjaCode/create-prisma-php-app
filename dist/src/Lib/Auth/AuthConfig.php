@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Lib\Auth;
 
+use ArrayObject;
+
 enum AuthRole: string
 {
     case Admin = 'Admin';
@@ -67,13 +69,13 @@ final class AuthConfig
     /**
      * Checks if the given user role is authorized to access a set of roles.
      * 
-     * @param \ArrayObject|string $userRole The user's role to check.
+     * @param ArrayObject|string $userRole The user's role to check.
      * @param array<AuthRole> $roles An array of AuthRole instances specifying allowed roles.
      * @return bool Returns true if the user's role matches any of the allowed roles, false otherwise.
      */
-    public static function checkAuthRole(\ArrayObject|string $userRole, array $roles): bool
+    public static function checkAuthRole(ArrayObject|string $userRole, array $roles): bool
     {
-        if ($userRole instanceof \ArrayObject) {
+        if ($userRole instanceof ArrayObject) {
             $userRole = $userRole[Auth::ROLE_NAME] ?? '';
         }
 
