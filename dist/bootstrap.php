@@ -627,7 +627,6 @@ final class Bootstrap
 
     public static function getLoadingsFiles(): string
     {
-        // Gather all loading.php files
         $loadingFiles = array_filter(PrismaPHPSettings::$routeFiles, function ($route) {
             $normalizedRoute = str_replace('\\', '/', $route);
             return preg_match('/\/loading\.php$/', $normalizedRoute);

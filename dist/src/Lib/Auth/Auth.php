@@ -12,6 +12,9 @@ use Lib\Validator;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Lib\Request;
+use Exception;
+use InvalidArgumentException;
+use ArrayObject;
 
 class Auth
 {
@@ -70,14 +73,14 @@ class Auth
      *   try {
      *       $jwt = $auth->signIn('Admin', '1h');
      *       echo "JWT: " . $jwt;
-     *   } catch (\InvalidArgumentException $e) {
+     *   } catch (InvalidArgumentException $e) {
      *       echo "Error: " . $e->getMessage();
      *   }
      */
     public function signIn($data, ?string $tokenValidity = null): string
     {
         if (!$this->secretKey) {
-            throw new \InvalidArgumentException("Secret key is required for authentication.");
+            throw new InvalidArgumentException("Secret key is required for authentication.");
         }
 
         $expirationTime = $this->calculateExpirationTime($tokenValidity ?? $this->defaultTokenValidity);
@@ -131,6 +134,10 @@ class Auth
             return false;
         }
 
+        if (!isset($_SESSION[self::PAYLOAD_SESSION_KEY])) {
+            return false;
+        }
+
         return true;
     }
 
@@ -158,11 +165,11 @@ class Auth
                 case 'd':
                     return new DateInterval("P{$value}D");
                 default:
-                    throw new \InvalidArgumentException("Invalid duration format: {$duration}");
+                    throw new InvalidArgumentException("Invalid duration format: {$duration}");
             }
         }
 
-        throw new \InvalidArgumentException("Invalid duration format: {$duration}");
+        throw new InvalidArgumentException("Invalid duration format: {$duration}");
     }
 
     /**
@@ -190,7 +197,7 @@ class Auth
             }
 
             return $token;
-        } catch (\Exception) {
+        } catch (Exception) {
             return null;
         }
     }
@@ -215,7 +222,7 @@ class Auth
         $decodedToken = $this->verifyToken($jwt);
 
         if (!$decodedToken) {
-            throw new \InvalidArgumentException("Invalid token.");
+            throw new InvalidArgumentException("Invalid token.");
         }
 
         $expirationTime = $this->calculateExpirationTime($tokenValidity ?? $this->defaultTokenValidity);
@@ -282,7 +289,7 @@ class Auth
     {
         if (isset($_SESSION[self::PAYLOAD_SESSION_KEY])) {
             $value = $_SESSION[self::PAYLOAD_SESSION_KEY][self::PAYLOAD_NAME];
-            return is_array($value) ? new \ArrayObject($value, \ArrayObject::ARRAY_AS_PROPS) : $value;
+            return is_array($value) ? new ArrayObject($value, ArrayObject::ARRAY_AS_PROPS) : $value;
         }
 
         return null;
