@@ -93,6 +93,9 @@ class ErrorHandler
         }
 
         if ($errorFileExists) {
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
             self::$content = $contentToAdd;
             if (Bootstrap::isAjaxOrXFileRequestOrRouteFile()) {
                 header('Content-Type: application/json');
