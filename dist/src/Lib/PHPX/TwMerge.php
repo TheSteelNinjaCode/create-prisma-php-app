@@ -167,6 +167,20 @@ class TwMerge
                     $splitClasses = preg_split("/\s+/", $item);
                     foreach ($splitClasses as $individualClass) {
                         $classKey = self::getClassGroup($individualClass);
+
+                        // If the class is non-responsive (no colon), remove any responsive variants for the same base
+                        if (strpos($classKey, ':') === false) {
+                            // The base group is the class key itself (e.g. "justify")
+                            $baseGroup = $classKey;
+                            // Remove any entries that end with the same base group but have a prefix (e.g. "sm:justify")
+                            foreach ($classArray as $existingKey => $existingClass) {
+                                if ($existingKey !== $baseGroup && substr($existingKey, -strlen($baseGroup)) === $baseGroup) {
+                                    unset($classArray[$existingKey]);
+                                }
+                            }
+                        }
+
+                        // Get the conflicting keys and remove them
                         $conflictingKeys = self::getConflictingKeys($classKey);
 
                         // Remove any conflicting classes
