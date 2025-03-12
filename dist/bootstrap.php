@@ -64,6 +64,7 @@ final class Bootstrap
 
         Request::$pathname = $contentInfo['pathname'] ? '/' . $contentInfo['pathname'] : '/';
         Request::$uri = $contentInfo['uri'] ? $contentInfo['uri'] : '/';
+        Request::$decodedUri = urldecode(Request::$uri);
 
         if (is_file(self::$contentToInclude)) {
             Request::$fileToInclude = basename(self::$contentToInclude);
@@ -818,16 +819,16 @@ try {
         }
 
         // If there’s caching
-        if (isset(Bootstrap::$requestFilesData[Request::$uri])) {
+        if (isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
             if ($_ENV['CACHE_ENABLED'] === 'true') {
-                CacheHandler::serveCache(Request::$uri, intval($_ENV['CACHE_TTL']));
+                CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL']));
             }
         }
 
         // For wire calls, re-include the files if needed
         if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
-            if (isset(Bootstrap::$requestFilesData[Request::$uri])) {
-                foreach (Bootstrap::$requestFilesData[Request::$uri]['includedFiles'] as $file) {
+            if (isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
+                foreach (Bootstrap::$requestFilesData[Request::$decodedUri]['includedFiles'] as $file) {
                     if (file_exists($file)) {
                         ob_start();
                         require_once $file;
@@ -852,8 +853,8 @@ try {
         MainLayout::$html = TemplateCompiler::injectDynamicContent(MainLayout::$html);
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
 
-        if (isset(Bootstrap::$requestFilesData[Request::$uri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true') {
-            CacheHandler::saveCache(Request::$uri, MainLayout::$html);
+        if (isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true') {
+            CacheHandler::saveCache(Request::$decodedUri, MainLayout::$html);
         }
 
         echo MainLayout::$html;

@@ -89,6 +89,11 @@ class Request
     public static string $uri = '';
 
     /**
+     * @var string $decodedUri Holds the decoded request URI.
+     */
+    public static string $decodedUri = '';
+
+    /**
      * @var string $referer Holds the referer of the request.
      */
     public static string $referer = '';
