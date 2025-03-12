@@ -64,7 +64,7 @@ final class Bootstrap
 
         Request::$pathname = $contentInfo['pathname'] ? '/' . $contentInfo['pathname'] : '/';
         Request::$uri = $contentInfo['uri'] ? $contentInfo['uri'] : '/';
-        Request::$decodedUri = urldecode(Request::$uri);
+        Request::$decodedUri = Request::getDecodedUrl(Request::$uri);
 
         if (is_file(self::$contentToInclude)) {
             Request::$fileToInclude = basename(self::$contentToInclude);
@@ -675,7 +675,7 @@ final class Bootstrap
             }
         }
 
-        $currentUrl = urldecode(Request::$uri);
+        $currentUrl = Request::getDecodedUrl(Request::$uri);
 
         if (isset($currentData[$currentUrl])) {
             $currentData[$currentUrl]['includedFiles'] = array_values(array_unique(
@@ -687,7 +687,7 @@ final class Bootstrap
             }
         } else {
             $currentData[$currentUrl] = [
-                'url'         => $currentUrl,
+                'url'         => Request::$uri,
                 'fileName'    => self::convertUrlToFileName($currentUrl),
                 'isCacheable' => CacheHandler::$isCacheable,
                 'cacheTtl' => CacheHandler::$ttl,
@@ -707,7 +707,7 @@ final class Bootstrap
     {
         $url = trim($url, '/');
         $fileName = preg_replace('/[^a-zA-Z0-9-_]/', '_', $url);
-        return $fileName ?: 'index';
+        return $fileName ? mb_strtolower($fileName, 'UTF-8') : 'index';
     }
 
     private static function authenticateUserToken(): void

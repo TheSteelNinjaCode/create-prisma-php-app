@@ -457,4 +457,16 @@ class Request
 
         exit;
     }
+
+    public static function getDecodedUrl(string $uri): string
+    {
+        $parsedUrl = parse_url($uri);
+
+        $queryString = isset($parsedUrl['query']) ? '?' . urldecode($parsedUrl['query']) : '';
+        $path = $parsedUrl['path'] ?? '';
+
+        $decodedUrl = urldecode($path . $queryString);
+
+        return $decodedUrl;
+    }
 }
