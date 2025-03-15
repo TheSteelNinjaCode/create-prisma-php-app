@@ -9,6 +9,7 @@ class UploadFile
     protected string $destination = '';
     protected array $messages = [];
     protected array $errorCode = [];
+    protected array $successfulUploads = [];
     protected int $maxSize = 51200; // 50KB default
     protected array $permittedTypes = [
         'image/jpeg',
@@ -340,6 +341,11 @@ class UploadFile
             if ($this->newName && $this->newName !== $file['name']) {
                 $message .= " Renamed to {$this->newName}";
             }
+
+            $this->successfulUploads[] = [
+                'original' => $file['name'],
+                'final' => $filename
+            ];
         } else {
             $message = "Failed to upload {$file['name']}.";
         }
@@ -363,5 +369,15 @@ class UploadFile
             ];
         }
         return $rearranged;
+    }
+
+    /**
+     * Retrieves the successfully uploaded file names.
+     *
+     * @return array An array of arrays containing 'original' and 'final' file names.
+     */
+    public function getSuccessfulUploads(): array
+    {
+        return $this->successfulUploads;
     }
 }

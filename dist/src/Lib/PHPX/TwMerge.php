@@ -101,7 +101,7 @@ class TwMerge
         // **Flexbox alignment conflict group**
         "items" => ["items"],
         // **Width conflict group**
-        "w" => ["w"], // Only conflicts with other width classes.
+        "w" => ["w"],
         // **Max-width conflict group**
         "max-w" => ["max-w"],
         // **Add other conflict groups as needed**
