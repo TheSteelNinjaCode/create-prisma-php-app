@@ -21,7 +21,8 @@ class Auth
     public const PAYLOAD_NAME = 'payload_name_8639D';
     public const ROLE_NAME = '';
     public const PAYLOAD_SESSION_KEY = 'payload_session_key_2183A';
-    public const COOKIE_NAME = 'cookie_name_D36E5';
+
+    public static string $cookie_name = '';
 
     private static ?Auth $instance = null;
     private const PPHPAUTH = 'pphpauth';
@@ -35,6 +36,7 @@ class Auth
     private function __construct()
     {
         $this->secretKey = $_ENV['AUTH_SECRET'];
+        self::$cookie_name = self::getCookieName();
     }
 
     /**
@@ -115,7 +117,7 @@ class Auth
      */
     public function isAuthenticated(): bool
     {
-        if (!isset($_COOKIE[self::COOKIE_NAME])) {
+        if (!isset($_COOKIE[self::$cookie_name])) {
             unset($_SESSION[self::PAYLOAD_SESSION_KEY]);
             return false;
         }
@@ -128,7 +130,7 @@ class Auth
             }
         }
 
-        $jwt = $_COOKIE[self::COOKIE_NAME];
+        $jwt = $_COOKIE[self::$cookie_name];
         $verifyToken = $this->verifyToken($jwt);
         if ($verifyToken === false) {
             return false;
@@ -240,7 +242,7 @@ class Auth
     protected function setCookies(string $jwt, int $expirationTime)
     {
         if (!headers_sent()) {
-            setcookie(self::COOKIE_NAME, $jwt, [
+            setcookie(self::$cookie_name, $jwt, [
                 'expires' => $expirationTime,
                 'path' => '/',
                 'domain' => '', // Specify your domain
@@ -265,9 +267,9 @@ class Auth
      */
     public function signOut(?string $redirect = null)
     {
-        if (isset($_COOKIE[self::COOKIE_NAME])) {
-            unset($_COOKIE[self::COOKIE_NAME]);
-            setcookie(self::COOKIE_NAME, '', time() - 3600, '/');
+        if (isset($_COOKIE[self::$cookie_name])) {
+            unset($_COOKIE[self::$cookie_name]);
+            setcookie(self::$cookie_name, '', time() - 3600, '/');
         }
 
         if (isset($_SESSION[self::PAYLOAD_SESSION_KEY])) {
@@ -513,6 +515,12 @@ class Auth
                 $this->signIn($userToAuthenticate, $googleProvider->maxAge);
             }
         }
+    }
+
+    private static function getCookieName(): string
+    {
+        $authCookieName = $_ENV['AUTH_COOKIE_NAME'] ?? 'auth_cookie_name_d36e5';
+        return strtolower(preg_replace('/\s+/', '_', trim($authCookieName)));
     }
 }
 
