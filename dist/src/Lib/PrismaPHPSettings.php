@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Lib;
 
+use Exception;
+
 class BSPathRewrite
 {
     public string $pattern;
@@ -43,10 +45,10 @@ class PrismaSettings
         $this->bsTarget = $data['bsTarget'] ?? '';
         $this->bsPathRewrite = new BSPathRewrite($data['bsPathRewrite'] ?? []);
         $this->backendOnly = $data['backendOnly'] ?? false;
-        $this->swaggerDocs = $data['swaggerDocs'] ?? true;
-        $this->tailwindcss = $data['tailwindcss'] ?? true;
-        $this->websocket = $data['websocket'] ?? true;
-        $this->prisma = $data['prisma'] ?? true;
+        $this->swaggerDocs = $data['swaggerDocs'] ?? false;
+        $this->tailwindcss = $data['tailwindcss'] ?? false;
+        $this->websocket = $data['websocket'] ?? false;
+        $this->prisma = $data['prisma'] ?? false;
         $this->docker = $data['docker'] ?? false;
         $this->version = $data['version'] ?? '';
         $this->excludeFiles = $data['excludeFiles'] ?? [];
@@ -110,14 +112,14 @@ class PrismaPHPSettings
         $prismaPHPSettingsJson = DOCUMENT_PATH . '/prisma-php.json';
 
         if (!file_exists($prismaPHPSettingsJson)) {
-            throw new \Exception("Settings file not found: $prismaPHPSettingsJson");
+            throw new Exception("Settings file not found: $prismaPHPSettingsJson");
         }
 
         $jsonContent = file_get_contents($prismaPHPSettingsJson);
         $decodedJson = json_decode($jsonContent, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \Exception("Failed to decode JSON: " . json_last_error_msg());
+            throw new Exception("Failed to decode JSON: " . json_last_error_msg());
         }
 
         return new PrismaSettings($decodedJson);

@@ -4,6 +4,7 @@ namespace Lib\PHPX;
 
 use Lib\PHPX\IPHPX;
 use Lib\PHPX\TwMerge;
+use Lib\PrismaPHPSettings;
 
 class PHPX implements IPHPX
 {
@@ -66,7 +67,32 @@ class PHPX implements IPHPX
      */
     protected function getMergeClasses(string|array ...$classes): string
     {
-        return TwMerge::mergeClasses($classes, $this->class);
+        return PrismaPHPSettings::$option->tailwindcss ? TwMerge::mergeClasses($classes, $this->class) : $this->mergeClasses($classes, $this->class);
+    }
+
+    /**
+     * Merges multiple CSS class strings or arrays of CSS class strings into a single, optimized CSS class string.
+     *
+     * @param string|array ...$classes The CSS classes to be merged.
+     * @return string A single CSS class string with duplicates resolved.
+     */
+    private function mergeClasses(string|array ...$classes): string
+    {
+        $classSet = [];
+
+        foreach ($classes as $class) {
+            $classList = is_array($class) ? $class : [$class];
+            foreach ($classList as $item) {
+                if (!empty(trim($item))) {
+                    $splitClasses = preg_split("/\s+/", $item);
+                    foreach ($splitClasses as $individualClass) {
+                        $classSet[$individualClass] = true;
+                    }
+                }
+            }
+        }
+
+        return implode(" ", array_keys($classSet));
     }
 
     /**
