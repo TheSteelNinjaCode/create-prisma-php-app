@@ -444,13 +444,15 @@ class Request
      */
     public static function redirect(string $url, bool $replace = true, int $responseCode = 0): void
     {
-        ob_clean();
+        if (ob_get_length()) {
+            ob_clean();
+        }
+
         ob_start();
 
         if (!self::$isWire && !self::$isAjax) {
             header("Location: $url", $replace, $responseCode);
         } else {
-            ob_clean();
             echo "redirect_7F834=$url";
             ob_end_flush();
         }

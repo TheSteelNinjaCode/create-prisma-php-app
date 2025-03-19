@@ -22,7 +22,7 @@ class Auth
     public const ROLE_NAME = '';
     public const PAYLOAD_SESSION_KEY = 'payload_session_key_2183A';
 
-    public static string $cookie_name = '';
+    public static string $cookieName = '';
 
     private static ?Auth $instance = null;
     private const PPHPAUTH = 'pphpauth';
@@ -36,7 +36,7 @@ class Auth
     private function __construct()
     {
         $this->secretKey = $_ENV['AUTH_SECRET'];
-        self::$cookie_name = self::getCookieName();
+        self::$cookieName = self::getCookieName();
     }
 
     /**
@@ -117,7 +117,7 @@ class Auth
      */
     public function isAuthenticated(): bool
     {
-        if (!isset($_COOKIE[self::$cookie_name])) {
+        if (!isset($_COOKIE[self::$cookieName])) {
             unset($_SESSION[self::PAYLOAD_SESSION_KEY]);
             return false;
         }
@@ -130,7 +130,7 @@ class Auth
             }
         }
 
-        $jwt = $_COOKIE[self::$cookie_name];
+        $jwt = $_COOKIE[self::$cookieName];
         $verifyToken = $this->verifyToken($jwt);
         if ($verifyToken === false) {
             return false;
@@ -242,7 +242,7 @@ class Auth
     protected function setCookies(string $jwt, int $expirationTime)
     {
         if (!headers_sent()) {
-            setcookie(self::$cookie_name, $jwt, [
+            setcookie(self::$cookieName, $jwt, [
                 'expires' => $expirationTime,
                 'path' => '/',
                 'domain' => '', // Specify your domain
@@ -267,9 +267,9 @@ class Auth
      */
     public function signOut(?string $redirect = null)
     {
-        if (isset($_COOKIE[self::$cookie_name])) {
-            unset($_COOKIE[self::$cookie_name]);
-            setcookie(self::$cookie_name, '', time() - 3600, '/');
+        if (isset($_COOKIE[self::$cookieName])) {
+            unset($_COOKIE[self::$cookieName]);
+            setcookie(self::$cookieName, '', time() - 3600, '/');
         }
 
         if (isset($_SESSION[self::PAYLOAD_SESSION_KEY])) {

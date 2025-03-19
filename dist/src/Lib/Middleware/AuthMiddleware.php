@@ -21,8 +21,8 @@ final class AuthMiddleware
             // Check if the user is authenticated and refresh the token if necessary
             if (AuthConfig::IS_TOKEN_AUTO_REFRESH) {
                 $auth = Auth::getInstance();
-                if (isset($_COOKIE[Auth::$cookie_name])) {
-                    $jwt = $_COOKIE[Auth::$cookie_name];
+                if (isset($_COOKIE[Auth::$cookieName])) {
+                    $jwt = $_COOKIE[Auth::$cookieName];
                     $jwt = $auth->refreshToken($jwt);
                 }
             }
@@ -86,13 +86,12 @@ final class AuthMiddleware
     protected static function isAuthorized(): bool
     {
         $auth = Auth::getInstance();
-        $cookieName = Auth::$cookie_name;
-        if (!isset($_COOKIE[$cookieName])) {
+        if (!isset($_COOKIE[Auth::$cookieName])) {
             unset($_SESSION[Auth::PAYLOAD_SESSION_KEY]);
             return false;
         }
 
-        $jwt = $_COOKIE[$cookieName];
+        $jwt = $_COOKIE[Auth::$cookieName];
 
         if (AuthConfig::IS_TOKEN_AUTO_REFRESH) {
             $jwt = $auth->refreshToken($jwt);

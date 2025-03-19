@@ -51,6 +51,7 @@ final class Bootstrap
         PrismaPHPSettings::init();
         Request::init();
         StateManager::init();
+        MainLayout::init();
 
         // Register custom handlers (exception, shutdown, error)
         ErrorHandler::registerHandlers();

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Lib;
 
+use Lib\Set;
+
 class MainLayout
 {
     public static string $title = '';
@@ -12,11 +14,21 @@ class MainLayout
     public static string $childLayoutChildren = '';
     public static string $html = '';
 
-    private static array $headScripts = [];
-    private static array $headScriptsMap = [];
-    private static array $footerScripts = [];
-    private static array $footerScriptsMap = [];
+    /** @var Set|null */
+    private static ?Set $headScripts = null;
+    /** @var Set|null */
+    private static ?Set $footerScripts = null;
     private static array $customMetadata = [];
+
+    public static function init(): void
+    {
+        if (self::$headScripts === null) {
+            self::$headScripts = new Set();
+        }
+        if (self::$footerScripts === null) {
+            self::$footerScripts = new Set();
+        }
+    }
 
     /**
      * Adds one or more scripts to the head section if they are not already present.
@@ -27,19 +39,12 @@ class MainLayout
     public static function addHeadScript(string ...$scripts): void
     {
         foreach ($scripts as $script) {
-            if (!isset(self::$headScriptsMap[$script])) {
-                self::$headScripts[] = $script;
-                self::$headScriptsMap[$script] = true;
-            }
+            self::$headScripts->add($script);
         }
     }
 
     /**
-     * Adds one or more footer scripts to the list of footer scripts.
-     *
-     * This method accepts a variable number of string arguments, each representing
-     * a script to be added to the footer. If a script is not already in the list,
-     * it will be appended.
+     * Adds one or more scripts to the footer section if they are not already present.
      *
      * @param string ...$scripts One or more scripts to be added to the footer.
      * @return void
@@ -47,22 +52,22 @@ class MainLayout
     public static function addFooterScript(string ...$scripts): void
     {
         foreach ($scripts as $script) {
-            if (!isset(self::$footerScriptsMap[$script])) {
-                self::$footerScripts[] = $script;
-                self::$footerScriptsMap[$script] = true;
-            }
+            self::$footerScripts->add($script);
         }
     }
 
     /**
-     * Generate all the head scripts with dynamic attributes.
+     * Generates all the head scripts with dynamic attributes.
      *
-     * @return string
+     * This method iterates over all registered head scripts and adds a custom dynamic attribute
+     * based on the tag type (script, link, or style).
+     *
+     * @return string The concatenated head scripts with dynamic attributes.
      */
     public static function outputHeadScripts(): string
     {
+        $headScriptsArray = self::$headScripts->values();
         $headScriptsWithAttributes = array_map(function ($tag) {
-            // Check if the tag is a <script>, <link>, or <style> and add the dynamic attribute
             if (strpos($tag, '<script') !== false) {
                 return str_replace('<script', '<script pp-dynamic-script="81D7D"', $tag);
             } elseif (strpos($tag, '<link') !== false) {
@@ -71,46 +76,46 @@ class MainLayout
                 return str_replace('<style', '<style pp-dynamic-style="81D7D"', $tag);
             }
             return $tag;
-        }, self::$headScripts);
+        }, $headScriptsArray);
 
         return implode("\n", $headScriptsWithAttributes);
     }
 
     /**
-     * Generate all the footer scripts.
+     * Generates all the footer scripts.
      *
-     * @return string
+     * @return string The concatenated footer scripts.
      */
     public static function outputFooterScripts(): string
     {
-        return implode("\n", self::$footerScripts);
+        return implode("\n", self::$footerScripts->values());
     }
 
     /**
-     * Clear all head scripts
+     * Clears all head scripts.
      *
      * @return void
      */
     public static function clearHeadScripts(): void
     {
-        self::$headScripts = [];
+        self::$headScripts->clear();
     }
 
     /**
-     * Clear all footer scripts
+     * Clears all footer scripts.
      *
      * @return void
      */
     public static function clearFooterScripts(): void
     {
-        self::$footerScripts = [];
+        self::$footerScripts->clear();
     }
 
     /**
-     * Add custom metadata
+     * Adds custom metadata.
      *
-     * @param string $key
-     * @param string $value
+     * @param string $key   The metadata key.
+     * @param string $value The metadata value.
      * @return void
      */
     public static function addCustomMetadata(string $key, string $value): void
@@ -119,10 +124,10 @@ class MainLayout
     }
 
     /**
-     * Get custom metadata by key
+     * Retrieves custom metadata by key.
      *
-     * @param string $key
-     * @return string|null
+     * @param string $key The metadata key.
+     * @return string|null The metadata value or null if the key does not exist.
      */
     public static function getCustomMetadata(string $key): ?string
     {
@@ -130,9 +135,13 @@ class MainLayout
     }
 
     /**
-     * Generate the metadata as meta tags for the head section.
+     * Generates the metadata as meta tags for the head section.
      *
-     * @return string
+     * This method includes default tags for charset and viewport, a title tag,
+     * and additional metadata. If a description is not already set in the custom metadata,
+     * it will use the class's description property.
+     *
+     * @return string The concatenated meta tags.
      */
     public static function outputMetadata(): string
     {
@@ -154,7 +163,7 @@ class MainLayout
     }
 
     /**
-     * Clear all custom metadata
+     * Clears all custom metadata.
      *
      * @return void
      */

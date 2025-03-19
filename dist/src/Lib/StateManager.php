@@ -6,9 +6,6 @@ namespace Lib;
 
 use Lib\Request;
 
-/**
- * Manages the application state using static methods.
- */
 class StateManager
 {
     private const APP_STATE = 'app_state_F989A';
