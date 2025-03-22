@@ -16,7 +16,7 @@ const parser = new Engine({
 });
 
 const PROJECT_ROOT = path.join(__dirname, "..");
-const SRC_DIR = path.join(PROJECT_ROOT, "src");
+export const SRC_DIR = path.join(PROJECT_ROOT, "src");
 const IMPORTS_FILE = path.join(PROJECT_ROOT, "settings/class-imports.json");
 const CLASS_LOG_FILE = path.join(PROJECT_ROOT, "settings/class-log.json");
 
@@ -44,7 +44,7 @@ async function loadClassLogData(): Promise<Record<string, any>> {
   }
 }
 
-async function getAllPhpFiles(dir: string): Promise<string[]> {
+export async function getAllPhpFiles(dir: string): Promise<string[]> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
@@ -67,7 +67,7 @@ function combineNamespaces(
   );
 }
 
-async function analyzeImportsInFile(
+export async function analyzeImportsInFile(
   filePath: string
 ): Promise<Record<string, string>> {
   const code = await fs.readFile(filePath, "utf-8");

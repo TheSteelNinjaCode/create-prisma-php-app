@@ -7,7 +7,13 @@ import { generateFileListJson } from "./files-list.js";
 import { join } from "path";
 import { getFileMeta } from "./utils.js";
 import { updateAllClassLogs } from "./class-log.js";
-import { updateComponentImports } from "./class-imports";
+import {
+  analyzeImportsInFile,
+  getAllPhpFiles,
+  SRC_DIR,
+  updateComponentImports,
+} from "./class-imports";
+import { checkComponentImports } from "./component-import-checker";
 
 const { __dirname } = getFileMeta();
 
@@ -26,6 +32,13 @@ const handleFileChange = async () => {
   generateFileListJson();
   await updateAllClassLogs();
   await updateComponentImports();
+
+  // Optionally, run the component check on each PHP file.
+  const phpFiles = await getAllPhpFiles(SRC_DIR + "/app");
+  for (const file of phpFiles) {
+    const fileImports = await analyzeImportsInFile(file);
+    await checkComponentImports(file, fileImports);
+  }
 };
 
 // Perform specific actions for file events

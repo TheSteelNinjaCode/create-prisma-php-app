@@ -32,9 +32,9 @@ async function installDependencies(baseDir, dependencies, isDev = false) {
   });
 }
 const pinnedVersions = {
-  "@tailwindcss/postcss": "^4.0.14",
+  "@tailwindcss/postcss": "^4.0.15",
   "@types/browser-sync": "^2.29.0",
-  "@types/node": "^22.13.10",
+  "@types/node": "^22.13.11",
   "@types/prompts": "^2.4.9",
   "browser-sync": "^3.0.3",
   chalk: "^5.4.1",
@@ -46,7 +46,7 @@ const pinnedVersions = {
   postcss: "^8.5.3",
   "postcss-cli": "^11.0.1",
   prompts: "^2.4.2",
-  tailwindcss: "^4.0.14",
+  tailwindcss: "^4.0.15",
   tsx: "^4.19.3",
   typescript: "^5.8.2",
 };
