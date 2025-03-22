@@ -268,7 +268,7 @@ class UploadFile
             UPLOAD_ERR_NO_FILE => 'No file submitted.',
         ];
 
-        $this->errorCode = $file['error'];
+        $this->errorCode[] = $file['error'];
         $this->messages[] = $errorMessages[$file['error']] ?? 'Problem uploading ' . $file['name'];
     }
 
