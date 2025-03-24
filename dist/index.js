@@ -87,7 +87,9 @@ const composerPinnedVersions = {
   "cboden/ratchet": "^0.4.4",
 };
 function composerPkg(name) {
-  return composerPinnedVersions[name] ?? name;
+  return composerPinnedVersions[name]
+    ? `${name}:${composerPinnedVersions[name]}`
+    : name;
 }
 async function main() {
   try {
