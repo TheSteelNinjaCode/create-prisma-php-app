@@ -543,27 +543,28 @@ final class Bootstrap
             $callbackResponse = null;
             $data = [];
 
-            // Check if the request includes one or more files
-            $hasFile = isset($_FILES['file']) && !empty($_FILES['file']['name'][0]);
-
             // Process form data
-            if ($hasFile) {
+            if (!empty($_FILES)) {
                 $data = $_POST;
 
-                if (is_array($_FILES['file']['name'])) {
-                    $files = [];
-                    foreach ($_FILES['file']['name'] as $index => $name) {
-                        $files[] = [
-                            'name' => $name,
-                            'type' => $_FILES['file']['type'][$index],
-                            'tmp_name' => $_FILES['file']['tmp_name'][$index],
-                            'error' => $_FILES['file']['error'][$index],
-                            'size' => $_FILES['file']['size'][$index],
-                        ];
+                // Iterate over each file key in $_FILES
+                foreach ($_FILES as $key => $file) {
+                    // Check if it's a multiple file upload or a single file upload
+                    if (is_array($file['name'])) {
+                        $files = [];
+                        foreach ($file['name'] as $index => $name) {
+                            $files[] = [
+                                'name' => $name,
+                                'type' => $file['type'][$index],
+                                'tmp_name' => $file['tmp_name'][$index],
+                                'error' => $file['error'][$index],
+                                'size' => $file['size'][$index],
+                            ];
+                        }
+                        $data[$key] = $files;
+                    } else {
+                        $data[$key] = $file;
                     }
-                    $data['files'] = $files;
-                } else {
-                    $data['file'] = $_FILES['file'];
                 }
             } else {
                 $input = file_get_contents('php://input');
@@ -582,18 +583,10 @@ final class Bootstrap
                     $dataObject = self::convertToArrayObject($data);
                     // Call the function
                     $callbackResponse = call_user_func($callbackName, $dataObject);
-
-                    if (is_string($callbackResponse) || is_bool($callbackResponse)) {
-                        $response = [
-                            'success' => true,
-                            'response' => $callbackResponse
-                        ];
-                    } else {
-                        $response = [
-                            'success' => true,
-                            'response' => $callbackResponse
-                        ];
-                    }
+                    $response = [
+                        'success' => true,
+                        'response' => $callbackResponse
+                    ];
                 } else {
                     if ($callbackName === PrismaPHPSettings::$localStoreKey) {
                         $response = [
@@ -608,7 +601,7 @@ final class Bootstrap
                 $response['error'] = 'No callback provided';
             }
 
-            // Output the JSON response only if the callbackResponse is not null
+            // Output the JSON response only if the callbackResponse is not null or if there's an error
             if ($callbackResponse !== null || isset($response['error'])) {
                 echo json_encode($response);
             }
