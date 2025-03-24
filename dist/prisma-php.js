@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import chalk from"chalk";import{spawn}from"child_process";import fs from"fs";import path from"path";import prompts from"prompts";const args=process.argv.slice(2),readJsonFile=e=>{const o=fs.readFileSync(e,"utf8");return JSON.parse(o)},executeCommand=(e,o=[],t={})=>new Promise(((r,s)=>{const a=spawn(e,o,{stdio:"inherit",shell:!0,...t});a.on("error",(e=>{s(e)})),a.on("close",(e=>{0===e?r():s(new Error(`Process exited with code ${e}`))}))}));async function getAnswer(){const e=[{type:"toggle",name:"shouldProceed",message:`This command will update the ${chalk.blue("create-prisma-php-app")} package and overwrite all default files. ${chalk.blue("Do you want to proceed")}?`,initial:!1,active:"Yes",inactive:"No"}],o=await prompts(e,{onCancel:()=>{process.exit(0)}});return 0===Object.keys(o).length?null:o}const commandsToExecute={update:"npx php update project"};
+import chalk from"chalk";import{spawn}from"child_process";import fs from"fs";import path from"path";import prompts from"prompts";const args=process.argv.slice(2),readJsonFile=e=>{const o=fs.readFileSync(e,"utf8");return JSON.parse(o)},executeCommand=(e,o=[],t={})=>new Promise(((r,s)=>{const a=spawn(e,o,{stdio:"inherit",shell:!0,...t});a.on("error",(e=>{s(e)})),a.on("close",(e=>{0===e?r():s(new Error(`Process exited with code ${e}`))}))}));async function getAnswer(){const e=[{type:"toggle",name:"shouldProceed",message:`This command will update the ${chalk.blue("create-prisma-php-app")} package and overwrite all default files. ${chalk.blue("Do you want to proceed")}?`,initial:!1,active:"Yes",inactive:"No"}],o=await prompts(e,{onCancel:()=>{process.exit(0)}});return 0===Object.keys(o).length?null:o}const commandsToExecute={update:"npx pp update project"};
 const main = async () => {
   if (args.length === 0) {
     console.log("No command provided.");
     return;
   }
-  const formattedCommand = `npx php ${args.join(" ")}`;
+  const formattedCommand = `npx pp ${args.join(" ")}`;
   const commandsArray = Object.values(commandsToExecute);
   if (!commandsArray.includes(formattedCommand)) {
     console.log("Command not recognized or not allowed.");
