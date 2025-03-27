@@ -14,9 +14,9 @@ class MainLayout
     public static string $childLayoutChildren = '';
     public static string $html = '';
 
-    /** @var Set|null */
+    /** @var Set<string>|null */
     private static ?Set $headScripts = null;
-    /** @var Set|null */
+    /** @var Set<string>|null */
     private static ?Set $footerScripts = null;
     private static array $customMetadata = [];
 

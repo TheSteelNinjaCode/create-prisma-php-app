@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace Lib;
 
+/**
+ * @template T
+ */
 final class Set
 {
+    /**
+     * @var array<string|int, T>
+     */
     private array $items = [];
 
     /**
      * Adds a value to the set.
      *
-     * If the value is not already present, it is added.
-     *
-     * @param mixed $value The value to add.
+     * @param T $value The value to add.
      * @return void
      */
-    public function add(mixed $value): void
+    public function add($value): void
     {
         $key = $this->getKey($value);
         if (!isset($this->items[$key])) {
@@ -27,10 +31,10 @@ final class Set
     /**
      * Checks whether the set contains a given value.
      *
-     * @param mixed $value The value to check.
+     * @param T $value The value to check.
      * @return bool True if the value exists in the set, false otherwise.
      */
-    public function has(mixed $value): bool
+    public function has($value): bool
     {
         return isset($this->items[$this->getKey($value)]);
     }
@@ -38,10 +42,10 @@ final class Set
     /**
      * Removes a value from the set.
      *
-     * @param mixed $value The value to remove.
+     * @param T $value The value to remove.
      * @return void
      */
-    public function delete(mixed $value): void
+    public function delete($value): void
     {
         unset($this->items[$this->getKey($value)]);
     }
@@ -59,7 +63,7 @@ final class Set
     /**
      * Retrieves all values from the set, preserving insertion order.
      *
-     * @return array The array of values stored in the set.
+     * @return T[]
      */
     public function values(): array
     {
@@ -83,10 +87,10 @@ final class Set
      * - For arrays, it uses md5(serialize($value)) to create a unique string.
      * - For other types (scalars), the value itself is used as the key.
      *
-     * @param mixed $value The value for which to generate a key.
+     * @param T $value The value for which to generate a key.
      * @return string|int The unique key.
      */
-    private function getKey(mixed $value): string|int
+    private function getKey($value): string|int
     {
         if (is_object($value)) {
             return spl_object_id($value);
