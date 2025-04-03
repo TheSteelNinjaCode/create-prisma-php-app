@@ -424,6 +424,13 @@ async function main() {
           stdio: "inherit",
         }
       );
+    } else {
+      execSync(
+        "C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar install",
+        {
+          stdio: "inherit",
+        }
+      );
     }
     console.log("\n=========================\n");
     console.log(
