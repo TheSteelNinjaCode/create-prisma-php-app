@@ -36,7 +36,7 @@ async function installComposerDependencies(baseDir, dependencies) {
   console.log("Initializing new Composer project...");
   // Initialize a composer.json if it doesn't exist
   if (!fs.existsSync(path.join(baseDir, "composer.json"))) {
-    execSync(`composer init -n --name="vendor/package" --require="php:^8.2"`, {
+    execSync(`composer init -n --name="tsnc/prisma-php" --require="php:^8.2"`, {
       stdio: "inherit",
       cwd: baseDir,
     });
