@@ -40,6 +40,8 @@ class TemplateCompiler
             self::initializeClassMappings();
         }
 
+        $templateContent = self::preprocessBindings($templateContent);
+
         $dom = self::convertToXml($templateContent);
 
         $root = $dom->documentElement;
@@ -50,6 +52,56 @@ class TemplateCompiler
         }
 
         return implode('', $outputParts);
+    }
+
+    protected static function preprocessBindings(string $templateContent): string
+    {
+        if (strpos($templateContent, '{{') === false) {
+            return $templateContent;
+        }
+
+        $attributePlaceholders = [];
+        $attributePattern = '/(\s(?!pp-bind-)[\w:-]+)=["\']([^"\']*?){{\s*(.+?)\s*}}([^"\']*?)["\']/u';
+
+        $templateContent = preg_replace_callback(
+            $attributePattern,
+            function ($matches) use (&$attributePlaceholders) {
+                $attributeName = trim($matches[1]);
+                $beforeBinding = $matches[2];
+                $expression    = $matches[3];
+                $afterBinding  = $matches[4];
+
+                // Escape the binding expression for attributes.
+                $escapedExpression = htmlspecialchars($expression, ENT_QUOTES, 'UTF-8');
+                $placeholder       = '%%ATTR_BIND_' . count($attributePlaceholders) . '%%';
+
+                $attributePlaceholders[$placeholder] = " {$attributeName}=\"{$beforeBinding}{$afterBinding}\" pp-bind-{$attributeName}=\"{{ {$escapedExpression} }}\"";
+                return $placeholder;
+            },
+            $templateContent
+        );
+
+        // Process text {{ ... }} bindings, but skip ones inside attribute values.
+        $textBindingPattern = '/(?:"[^"]*"|\'[^\']*\')(*SKIP)(*FAIL)|{{\s*(.+?)\s*}}/u';
+        $templateContent = preg_replace_callback(
+            $textBindingPattern,
+            function ($matches) {
+                $expr = $matches[1];
+                // If the expression is a simple word/dot path, use a simple binding.
+                if (preg_match('/^[\w.]+$/u', $expr)) {
+                    return "<span pp-bind=\"{$expr}\"></span>";
+                } else {
+                    // Otherwise, encode the expression and use an expression binding.
+                    $encodedExpr = htmlspecialchars($expr, ENT_QUOTES, 'UTF-8');
+                    return "<span pp-bind-expr=\"{$encodedExpr}\"></span>";
+                }
+            },
+            $templateContent
+        );
+
+        $templateContent = strtr($templateContent, $attributePlaceholders);
+
+        return $templateContent;
     }
 
     public static function injectDynamicContent(string $htmlContent): string

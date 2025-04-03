@@ -55,11 +55,11 @@ async function installComposerDependencies(baseDir, dependencies) {
   });
 }
 const npmPinnedVersions = {
-  "@tailwindcss/postcss": "^4.0.15",
+  "@tailwindcss/postcss": "^4.1.1",
   "@types/browser-sync": "^2.29.0",
-  "@types/node": "^22.13.11",
+  "@types/node": "^22.14.0",
   "@types/prompts": "^2.4.9",
-  "browser-sync": "^3.0.3",
+  "browser-sync": "^3.0.4",
   chalk: "^5.4.1",
   "chokidar-cli": "^3.0.0",
   cssnano: "^7.0.6",
@@ -69,7 +69,7 @@ const npmPinnedVersions = {
   postcss: "^8.5.3",
   "postcss-cli": "^11.0.1",
   prompts: "^2.4.2",
-  tailwindcss: "^4.0.15",
+  tailwindcss: "^4.1.1",
   tsx: "^4.19.3",
   typescript: "^5.8.2",
 };
