@@ -20,17 +20,12 @@ export const SRC_DIR = path.join(PROJECT_ROOT, "src");
 const IMPORTS_FILE = path.join(PROJECT_ROOT, "settings/class-imports.json");
 const CLASS_LOG_FILE = path.join(PROJECT_ROOT, "settings/class-log.json");
 
-async function loadImportsData(): Promise<Record<string, string>> {
-  try {
-    const content = await fs.readFile(IMPORTS_FILE, "utf-8");
-    return JSON.parse(content);
-  } catch {
-    return {};
-  }
-}
 
 async function saveImportsData(
-  data: Record<string, { className: string; filePath: string }>
+  data: Record<
+    string,
+    Array<{ className: string; filePath: string; importer: string }>
+  >
 ) {
   await fs.writeFile(IMPORTS_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
@@ -86,16 +81,14 @@ export async function analyzeImportsInFile(
       } else {
         // Handle grouped `use` statements
         if (node.kind === "usegroup" && node.name) {
-          baseNamespace = node.name.name || node.name; // Set base namespace
+          baseNamespace = node.name.name || node.name;
           for (const useItem of node.items || []) {
             if (useItem.kind === "useitem" && useItem.name) {
-              const subNamespace = useItem.name.name || useItem.name; // Sub-namespace
-              const fqn = combineNamespaces(baseNamespace, subNamespace); // Fully Qualified Namespace
-              const alias = useItem.alias ? useItem.alias.name : subNamespace; // Alias or default to subNamespace
+              const subNamespace = useItem.name.name || useItem.name;
+              const fqn = combineNamespaces(baseNamespace, subNamespace);
+              const alias = useItem.alias ? useItem.alias.name : subNamespace;
               if (!imports[alias]) {
-                // Prevent overwriting
-                imports[alias] = fqn; // Map alias to FQN
-                // console.log(`🚀 Adding import: ${alias} -> ${fqn}`);
+                imports[alias] = fqn;
               }
             }
           }
@@ -103,12 +96,11 @@ export async function analyzeImportsInFile(
 
         // Handle non-grouped `use` statements
         if (node.kind === "useitem" && node.name) {
-          const fqn = node.name.name || node.name; // Fully Qualified Namespace
+          const fqn = node.name.name || node.name;
           const alias = node.alias
             ? node.alias.name
             : path.basename(fqn.replace(/\\/g, "/"));
           if (!imports[alias]) {
-            // Prevent overwriting
             imports[alias] = fqn;
           }
         }
@@ -129,38 +121,56 @@ export async function analyzeImportsInFile(
 }
 
 export async function updateComponentImports() {
-  // Load existing imports (if any)
-  const allImports = await loadImportsData();
-
   // Analyze all PHP files for use statements
   const phpFiles = await getAllPhpFiles(SRC_DIR);
+  // Build a mapping: alias -> array of { fqn, importer }
+  const allImports: Record<
+    string,
+    Array<{ fqn: string; importer: string }>
+  > = {};
+
   for (const file of phpFiles) {
     const fileImports = await analyzeImportsInFile(file);
-    // Merge fileImports into allImports
-    Object.assign(allImports, fileImports);
+    for (const [alias, fqn] of Object.entries(fileImports)) {
+      if (allImports[alias]) {
+        // Check both fqn and importer to avoid duplicates
+        if (
+          !allImports[alias].some(
+            (entry) => entry.fqn === fqn && entry.importer === file
+          )
+        ) {
+          allImports[alias].push({ fqn, importer: file });
+        }
+      } else {
+        allImports[alias] = [{ fqn, importer: file }];
+      }
+    }
   }
 
-  // Now filter using class-log.json
+  // Load the class log to filter valid imports
   const classLog = await loadClassLogData();
-
   const filteredImports: Record<
     string,
-    { className: string; filePath: string }
+    Array<{ className: string; filePath: string; importer: string }>
   > = {};
-  for (const [alias, fqn] of Object.entries(allImports)) {
-    if (classLog[fqn]) {
-      // console.log(`Including: ${alias} -> ${fqn}`);
-      filteredImports[alias] = {
-        className: fqn,
-        filePath: classLog[fqn].filePath,
-      };
-    } else {
-      // console.log(`Excluding: ${alias} -> ${fqn}`);
+
+  for (const [alias, entries] of Object.entries(allImports)) {
+    for (const entry of entries) {
+      if (classLog[entry.fqn]) {
+        const importEntry = {
+          className: entry.fqn,
+          filePath: classLog[entry.fqn].filePath,
+          importer: entry.importer,
+        };
+        if (filteredImports[alias]) {
+          filteredImports[alias].push(importEntry);
+        } else {
+          filteredImports[alias] = [importEntry];
+        }
+      }
     }
   }
 
   await saveImportsData(filteredImports);
-  // console.log(
-  //   "component_imports.json updated with IPHPX/PHPX components only."
-  // );
+  // console.log("component_imports.json updated with importer file path included.");
 }

@@ -35,7 +35,7 @@ class Auth
      */
     private function __construct()
     {
-        $this->secretKey = $_ENV['AUTH_SECRET'];
+        $this->secretKey = $_ENV['AUTH_SECRET'] ?? 'CD24eEv4qbsC5LOzqeaWbcr58mBMSvA4Mkii8GjRiHkt';
         self::$cookieName = self::getCookieName();
     }
 

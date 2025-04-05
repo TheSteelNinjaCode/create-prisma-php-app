@@ -26,12 +26,49 @@ function findComponentsInFile(code: string): string[] {
 
 export async function checkComponentImports(
   filePath: string,
-  fileImports: Record<string, string>
+  fileImports: Record<
+    string,
+    | Array<{ className: string; filePath: string; importer?: string }>
+    | { className: string; filePath: string; importer?: string }
+  >
 ) {
   const code = await fs.readFile(filePath, "utf-8");
   const usedComponents = findComponentsInFile(code);
+  // Normalize the current file path: replace backslashes, trim, remove trailing slash, and lower-case.
+  const normalizedFilePath = filePath
+    .replace(/\\/g, "/")
+    .trim()
+    .replace(/\/+$/, "")
+    .toLowerCase();
+
   usedComponents.forEach((component) => {
-    if (!fileImports[component]) {
+    const rawMapping = fileImports[component];
+    // Normalize rawMapping to an array
+    let mappings: Array<{
+      className: string;
+      filePath: string;
+      importer?: string;
+    }> = [];
+    if (Array.isArray(rawMapping)) {
+      mappings = rawMapping;
+    } else if (rawMapping) {
+      mappings = [rawMapping];
+    }
+
+    // Check if any mapping's importer matches the current file.
+    const found = mappings.some((mapping) => {
+      const normalizedImporter = (mapping.importer || "")
+        .replace(/\\/g, "/")
+        .trim()
+        .replace(/\/+$/, "")
+        .toLowerCase();
+      // Either exact match or the current file path ends with the importer.
+      return (
+        normalizedFilePath === normalizedImporter ||
+        normalizedFilePath.endsWith(normalizedImporter)
+      );
+    });
+    if (!found) {
       console.warn(
         chalk.yellow("Warning: ") +
           chalk.white("Component ") +

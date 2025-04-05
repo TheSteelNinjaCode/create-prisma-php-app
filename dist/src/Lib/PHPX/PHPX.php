@@ -16,7 +16,7 @@ class PHPX implements IPHPX
     /**
      * @var mixed The children elements or content to be rendered within the component.
      */
-    protected mixed $children;
+    public mixed $children;
 
     /**
      * @var string The CSS class for custom styling.

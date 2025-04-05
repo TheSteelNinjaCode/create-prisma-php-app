@@ -11,6 +11,7 @@ use DOMElement;
 use DOMComment;
 use DOMNode;
 use RuntimeException;
+use Bootstrap;
 
 class TemplateCompiler
 {
@@ -39,6 +40,7 @@ class TemplateCompiler
         if (empty(self::$classMappings)) {
             self::initializeClassMappings();
         }
+
 
         $templateContent = self::preprocessBindings($templateContent);
 
@@ -71,7 +73,6 @@ class TemplateCompiler
                 $expression    = $matches[3];
                 $afterBinding  = $matches[4];
 
-                // Escape the binding expression for attributes.
                 $escapedExpression = htmlspecialchars($expression, ENT_QUOTES, 'UTF-8');
                 $placeholder       = '%%ATTR_BIND_' . count($attributePlaceholders) . '%%';
 
@@ -81,17 +82,14 @@ class TemplateCompiler
             $templateContent
         );
 
-        // Process text {{ ... }} bindings, but skip ones inside attribute values.
         $textBindingPattern = '/(?:"[^"]*"|\'[^\']*\')(*SKIP)(*FAIL)|{{\s*(.+?)\s*}}/u';
         $templateContent = preg_replace_callback(
             $textBindingPattern,
             function ($matches) {
                 $expr = $matches[1];
-                // If the expression is a simple word/dot path, use a simple binding.
                 if (preg_match('/^[\w.]+$/u', $expr)) {
                     return "<span pp-bind=\"{$expr}\"></span>";
                 } else {
-                    // Otherwise, encode the expression and use an expression binding.
                     $encodedExpr = htmlspecialchars($expr, ENT_QUOTES, 'UTF-8');
                     return "<span pp-bind-expr=\"{$encodedExpr}\"></span>";
                 }
@@ -219,25 +217,85 @@ class TemplateCompiler
         if ($node instanceof DOMElement) {
             $componentName = $node->nodeName;
             $attributes = [];
-
             foreach ($node->attributes as $attr) {
                 $attributes[$attr->name] = $attr->value;
             }
 
-            $childOutput = [];
-            foreach ($node->childNodes as $child) {
-                $childOutput[] = self::processNode($child);
+            if (isset(self::$classMappings[$componentName])) {
+                $componentInstance = self::initializeComponentInstance($componentName, $attributes);
+
+                $childOutput = [];
+                foreach ($node->childNodes as $child) {
+                    $childOutput[] = self::processNode($child);
+                }
+                $componentInstance->children = implode('', $childOutput);
+
+                $renderedContent = $componentInstance->render();
+                if (self::hasComponentTag($renderedContent)) {
+                    return self::compile($renderedContent);
+                }
+                return $renderedContent;
+            } else {
+                $childOutput = [];
+                foreach ($node->childNodes as $child) {
+                    $childOutput[] = self::processNode($child);
+                }
+                $attributes['children'] = implode('', $childOutput);
+                return self::renderAsHtml($componentName, $attributes);
             }
-            $innerContent = implode('', $childOutput);
-
-            $attributes['children'] = $innerContent;
-
-            return self::processComponent($componentName, $attributes);
         } elseif ($node instanceof DOMComment) {
             return "<!--{$node->textContent}-->";
         }
-
         return $node->textContent;
+    }
+
+    protected static function initializeComponentInstance(string $componentName, array $attributes)
+    {
+        $importerFile = Bootstrap::$contentToInclude;
+        $normalizedImporterFile = str_replace('\\', '/', $importerFile);
+
+        $srcPathNormalized = str_replace('\\', '/', SRC_PATH);
+        $relativeImporterFile = str_replace($srcPathNormalized . '/', '', $normalizedImporterFile);
+
+        if (!isset(self::$classMappings[$componentName])) {
+            throw new RuntimeException("Component {$componentName} is not registered.");
+        }
+
+        $mappings = self::$classMappings[$componentName];
+        $selectedMapping = null;
+
+        if (is_array($mappings)) {
+            if (isset($mappings[0]) && is_array($mappings[0])) {
+                foreach ($mappings as $entry) {
+                    $entryImporter = isset($entry['importer']) ? str_replace('\\', '/', $entry['importer']) : '';
+                    $relativeEntryImporter = str_replace($srcPathNormalized . '/', '', $entryImporter);
+                    if ($relativeEntryImporter === $relativeImporterFile) {
+                        $selectedMapping = $entry;
+                        break;
+                    }
+                }
+                if ($selectedMapping === null) {
+                    $selectedMapping = $mappings[0];
+                }
+            } else {
+                $selectedMapping = $mappings;
+            }
+        }
+
+        if (!isset($selectedMapping['className']) || !isset($selectedMapping['filePath'])) {
+            throw new RuntimeException("Invalid component mapping for {$componentName}.");
+        }
+
+        $className = $selectedMapping['className'];
+        $filePath = $selectedMapping['filePath'];
+
+        require_once str_replace('\\', '/', SRC_PATH . '/' . $filePath);
+
+        if (!class_exists($className)) {
+            throw new RuntimeException("Class {$className} does not exist.");
+        }
+
+        return new $className($attributes);
     }
 
     protected static function initializeClassMappings(): void
@@ -247,28 +305,9 @@ class TemplateCompiler
         }
     }
 
-    protected static function processComponent(string $componentName, array $attributes): string
+    protected static function hasComponentTag(string $templateContent): bool
     {
-        if (isset(self::$classMappings[$componentName])) {
-            $className = self::$classMappings[$componentName]['className'];
-            $filePath = self::$classMappings[$componentName]['filePath'];
-
-            require_once str_replace('\\', '/', SRC_PATH . '/' . $filePath);
-
-            if (!class_exists($className)) {
-                throw new RuntimeException("Class $className does not exist.");
-            }
-
-            $componentInstance = new $className($attributes);
-            $renderedContent = $componentInstance->render();
-
-            if (strpos($renderedContent, '<') !== false) {
-                return self::compile($renderedContent);
-            }
-            return $renderedContent;
-        }
-
-        return self::renderAsHtml($componentName, $attributes);
+        return preg_match('/<\/*[A-Z][\w-]*/u', $templateContent) === 1;
     }
 
     protected static function renderAsHtml(string $tagName, array $attributes): string
