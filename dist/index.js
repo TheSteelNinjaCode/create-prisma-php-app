@@ -55,7 +55,7 @@ async function installComposerDependencies(baseDir, dependencies) {
   });
 }
 const npmPinnedVersions = {
-  "@tailwindcss/postcss": "^4.1.1",
+  "@tailwindcss/postcss": "^4.1.3",
   "@types/browser-sync": "^2.29.0",
   "@types/node": "^22.14.0",
   "@types/prompts": "^2.4.9",
@@ -69,9 +69,9 @@ const npmPinnedVersions = {
   postcss: "^8.5.3",
   "postcss-cli": "^11.0.1",
   prompts: "^2.4.2",
-  tailwindcss: "^4.1.1",
+  tailwindcss: "^4.1.3",
   tsx: "^4.19.3",
-  typescript: "^5.8.2",
+  typescript: "^5.8.3",
 };
 function npmPkg(name) {
   return npmPinnedVersions[name] ? `${name}@${npmPinnedVersions[name]}` : name;
@@ -80,10 +80,10 @@ const composerPinnedVersions = {
   "vlucas/phpdotenv": "^5.6.1",
   "firebase/php-jwt": "^6.10.2",
   "phpmailer/phpmailer": "^6.9.3",
-  "guzzlehttp/guzzle": "^7.9.2",
+  "guzzlehttp/guzzle": "^7.9.3",
   "ezyang/htmlpurifier": "^4.18.0",
   "symfony/uid": "^7.2.0",
-  "brick/math": "^0.13.0",
+  "brick/math": "^0.13.1",
   "cboden/ratchet": "^0.4.4",
 };
 function composerPkg(name) {
