@@ -41,7 +41,6 @@ class TemplateCompiler
             self::initializeClassMappings();
         }
 
-
         $templateContent = self::preprocessBindings($templateContent);
 
         $dom = self::convertToXml($templateContent);
@@ -62,27 +61,39 @@ class TemplateCompiler
             return $templateContent;
         }
 
+        static $attributePattern = '/(\s(?!pp-bind-)[\w:-]+)=("|\')(.*?)\2/u';
+        static $textBindingPattern = '/(?:"[^"]*"|\'[^\']*\')(*SKIP)(*FAIL)|{{\s*(.+?)\s*}}/u';
+
         $attributePlaceholders = [];
-        $attributePattern = '/(\s(?!pp-bind-)[\w:-]+)=["\']([^"\']*?){{\s*(.+?)\s*}}([^"\']*?)["\']/u';
 
         $templateContent = preg_replace_callback(
             $attributePattern,
             function ($matches) use (&$attributePlaceholders) {
                 $attributeName = trim($matches[1]);
-                $beforeBinding = $matches[2];
-                $expression    = $matches[3];
-                $afterBinding  = $matches[4];
+                $quote         = $matches[2];
+                $value         = $matches[3];
 
-                $escapedExpression = htmlspecialchars($expression, ENT_QUOTES, 'UTF-8');
-                $placeholder       = '%%ATTR_BIND_' . count($attributePlaceholders) . '%%';
+                if (strpos($value, '{{') === false) {
+                    return $matches[0];
+                }
 
-                $attributePlaceholders[$placeholder] = " {$attributeName}=\"{$beforeBinding}{$afterBinding}\" pp-bind-{$attributeName}=\"{{ {$escapedExpression} }}\"";
+                $placeholder = sprintf('%%ATTR_BIND_%d%%', count($attributePlaceholders));
+                $attributePlaceholders[$placeholder] =
+                    sprintf(
+                        ' %s=%s%s%s pp-bind-%s=%s1%s',
+                        $attributeName,
+                        $quote,
+                        $value,
+                        $quote,
+                        $attributeName,
+                        $quote,
+                        $quote
+                    );
                 return $placeholder;
             },
             $templateContent
         );
 
-        $textBindingPattern = '/(?:"[^"]*"|\'[^\']*\')(*SKIP)(*FAIL)|{{\s*(.+?)\s*}}/u';
         $templateContent = preg_replace_callback(
             $textBindingPattern,
             function ($matches) {
@@ -98,6 +109,8 @@ class TemplateCompiler
         );
 
         $templateContent = strtr($templateContent, $attributePlaceholders);
+
+        $templateContent = preg_replace('/{{\s*}}\s*/u', '', $templateContent);
 
         return $templateContent;
     }
