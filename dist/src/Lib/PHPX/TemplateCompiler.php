@@ -10,6 +10,7 @@ use DOMDocument;
 use DOMElement;
 use DOMComment;
 use DOMNode;
+use DOMText;
 use RuntimeException;
 use Bootstrap;
 
@@ -41,8 +42,6 @@ class TemplateCompiler
             self::initializeClassMappings();
         }
 
-        $templateContent = self::preprocessBindings($templateContent);
-
         $dom = self::convertToXml($templateContent);
 
         $root = $dom->documentElement;
@@ -53,66 +52,6 @@ class TemplateCompiler
         }
 
         return implode('', $outputParts);
-    }
-
-    protected static function preprocessBindings(string $templateContent): string
-    {
-        if (strpos($templateContent, '{{') === false) {
-            return $templateContent;
-        }
-
-        static $attributePattern = '/(\s(?!pp-bind-)[\w:-]+)=("|\')(.*?)\2/u';
-        static $textBindingPattern = '/(?:"[^"]*"|\'[^\']*\')(*SKIP)(*FAIL)|{{\s*(.+?)\s*}}/u';
-
-        $attributePlaceholders = [];
-
-        $templateContent = preg_replace_callback(
-            $attributePattern,
-            function ($matches) use (&$attributePlaceholders) {
-                $attributeName = trim($matches[1]);
-                $quote         = $matches[2];
-                $value         = $matches[3];
-
-                if (strpos($value, '{{') === false) {
-                    return $matches[0];
-                }
-
-                $placeholder = sprintf('%%ATTR_BIND_%d%%', count($attributePlaceholders));
-                $attributePlaceholders[$placeholder] =
-                    sprintf(
-                        ' %s=%s%s%s pp-bind-%s=%s1%s',
-                        $attributeName,
-                        $quote,
-                        $value,
-                        $quote,
-                        $attributeName,
-                        $quote,
-                        $quote
-                    );
-                return $placeholder;
-            },
-            $templateContent
-        );
-
-        $templateContent = preg_replace_callback(
-            $textBindingPattern,
-            function ($matches) {
-                $expr = $matches[1];
-                if (preg_match('/^[\w.]+$/u', $expr)) {
-                    return "<span pp-bind=\"{$expr}\"></span>";
-                } else {
-                    $encodedExpr = htmlspecialchars($expr, ENT_QUOTES, 'UTF-8');
-                    return "<span pp-bind-expr=\"{$encodedExpr}\"></span>";
-                }
-            },
-            $templateContent
-        );
-
-        $templateContent = strtr($templateContent, $attributePlaceholders);
-
-        $templateContent = preg_replace('/{{\s*}}\s*/u', '', $templateContent);
-
-        return $templateContent;
     }
 
     public static function injectDynamicContent(string $htmlContent): string
@@ -227,6 +166,24 @@ class TemplateCompiler
 
     protected static function processNode(DOMNode $node, bool $inBody = false): string
     {
+        if ($node instanceof DOMText) {
+            $text = $node->textContent;
+            $text = preg_replace_callback(
+                '/{{\s*(.+?)\s*}}/u',
+                function ($matches) {
+                    $expr = trim($matches[1]);
+                    if (preg_match('/^[\w.]+$/u', $expr)) {
+                        return "<span pp-bind=\"{$expr}\"></span>";
+                    } else {
+                        $encodedExpr = htmlspecialchars($expr, ENT_QUOTES, 'UTF-8');
+                        return "<span pp-bind-expr=\"{$encodedExpr}\"></span>";
+                    }
+                },
+                $text
+            );
+            return $text;
+        }
+
         if ($node instanceof DOMElement) {
             $tag = strtolower($node->nodeName);
             $currentInBody = ($tag === 'body') ? true : $inBody;
@@ -234,6 +191,21 @@ class TemplateCompiler
             if ($tag === 'script' && $inBody) {
                 if (strtolower($node->getAttribute('type')) !== 'module') {
                     $node->setAttribute('type', 'module');
+                }
+            }
+
+            foreach ($node->attributes as $attr) {
+                if (strpos($attr->value, '{{') !== false) {
+                    $newValue = preg_replace_callback(
+                        '/{{\s*(.+?)\s*}}/u',
+                        function ($matches) {
+                            $expr = trim($matches[1]);
+                            return "";
+                        },
+                        $attr->value
+                    );
+                    $node->setAttribute($attr->name, $newValue);
+                    $node->setAttribute("pp-bind-{$attr->name}", "1");
                 }
             }
 
@@ -245,7 +217,6 @@ class TemplateCompiler
 
             if (isset(self::$classMappings[$componentName])) {
                 $componentInstance = self::initializeComponentInstance($componentName, $attributes);
-
                 $childOutput = [];
                 foreach ($node->childNodes as $child) {
                     $childOutput[] = self::processNode($child, $currentInBody);
@@ -265,9 +236,12 @@ class TemplateCompiler
                 $attributes['children'] = implode('', $childOutput);
                 return self::renderAsHtml($componentName, $attributes);
             }
-        } elseif ($node instanceof DOMComment) {
+        }
+
+        if ($node instanceof DOMComment) {
             return "<!--{$node->textContent}-->";
         }
+
         return $node->textContent;
     }
 
