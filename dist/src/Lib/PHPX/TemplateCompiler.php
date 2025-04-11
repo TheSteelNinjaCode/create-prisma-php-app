@@ -225,9 +225,18 @@ class TemplateCompiler
         );
     }
 
-    protected static function processNode(DOMNode $node): string
+    protected static function processNode(DOMNode $node, bool $inBody = false): string
     {
         if ($node instanceof DOMElement) {
+            $tag = strtolower($node->nodeName);
+            $currentInBody = ($tag === 'body') ? true : $inBody;
+
+            if ($tag === 'script' && $inBody) {
+                if (strtolower($node->getAttribute('type')) !== 'module') {
+                    $node->setAttribute('type', 'module');
+                }
+            }
+
             $componentName = $node->nodeName;
             $attributes = [];
             foreach ($node->attributes as $attr) {
@@ -239,7 +248,7 @@ class TemplateCompiler
 
                 $childOutput = [];
                 foreach ($node->childNodes as $child) {
-                    $childOutput[] = self::processNode($child);
+                    $childOutput[] = self::processNode($child, $currentInBody);
                 }
                 $componentInstance->children = implode('', $childOutput);
 
@@ -251,7 +260,7 @@ class TemplateCompiler
             } else {
                 $childOutput = [];
                 foreach ($node->childNodes as $child) {
-                    $childOutput[] = self::processNode($child);
+                    $childOutput[] = self::processNode($child, $currentInBody);
                 }
                 $attributes['children'] = implode('', $childOutput);
                 return self::renderAsHtml($componentName, $attributes);
