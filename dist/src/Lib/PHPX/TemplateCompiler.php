@@ -308,7 +308,7 @@ class TemplateCompiler
             throw new RuntimeException("Class {$className} does not exist.");
         }
 
-        $attributes['pp-sync-script'] = $className;
+        $attributes['pp-sync-script'] = base64_encode($className);
         return new $className($attributes);
     }
 

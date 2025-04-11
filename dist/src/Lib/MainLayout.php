@@ -106,6 +106,7 @@ class MainLayout
                 if (str_starts_with(trim($script), '<script')) {
                     $script = preg_replace_callback('/<script\b([^>]*)>/i', function ($m) use ($className) {
                         $attrs = $m[1];
+                        $className = base64_encode($className);
 
                         if (!str_contains($attrs, 'pp-sync-script=')) {
                             $attrs .= " pp-sync-script=\"{$className}\"";
