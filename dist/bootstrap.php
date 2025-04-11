@@ -57,7 +57,14 @@ final class Bootstrap
         ErrorHandler::registerHandlers();
 
         // Set a local store key as a cookie (before any output)
-        setcookie("pphp_local_store_key", PrismaPHPSettings::$localStoreKey, time() + 3600, "/", "", false, false);
+        setcookie("pphp_local_store_key", PrismaPHPSettings::$localStoreKey, [
+            'expires' => time() + 3600, // 1 hour expiration
+            'path' => '/', // Cookie path
+            'domain' => '', // Specify your domain
+            'secure' => true, // Set to true if using HTTPS
+            'httponly' => false, // Set to true to prevent JavaScript access
+            'samesite' => 'Lax', // or 'Strict' depending on your requirements
+        ]);
 
         $contentInfo = self::determineContentToInclude();
         self::$contentToInclude = $contentInfo['path'] ?? '';

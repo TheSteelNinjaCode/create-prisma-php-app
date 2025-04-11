@@ -51,8 +51,16 @@ class MainLayout
      */
     public static function addFooterScript(string ...$scripts): void
     {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $callerClass = $trace[1]['class'] ?? 'Unknown';
+
         foreach ($scripts as $script) {
-            self::$footerScripts->add($script);
+            if (strpos($script, '<script') !== false) {
+                $taggedScript = "<!-- class:" . $callerClass . " -->\n" . $script;
+                self::$footerScripts->add($taggedScript);
+            } else {
+                self::$footerScripts->add($script);
+            }
         }
     }
 
@@ -88,7 +96,34 @@ class MainLayout
      */
     public static function outputFooterScripts(): string
     {
-        return implode("\n", self::$footerScripts->values());
+        $processed = [];
+
+        foreach (self::$footerScripts->values() as $script) {
+            if (preg_match('/<!-- class:([^\s]+) -->/', $script, $matches)) {
+                $className = $matches[1];
+                $script = preg_replace('/<!-- class:[^\s]+ -->\s*/', '', $script, 1);
+
+                if (str_starts_with(trim($script), '<script')) {
+                    $script = preg_replace_callback('/<script\b([^>]*)>/i', function ($m) use ($className) {
+                        $attrs = $m[1];
+
+                        if (!str_contains($attrs, 'pp-sync-script=')) {
+                            $attrs .= " pp-sync-script=\"{$className}\"";
+                        }
+
+                        if (!preg_match('/\btype\s*=\s*/i', $attrs)) {
+                            $attrs .= ' type="module"';
+                        }
+
+                        return "<script{$attrs}>";
+                    }, $script, 1);
+                }
+            }
+
+            $processed[] = $script;
+        }
+
+        return implode("\n", $processed);
     }
 
     /**

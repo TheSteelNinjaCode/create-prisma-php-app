@@ -388,9 +388,11 @@ class Request
      */
     private static function getProtocol(): string
     {
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        return (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
             (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-            $_SERVER['SERVER_PORT'] == 443 ? "https://" : "http://";
+            ($_SERVER['SERVER_PORT'] == 443)
+        ) ? "https://" : "http://";
     }
 
     /**

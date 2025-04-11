@@ -244,10 +244,10 @@ class Auth
         if (!headers_sent()) {
             setcookie(self::$cookieName, $jwt, [
                 'expires' => $expirationTime,
-                'path' => '/',
+                'path' => '/', // Set the path to '/' to make the cookie available site-wide
                 'domain' => '', // Specify your domain
-                'secure' => true,
-                'httponly' => true,
+                'secure' => true, // Set to true if using HTTPS
+                'httponly' => true, // Prevent JavaScript access to the cookie
                 'samesite' => 'Lax', // or 'Strict' depending on your requirements
             ]);
         }
