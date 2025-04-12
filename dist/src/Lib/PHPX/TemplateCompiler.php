@@ -199,8 +199,7 @@ class TemplateCompiler
                     $newValue = preg_replace_callback(
                         '/{{\s*(.+?)\s*}}/u',
                         function ($matches) {
-                            $expr = trim($matches[1]);
-                            return "";
+                            return $matches[0];
                         },
                         $attr->value
                     );
