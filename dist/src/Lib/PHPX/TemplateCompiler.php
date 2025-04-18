@@ -106,8 +106,25 @@ class TemplateCompiler
         );
     }
 
+    private static function escapeAttributeAngles(string $html): string
+    {
+        // Replace < and > inside any quoted attribute value
+        return preg_replace_callback(
+            '/(\s[\w:-]+=)([\'"])(.*?)\2/s',
+            function ($m) {
+                $prefix = $m[1];
+                $quote  = $m[2];
+                // &lt;  &gt;  *only* if bracket is not already escaped*
+                $value  = str_replace(['<',  '>'], ['&lt;', '&gt;'], $m[3]);
+                return $prefix . $quote . $value . $quote;
+            },
+            $html
+        );
+    }
+
     public static function convertToXml(string $templateContent): DOMDocument
     {
+        $templateContent = self::escapeAttributeAngles($templateContent);
         $templateContent = self::escapeAmpersands($templateContent);
 
         $dom = new DOMDocument();
