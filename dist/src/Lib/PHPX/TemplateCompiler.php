@@ -240,9 +240,10 @@ class TemplateCompiler
                 $componentInstance->children = implode('', $childOutput);
 
                 $renderedContent = $componentInstance->render();
-                if (self::hasComponentTag($renderedContent)) {
+                if (strpos($renderedContent, '{{') !== false || self::hasComponentTag($renderedContent)) {
                     return self::compile($renderedContent);
                 }
+
                 return $renderedContent;
             } else {
                 $childOutput = [];
