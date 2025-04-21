@@ -212,16 +212,10 @@ class TemplateCompiler
             }
 
             foreach ($node->attributes as $attr) {
-                if (strpos($attr->value, '{{') !== false) {
-                    $newValue = preg_replace_callback(
-                        '/{{\s*(.+?)\s*}}/u',
-                        function ($matches) {
-                            return $matches[0];
-                        },
-                        $attr->value
-                    );
-                    $node->setAttribute($attr->name, $newValue);
-                    $node->setAttribute("pp-bind-{$attr->name}", "1");
+                if (preg_match('/{{\s*(.+?)\s*}}/u', $attr->value, $m)) {
+                    $expr = $m[1];
+                    $node->setAttribute($attr->name, $attr->value);
+                    $node->setAttribute("pp-bind-{$attr->name}", $expr);
                 }
             }
 
