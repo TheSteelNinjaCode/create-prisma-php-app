@@ -74,6 +74,26 @@ class TemplateCompiler
                 $htmlContent,
                 1
             );
+
+            $styleBlock = <<<HTML
+            <style>
+                body {
+                    opacity: 0;
+                }
+                body.pp-hydrated {
+                    opacity: 1;
+                }
+            </style>
+            HTML;
+
+            $htmlContent = preg_replace(
+                '/(<\/head\s*>)/i',
+                $styleBlock
+                    . MainLayout::outputHeadScripts()
+                    . '$1',
+                $htmlContent,
+                1
+            );
         }
 
         $patternBodyClose = '/(<\/body\s*>)/i';
