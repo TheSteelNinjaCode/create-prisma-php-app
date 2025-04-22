@@ -32,6 +32,18 @@ RewriteEngine On
     </FilesMatch>
 </IfModule>
 
+# Set Content Security Policy (CSP) headers to prevent XSS attacks
+<IfModule mod_headers.c>
+  Header set Content-Security-Policy "\
+    default-src 'self'; \
+    script-src  'self' blob: 'unsafe-inline' 'unsafe-eval'; \
+    style-src   'self' 'unsafe-inline'; \
+    img-src     'self' data:; \
+    form-action 'self'; \
+    object-src  'none';\
+  "
+</IfModule>
+
 # Add important security headers
 <IfModule mod_headers.c>
     # Enforce HTTPS and prevent protocol downgrade attacks
@@ -45,12 +57,6 @@ RewriteEngine On
 
     # Clickjacking protection
     Header always set X-Frame-Options "DENY"
-
-    # Implement a basic Content Security Policy (CSP)
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;"
-
-    # Restrict form submissions
-    Header set Content-Security-Policy "form-action 'self'"
 
     # Set a strict Referrer Policy
     Header set Referrer-Policy "strict-origin-when-cross-origin"
