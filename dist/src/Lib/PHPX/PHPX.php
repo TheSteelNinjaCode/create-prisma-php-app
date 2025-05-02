@@ -5,6 +5,7 @@ namespace Lib\PHPX;
 use Lib\PHPX\IPHPX;
 use Lib\PHPX\TwMerge;
 use Lib\PrismaPHPSettings;
+use Exception;
 
 class PHPX implements IPHPX
 {
@@ -38,16 +39,6 @@ class PHPX implements IPHPX
         $this->props = $props;
         $this->children = $props['children'] ?? '';
         $this->class = $props['class'] ?? '';
-    }
-
-    /**
-     * Registers or initializes any necessary components or settings. (Placeholder method).
-     * 
-     * @param array<string, mixed> $props Optional properties to customize the initialization.
-     */
-    public static function init(array $props = []): void
-    {
-        // Register the component or any necessary initialization
     }
 
     /**
@@ -96,42 +87,42 @@ class PHPX implements IPHPX
     }
 
     /**
-     * Generates and returns a string of HTML attributes from the provided props.
-     * Excludes 'class' and 'children' props from being added as attributes.
-     * Prioritizes attributes from `$this->props` if duplicates are found in `$params`.
+     * Build an HTML-attribute string.
      *
-     * @param array $params Optional additional attributes to merge with props.
+     * • Always ignores "class" and "children".  
+     * • $params overrides anything in $this->props.  
+     * • Pass names in $exclude to drop them for this call.
      *
-     * @return string The generated HTML attributes as a space-separated string.
+     * @param array $params  Extra / overriding attributes           (optional)
+     * @param array $exclude Attribute names to remove on the fly    (optional)
+     * @return string Example: id="btn" data-id="7"
      */
-    protected function getAttributes(array $params = []): string
-    {
-        // Filter out 'class' and 'children' props
-        $filteredProps = array_filter(
+    protected function getAttributes(
+        array $params = [],
+        array $exclude = []
+    ): string {
+        $reserved = ['class', 'children'];
+
+        $filtered = array_diff_key(
             $this->props,
-            function ($key) {
-                return !in_array($key, ["class", "children"]);
-            },
-            ARRAY_FILTER_USE_KEY
+            array_flip([...$reserved, ...$exclude])
         );
 
-        // Merge attributes, prioritizing props in case of duplicates
-        $attributes = array_merge($params, $filteredProps);
+        $attributes = array_merge($filtered, $params);
 
-        // Build the attributes string by escaping keys and values
-        $attributeStrings = [];
-        foreach ($attributes as $key => $value) {
-            $escapedKey = htmlspecialchars($key, ENT_QUOTES, "UTF-8");
-            $escapedValue = htmlspecialchars(
-                (string) $value,
-                ENT_QUOTES,
-                "UTF-8"
-            );
-            $attributeStrings[] = "$escapedKey='$escapedValue'";
-        }
+        $pairs = array_map(
+            static fn($k, $v) =>
+            sprintf(
+                "%s='%s'",
+                htmlspecialchars($k, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8')
+            ),
+            array_keys($attributes),
+            $attributes
+        );
 
         $this->attributesArray = $attributes;
-        return implode(" ", $attributeStrings);
+        return implode(' ', $pairs);
     }
 
     /**
@@ -164,7 +155,7 @@ class PHPX implements IPHPX
     {
         try {
             return $this->render();
-        } catch (\Exception) {
+        } catch (Exception) {
             return ''; // Return an empty string or a fallback message in case of errors
         }
     }

@@ -540,7 +540,6 @@ final class Bootstrap
     public static function wireCallback()
     {
         try {
-            // Initialize response
             $response = [
                 'success' => false,
                 'error' => 'Callback not provided',
@@ -550,13 +549,10 @@ final class Bootstrap
             $callbackResponse = null;
             $data = [];
 
-            // Process form data
             if (!empty($_FILES)) {
                 $data = $_POST;
 
-                // Iterate over each file key in $_FILES
                 foreach ($_FILES as $key => $file) {
-                    // Check if it's a multiple file upload or a single file upload
                     if (is_array($file['name'])) {
                         $files = [];
                         foreach ($file['name'] as $index => $name) {
@@ -582,13 +578,14 @@ final class Bootstrap
                 }
             }
 
-            // Validate and call the dynamic function
             if (isset($data['callback'])) {
                 $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']);
 
-                if (function_exists($callbackName) && is_callable($callbackName)) {
+                if (strpos($callbackName, '_') === 0) {
+                    $response['error'] = 'Invalid callback';
+                } elseif (function_exists($callbackName) && is_callable($callbackName)) {
                     $dataObject = self::convertToArrayObject($data);
-                    // Call the function
+
                     $callbackResponse = call_user_func($callbackName, $dataObject);
                     $response = [
                         'success' => true,
@@ -608,7 +605,6 @@ final class Bootstrap
                 $response['error'] = 'No callback provided';
             }
 
-            // Output the JSON response only if the callbackResponse is not null or if there's an error
             if ($callbackResponse !== null || isset($response['error'])) {
                 echo json_encode($response);
             }

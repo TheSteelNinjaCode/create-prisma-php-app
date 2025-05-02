@@ -100,24 +100,34 @@ class MainLayout
 
         foreach (self::$footerScripts->values() as $script) {
             if (preg_match('/<!-- class:([^\s]+) -->/', $script, $matches)) {
-                $className = $matches[1];
+                $rawClassName = $matches[1];
                 $script = preg_replace('/<!-- class:[^\s]+ -->\s*/', '', $script, 1);
 
                 if (str_starts_with(trim($script), '<script')) {
-                    $script = preg_replace_callback('/<script\b([^>]*)>/i', function ($m) use ($className) {
-                        $attrs = $m[1];
-                        $className = base64_encode($className);
+                    $script = preg_replace_callback(
+                        '/<script\b([^>]*)>/i',
+                        function ($m) use ($rawClassName) {
+                            $attrs = $m[1];
 
-                        if (!str_contains($attrs, 'pp-sync-script=')) {
-                            $attrs .= " pp-sync-script=\"{$className}\"";
-                        }
+                            $attrs = preg_replace(
+                                '/\btype\s*=\s*("[^"]*"|\'[^\']*\'|\S+)/i',
+                                '',
+                                $attrs
+                            );
 
-                        if (!preg_match('/\btype\s*=\s*/i', $attrs)) {
-                            $attrs .= ' type="module"';
-                        }
+                            $encodedClass = 's' . base_convert(sprintf('%u', crc32($rawClassName)), 10, 36);
 
-                        return "<script{$attrs}>";
-                    }, $script, 1);
+                            if (!str_contains($attrs, 'pp-sync-script=')) {
+                                $attrs .= " pp-sync-script=\"{$encodedClass}\"";
+                            }
+
+                            $attrs .= ' type="text/php"';
+
+                            return "<script{$attrs}>";
+                        },
+                        $script,
+                        1
+                    );
                 }
             }
 

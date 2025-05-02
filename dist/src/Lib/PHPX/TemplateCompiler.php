@@ -13,6 +13,7 @@ use DOMNode;
 use DOMText;
 use RuntimeException;
 use Bootstrap;
+use LibXMLError;
 
 class TemplateCompiler
 {
@@ -35,6 +36,7 @@ class TemplateCompiler
         'track',
         'wbr'
     ];
+    private static array $sectionStack = [];
 
     public static function compile(string $templateContent): string
     {
@@ -43,15 +45,13 @@ class TemplateCompiler
         }
 
         $dom = self::convertToXml($templateContent);
-
         $root = $dom->documentElement;
 
-        $outputParts = [];
+        $output = [];
         foreach ($root->childNodes as $child) {
-            $outputParts[] = self::processNode($child);
+            $output[] = self::processNode($child);
         }
-
-        return implode('', $outputParts);
+        return implode('', $output);
     }
 
     public static function injectDynamicContent(string $htmlContent): string
@@ -77,10 +77,10 @@ class TemplateCompiler
 
             $styleBlock = <<<HTML
             <style>
-                body {
+                html:not([data-initial-hydrated]) body {
                     opacity: 0;
                 }
-                body.pp-hydrated {
+                html[data-initial-hydrated] body {
                     opacity: 1;
                 }
             </style>
@@ -113,160 +113,106 @@ class TemplateCompiler
     {
         return preg_replace_callback(
             '/&(.*?)/',
-            function ($matches) {
-                $str = $matches[0];
-
-                if (preg_match('/^&(?:[a-zA-Z]+|#[0-9]+|#x[0-9A-Fa-f]+);$/', $str)) {
-                    return $str;
-                }
-
-                return '&amp;' . substr($str, 1);
-            },
+            fn($m) => preg_match('/^&(?:[a-zA-Z]+|#[0-9]+|#x[0-9A-Fa-f]+);$/', $m[0])
+                ? $m[0]
+                : '&amp;' . substr($m[0], 1),
             $content
         );
     }
 
     private static function escapeAttributeAngles(string $html): string
     {
-        // Replace < and > inside any quoted attribute value
         return preg_replace_callback(
             '/(\s[\w:-]+=)([\'"])(.*?)\2/s',
-            function ($m) {
-                $prefix = $m[1];
-                $quote  = $m[2];
-                // &lt;  &gt;  *only* if bracket is not already escaped*
-                $value  = str_replace(['<',  '>'], ['&lt;', '&gt;'], $m[3]);
-                return $prefix . $quote . $value . $quote;
-            },
+            fn($m) => $m[1] . $m[2] . str_replace(['<', '>'], ['&lt;', '&gt;'], $m[3]) . $m[2],
             $html
         );
     }
 
     public static function convertToXml(string $templateContent): DOMDocument
     {
-        $templateContent = self::escapeAttributeAngles($templateContent);
-        $templateContent = self::escapeAmpersands($templateContent);
-
+        $templateContent = self::escapeAttributeAngles(self::escapeAmpersands($templateContent));
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
 
-        $wrappedContent = "<root>{$templateContent}</root>";
-
-        if (!$dom->loadXML($wrappedContent)) {
+        if (!$dom->loadXML("<root>{$templateContent}</root>")) {
             $errors = self::getXmlErrors();
-            throw new RuntimeException(
-                "XML Parsing Failed: " . implode("; ", $errors)
-            );
+            throw new RuntimeException("XML Parsing Failed: " . implode("; ", $errors));
         }
+
         libxml_clear_errors();
         libxml_use_internal_errors(false);
-
         return $dom;
     }
 
     protected static function getXmlErrors(): array
     {
         $errors = libxml_get_errors();
-        $errorMessages = [];
-
-        foreach ($errors as $error) {
-            $errorMessages[] = self::formatLibxmlError($error);
-        }
-
         libxml_clear_errors();
-        return $errorMessages;
+        return array_map(fn($e) => self::formatLibxmlError($e), $errors);
     }
 
-    protected static function formatLibxmlError(\LibXMLError $error): string
+    protected static function formatLibxmlError(LibXMLError $error): string
     {
-        $errorType = match ($error->level) {
-            LIBXML_ERR_WARNING => "Warning",
-            LIBXML_ERR_ERROR => "Error",
-            LIBXML_ERR_FATAL => "Fatal",
-            default => "Unknown",
+        $type = match ($error->level) {
+            LIBXML_ERR_WARNING => 'Warning',
+            LIBXML_ERR_ERROR   => 'Error',
+            LIBXML_ERR_FATAL   => 'Fatal',
+            default            => 'Unknown',
         };
-
-        $message = trim($error->message);
-        if (preg_match("/tag (.*?) /", $message, $matches)) {
-            $tag = $matches[1];
-            $message = str_replace($tag, "`{$tag}`", $message);
-        }
-
         return sprintf(
-            "[%s] Line %d, Column %d: %s",
-            $errorType,
+            "[%s] Line %d, Col %d: %s",
+            $type,
             $error->line,
             $error->column,
-            $message
+            trim($error->message)
         );
     }
 
     protected static function processNode(DOMNode $node, bool $inBody = false): string
     {
         if ($node instanceof DOMText) {
-            $text = $node->textContent;
-            $text = preg_replace_callback(
-                '/{{\s*(.+?)\s*}}/u',
-                function ($matches) {
-                    $expr = trim($matches[1]);
-                    if (preg_match('/^[\w.]+$/u', $expr)) {
-                        return "<span pp-bind=\"{$expr}\"></span>";
-                    } else {
-                        $encodedExpr = htmlspecialchars($expr, ENT_QUOTES, 'UTF-8');
-                        return "<span pp-bind-expr=\"{$encodedExpr}\"></span>";
-                    }
-                },
-                $text
-            );
-            return $text;
+            return self::processTextNode($node);
         }
 
         if ($node instanceof DOMElement) {
-            $tag = strtolower($node->nodeName);
-            $currentInBody = ($tag === 'body') ? true : $inBody;
+            $pushed = false;
+            $tag    = strtolower($node->nodeName);
 
-            if ($tag === 'script' && $inBody) {
-                if (strtolower($node->getAttribute('type')) !== 'module') {
-                    $node->setAttribute('type', 'module');
-                }
+            if ($tag === 'script' && $inBody && !$node->hasAttribute('src')) {
+                $node->setAttribute('type', 'text/php');
             }
 
-            foreach ($node->attributes as $attr) {
-                if (preg_match('/{{\s*(.+?)\s*}}/u', $attr->value, $m)) {
-                    $expr = $m[1];
-                    $node->setAttribute($attr->name, $attr->value);
-                    $node->setAttribute("pp-bind-{$attr->name}", $expr);
-                }
+            if ($node->hasAttribute('pp-section-id')) {
+                self::$sectionStack[] = $node->getAttribute('pp-section-id');
+                $pushed = true;
             }
 
-            $componentName = $node->nodeName;
-            $attributes = [];
-            foreach ($node->attributes as $attr) {
-                $attributes[$attr->name] = $attr->value;
+            self::processAttributes($node);
+
+            if (isset(self::$classMappings[$node->nodeName])) {
+                $html = self::renderComponent(
+                    $node,
+                    $node->nodeName,
+                    self::getNodeAttributes($node)
+                );
+                if ($pushed) {
+                    array_pop(self::$sectionStack);
+                }
+                return $html;
             }
 
-            if (isset(self::$classMappings[$componentName])) {
-                $componentInstance = self::initializeComponentInstance($componentName, $attributes);
-                $childOutput = [];
-                foreach ($node->childNodes as $child) {
-                    $childOutput[] = self::processNode($child, $currentInBody);
-                }
-                $componentInstance->children = implode('', $childOutput);
-
-                $renderedContent = $componentInstance->render();
-                if (strpos($renderedContent, '{{') !== false || self::hasComponentTag($renderedContent)) {
-                    return self::compile($renderedContent);
-                }
-
-                return $renderedContent;
-            } else {
-                $childOutput = [];
-                foreach ($node->childNodes as $child) {
-                    $childOutput[] = self::processNode($child, $currentInBody);
-                }
-                $attributes['children'] = implode('', $childOutput);
-                return self::renderAsHtml($componentName, $attributes);
+            $children = '';
+            foreach ($node->childNodes as $c) {
+                $children .= self::processNode($c, $inBody || $tag === 'body');
             }
+            $attrs = self::getNodeAttributes($node) + ['children' => $children];
+            $out   = self::renderAsHtml($node->nodeName, $attrs);
+
+            if ($pushed) {
+                array_pop(self::$sectionStack);
+            }
+            return $out;
         }
 
         if ($node instanceof DOMComment) {
@@ -276,93 +222,123 @@ class TemplateCompiler
         return $node->textContent;
     }
 
-    protected static function initializeComponentInstance(string $componentName, array $attributes)
+    private static function processTextNode(DOMText $node): string
     {
-        $importerFile = Bootstrap::$contentToInclude;
-        $normalizedImporterFile = str_replace('\\', '/', $importerFile);
+        return preg_replace_callback(
+            '/{{\s*(.+?)\s*}}/u',
+            fn($m) => self::processBindingExpression(trim($m[1])),
+            $node->textContent
+        );
+    }
 
-        $srcPathNormalized = str_replace('\\', '/', SRC_PATH);
-        $relativeImporterFile = str_replace($srcPathNormalized . '/', '', $normalizedImporterFile);
-
-        if (!isset(self::$classMappings[$componentName])) {
-            throw new RuntimeException("Component {$componentName} is not registered.");
-        }
-
-        $mappings = self::$classMappings[$componentName];
-        $selectedMapping = null;
-
-        if (is_array($mappings)) {
-            if (isset($mappings[0]) && is_array($mappings[0])) {
-                foreach ($mappings as $entry) {
-                    $entryImporter = isset($entry['importer']) ? str_replace('\\', '/', $entry['importer']) : '';
-                    $relativeEntryImporter = str_replace($srcPathNormalized . '/', '', $entryImporter);
-                    if ($relativeEntryImporter === $relativeImporterFile) {
-                        $selectedMapping = $entry;
-                        break;
-                    }
-                }
-                if ($selectedMapping === null) {
-                    $selectedMapping = $mappings[0];
-                }
-            } else {
-                $selectedMapping = $mappings;
+    private static function processAttributes(DOMElement $node): void
+    {
+        foreach ($node->attributes as $a) {
+            if (!preg_match('/{{\s*(.+?)\s*}}/u', $a->value, $m)) {
+                continue;
             }
+
+            $rawExpr = trim($m[1]);
+            $node->setAttribute("pp-bind-{$a->name}", $rawExpr);
+        }
+    }
+
+    private static function processBindingExpression(string $expr): string
+    {
+        if (preg_match('/^[\w.]+$/u', $expr)) {
+            return "<span pp-bind=\"{$expr}\"></span>";
+        }
+        return "<span pp-bind-expr=\"" . htmlspecialchars($expr, ENT_QUOTES, 'UTF-8') . "\"></span>";
+    }
+
+    protected static function renderComponent(DOMElement $node, string $componentName, array $incomingProps): string
+    {
+        $mapping = self::selectComponentMapping($componentName);
+        $attributes = $incomingProps;
+
+        $attributes['pp-sync-script'] = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
+
+        $instance = self::initializeComponentInstance($mapping, $attributes);
+        $html = $instance->render();
+        if (strpos($html, '{{') !== false || self::hasComponentTag($html)) {
+            $html = self::compile($html);
         }
 
-        if (!isset($selectedMapping['className']) || !isset($selectedMapping['filePath'])) {
-            throw new RuntimeException("Invalid component mapping for {$componentName}.");
-        }
+        return $html;
+    }
 
-        $className = $selectedMapping['className'];
-        $filePath = $selectedMapping['filePath'];
+    private static function selectComponentMapping(string $componentName): array
+    {
+        if (!isset(self::$classMappings[$componentName])) {
+            throw new RuntimeException("Component {$componentName} not registered");
+        }
+        $mappings = self::$classMappings[$componentName];
+
+        $srcNorm = str_replace('\\', '/', SRC_PATH) . '/';
+        $relImp  = str_replace($srcNorm, '', str_replace('\\', '/', Bootstrap::$contentToInclude));
+
+        if (isset($mappings[0]) && is_array($mappings[0])) {
+            foreach ($mappings as $entry) {
+                $imp = isset($entry['importer'])
+                    ? str_replace('\\', '/', $entry['importer'])
+                    : '';
+                if (str_replace($srcNorm, '', $imp) === $relImp) {
+                    return $entry;
+                }
+            }
+            return $mappings[0];
+        }
+        return $mappings;
+    }
+
+    protected static function initializeComponentInstance(array $mapping, array $attributes)
+    {
+        if (!isset($mapping['className'], $mapping['filePath'])) {
+            throw new RuntimeException("Invalid mapping");
+        }
+        $className = $mapping['className'];
+        $filePath  = $mapping['filePath'];
 
         require_once str_replace('\\', '/', SRC_PATH . '/' . $filePath);
-
         if (!class_exists($className)) {
-            throw new RuntimeException("Class {$className} does not exist.");
+            throw new RuntimeException("Class {$className} not found");
         }
 
-        $attributes['pp-sync-script'] = base64_encode($className);
         return new $className($attributes);
     }
 
     protected static function initializeClassMappings(): void
     {
-        foreach (PrismaPHPSettings::$classLogFiles as $tagName => $fullyQualifiedClassName) {
-            self::$classMappings[$tagName] = $fullyQualifiedClassName;
+        foreach (PrismaPHPSettings::$classLogFiles as $tag => $cls) {
+            self::$classMappings[$tag] = $cls;
         }
     }
 
-    protected static function hasComponentTag(string $templateContent): bool
+    protected static function hasComponentTag(string $html): bool
     {
-        return preg_match('/<\/*[A-Z][\w-]*/u', $templateContent) === 1;
+        return preg_match('/<\/*[A-Z][\w-]*/u', $html) === 1;
     }
 
-    protected static function renderAsHtml(string $tagName, array $attributes): string
+    private static function getNodeAttributes(DOMElement $node): array
     {
-        $attrs = self::renderAttributes($attributes);
-
-        if (in_array(strtolower($tagName), self::$selfClosingTags)) {
-            return "<{$tagName}{$attrs} />";
+        $out = [];
+        foreach ($node->attributes as $a) {
+            $out[$a->name] = $a->value;
         }
-
-        $innerContent = $attributes['children'] ?? '';
-        return "<{$tagName}{$attrs}>{$innerContent}</{$tagName}>";
+        return $out;
     }
 
-    protected static function renderAttributes(array $attributes): string
+    private static function renderAsHtml(string $tag, array $attrs): string
     {
-        if (empty($attributes)) {
-            return "";
-        }
-
-        $attrArray = [];
-        foreach ($attributes as $key => $value) {
-            if ($key !== "children") {
-                $attrArray[] = "{$key}=\"{$value}\"";
+        $pairs = [];
+        foreach ($attrs as $k => $v) {
+            if ($k !== 'children') {
+                $pairs[] = "{$k}=\"{$v}\"";
             }
         }
-
-        return " " . implode(" ", $attrArray);
+        $attrStr = $pairs ? ' ' . implode(' ', $pairs) : '';
+        return in_array(strtolower($tag), self::$selfClosingTags)
+            ? "<{$tag}{$attrStr} />"
+            : "<{$tag}{$attrStr}>{$attrs['children']}</{$tag}>";
     }
 }
