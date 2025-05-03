@@ -32,16 +32,15 @@ RewriteEngine On
     </FilesMatch>
 </IfModule>
 
-# Set Content Security Policy (CSP) headers to prevent XSS attacks
+# Set Content Security Policy (CSP) headers to prevent XSS attacks while allowing CDNs
 <IfModule mod_headers.c>
   Header set Content-Security-Policy "\
-    default-src 'self'; \
-    script-src  'self' blob: 'unsafe-inline' 'unsafe-eval'; \
-    style-src   'self' 'unsafe-inline'; \
-    img-src     'self' data:; \
+    default-src 'self' https:; \
+    script-src  'self' https: 'unsafe-inline' 'unsafe-eval' blob:; \
+    style-src   'self' https: 'unsafe-inline'; \
+    img-src     'self' data: https:; \
     form-action 'self'; \
-    object-src  'none';\
-  "
+    object-src  'none';"
 </IfModule>
 
 # Add important security headers
