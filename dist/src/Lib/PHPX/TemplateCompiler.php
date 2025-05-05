@@ -259,6 +259,13 @@ class TemplateCompiler
         $attributes['pp-sync-script'] = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
 
         $instance = self::initializeComponentInstance($mapping, $attributes);
+
+        $childHtml = '';
+        foreach ($node->childNodes as $c) {
+            $childHtml .= self::processNode($c, false);
+        }
+        $instance->children = $childHtml;
+
         $html = $instance->render();
         if (strpos($html, '{{') !== false || self::hasComponentTag($html)) {
             $html = self::compile($html);
