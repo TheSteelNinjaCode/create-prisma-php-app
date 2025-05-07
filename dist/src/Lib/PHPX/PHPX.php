@@ -103,16 +103,15 @@ class PHPX implements IPHPX
     ): string {
         $reserved = ['class', 'children'];
 
-        $filtered = array_diff_key(
+        $filteredProps = array_diff_key(
             $this->props,
             array_flip([...$reserved, ...$exclude])
         );
 
-        $attributes = array_merge($filtered, $params);
+        $attributes = array_merge($params, $filteredProps);
 
         $pairs = array_map(
-            static fn($k, $v) =>
-            sprintf(
+            static fn($k, $v) => sprintf(
                 "%s='%s'",
                 htmlspecialchars($k, ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8')
@@ -137,7 +136,7 @@ class PHPX implements IPHPX
         $class = $this->getMergeClasses();
 
         return <<<HTML
-        <div class="$class" $attributes>{$this->children}</div>
+        <div class="{$class}" {$attributes}>{$this->children}</div>
         HTML;
     }
 
