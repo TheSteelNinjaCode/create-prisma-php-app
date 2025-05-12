@@ -37,6 +37,7 @@ class TemplateCompiler
         'wbr'
     ];
     private static array $sectionStack = [];
+    protected const BINDING_REGEX = '/\{\{\s*((?:(?!\{\{|\}\})[\s\S])*?)\s*\}\}/uS';
 
     public static function compile(string $templateContent): string
     {
@@ -225,7 +226,7 @@ class TemplateCompiler
     private static function processTextNode(DOMText $node): string
     {
         return preg_replace_callback(
-            '/{{\s*(.+?)\s*}}/u',
+            self::BINDING_REGEX,
             fn($m) => self::processBindingExpression(trim($m[1])),
             $node->textContent
         );
@@ -234,7 +235,7 @@ class TemplateCompiler
     private static function processAttributes(DOMElement $node): void
     {
         foreach ($node->attributes as $a) {
-            if (!preg_match('/{{\s*(.+?)\s*}}/u', $a->value, $m)) {
+            if (!preg_match(self::BINDING_REGEX, $a->value, $m)) {
                 continue;
             }
 
