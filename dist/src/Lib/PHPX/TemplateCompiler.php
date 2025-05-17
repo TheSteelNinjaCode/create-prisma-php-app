@@ -249,7 +249,7 @@ class TemplateCompiler
         if (preg_match('/^[\w.]+$/u', $expr)) {
             return "<span pp-bind=\"{$expr}\"></span>";
         }
-        return "<span pp-bind-expr=\"" . htmlspecialchars($expr, ENT_QUOTES, 'UTF-8') . "\"></span>";
+        return "<span pp-bind-expr=\"" . $expr . "\"></span>";
     }
 
     protected static function renderComponent(DOMElement $node, string $componentName, array $incomingProps): string
