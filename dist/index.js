@@ -55,22 +55,22 @@ async function installComposerDependencies(baseDir, dependencies) {
   });
 }
 const npmPinnedVersions = {
-  "@tailwindcss/postcss": "^4.1.4",
+  "@tailwindcss/postcss": "^4.1.7",
   "@types/browser-sync": "^2.29.0",
-  "@types/node": "^22.15.2",
+  "@types/node": "^22.15.19",
   "@types/prompts": "^2.4.9",
   "browser-sync": "^3.0.4",
   chalk: "^5.4.1",
   "chokidar-cli": "^3.0.0",
-  cssnano: "^7.0.6",
+  cssnano: "^7.0.7",
   "http-proxy-middleware": "^3.0.5",
   "npm-run-all": "^4.1.5",
   "php-parser": "^3.2.3",
   postcss: "^8.5.3",
   "postcss-cli": "^11.0.1",
   prompts: "^2.4.2",
-  tailwindcss: "^4.1.4",
-  tsx: "^4.19.3",
+  tailwindcss: "^4.1.7",
+  tsx: "^4.19.4",
   typescript: "^5.8.3",
 };
 function npmPkg(name) {
