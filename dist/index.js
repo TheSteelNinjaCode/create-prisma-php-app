@@ -77,9 +77,9 @@ function npmPkg(name) {
   return npmPinnedVersions[name] ? `${name}@${npmPinnedVersions[name]}` : name;
 }
 const composerPinnedVersions = {
-  "vlucas/phpdotenv": "^5.6.1",
-  "firebase/php-jwt": "^6.10.2",
-  "phpmailer/phpmailer": "^6.9.3",
+  "vlucas/phpdotenv": "^5.6.2",
+  "firebase/php-jwt": "^6.11.1",
+  "phpmailer/phpmailer": "^6.10.0",
   "guzzlehttp/guzzle": "^7.9.3",
   "ezyang/htmlpurifier": "^4.18.0",
   "symfony/uid": "^7.2.0",
