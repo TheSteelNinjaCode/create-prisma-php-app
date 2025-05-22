@@ -30,7 +30,6 @@ export async function checkComponentImports(
     string,
     | Array<{ className: string; filePath: string; importer?: string }>
     | { className: string; filePath: string; importer?: string }
-    | string
   >
 ) {
   const code = await fs.readFile(filePath, "utf-8");
@@ -52,12 +51,7 @@ export async function checkComponentImports(
     }> = [];
     if (Array.isArray(rawMapping)) {
       mappings = rawMapping;
-    } else if (
-      rawMapping &&
-      typeof rawMapping === "object" &&
-      "className" in rawMapping &&
-      "filePath" in rawMapping
-    ) {
+    } else if (rawMapping) {
       mappings = [rawMapping];
     }
 
