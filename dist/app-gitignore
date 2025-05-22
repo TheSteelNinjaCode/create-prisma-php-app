@@ -27,3 +27,7 @@ composer.lock
 
 # Backup and temporary files
 *.swp
+
+# Prisma PHP settings files
+.pphp/
+caches/
