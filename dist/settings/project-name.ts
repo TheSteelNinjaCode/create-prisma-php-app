@@ -51,6 +51,12 @@ function updateProjectNameInConfig(
 // Function to determine the target path for browser-sync
 function getTargetPath(fullPath: string, environment: string): string {
   const normalizedPath = normalize(fullPath);
+
+  // Patch: if CI, return root ("/") as default target path
+  if (process.env.CI === "true") {
+    return "/";
+  }
+
   const webDirectories: { [key: string]: string } = {
     XAMPP: join("htdocs"),
     WAMP: join("www"),
