@@ -69,11 +69,11 @@ const { __dirname } = getFileMeta();
     );
   });
 
-  // 3) Run `npx ppo generate` and wait for it to finish
+  // 3) Run `npm run ppo generate` and wait for it to finish
   if (prismaPhpConfigJson.prisma) {
     try {
-      console.log("🚀 Running `npx ppo generate`...");
-      const { stdout, stderr } = await exec("npx ppo generate");
+      console.log("🚀 Running `npm run ppo generate`...");
+      const { stdout, stderr } = await exec("npm run ppo");
       if (stderr) console.error(stderr);
       console.log(`stdout:\n${stdout}`);
     } catch (error: any) {
