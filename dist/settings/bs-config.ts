@@ -36,7 +36,25 @@ const handleFileChange = async () => {
   // Optionally, run the component check on each PHP file.
   const phpFiles = await getAllPhpFiles(SRC_DIR + "/app");
   for (const file of phpFiles) {
-    const fileImports = await analyzeImportsInFile(file);
+    const rawFileImports = await analyzeImportsInFile(file);
+    // Convert Record<string, string> to Record<string, { className: string; filePath: string; importer?: string }[]>
+    const fileImports: Record<
+      string,
+      | { className: string; filePath: string; importer?: string }[]
+      | { className: string; filePath: string; importer?: string }
+    > = {};
+    for (const key in rawFileImports) {
+      if (typeof rawFileImports[key] === "string") {
+        fileImports[key] = [
+          {
+            className: key,
+            filePath: rawFileImports[key],
+          },
+        ];
+      } else {
+        fileImports[key] = rawFileImports[key];
+      }
+    }
     await checkComponentImports(file, fileImports);
   }
 };
