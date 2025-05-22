@@ -1,6 +1,3 @@
-import { writeFileSync } from "fs";
-import browserSync from "browser-sync";
-import { getFileMeta } from "./utils.js";
 import { join } from "path";
 import { generateFileListJson } from "./files-list.js";
 import { updateAllClassLogs } from "./class-log.js";
@@ -11,12 +8,6 @@ import {
   updateComponentImports,
 } from "./class-imports";
 import { checkComponentImports } from "./component-import-checker";
-import prismaPhpConfigJson from "../prisma-php.json";
-import { exec as execCb } from "child_process";
-import { promisify } from "util";
-
-const exec = promisify(execCb);
-const { __dirname } = getFileMeta();
 
 (async () => {
   console.log("📦 Generating files for production...");
@@ -26,63 +17,7 @@ const { __dirname } = getFileMeta();
   await updateAllClassLogs();
   await updateComponentImports();
 
-  // 2) Start BrowserSync to extract URLs (and shut down immediately)
-  await new Promise<void>((resolve, reject) => {
-    const bs = browserSync.create();
-    bs.init(
-      {
-        proxy: "http://localhost:3000",
-        middleware: [],
-        notify: false,
-        open: false,
-        ghostMode: false,
-        codeSync: false,
-        watchOptions: {
-          usePolling: true,
-          interval: 1000,
-        },
-      },
-      (err, bsInstance) => {
-        if (err) {
-          console.error("❌ BrowserSync failed:", err);
-          process.exit(1);
-          return reject(err);
-        }
-
-        const options = bsInstance.getOption("urls");
-        const urls = {
-          local: options.get("local"),
-          external: options.get("external"),
-          ui: options.get("ui"),
-          uiExternal: options.get("ui-external"),
-        };
-
-        writeFileSync(
-          join(__dirname, "bs-config.json"),
-          JSON.stringify(urls, null, 2)
-        );
-
-        console.log("✅ BrowserSync URLs extracted; shutting down.");
-        bs.exit();
-        resolve();
-      }
-    );
-  });
-
-  // 3) Run `npm run ppo generate` and wait for it to finish
-  if (prismaPhpConfigJson.prisma) {
-    try {
-      console.log("🚀 Running `npm run ppo generate`...");
-      const { stdout, stderr } = await exec("npm run ppo");
-      if (stderr) console.error(stderr);
-      console.log(`stdout:\n${stdout}`);
-    } catch (error: any) {
-      console.error(`Error executing ppo generate: ${error.message}`);
-      process.exit(1);
-    }
-  }
-
-  // 4) Process all PHP files for component-import checks
+  // 2) Process all PHP files for component-import checks
   const phpFiles = await getAllPhpFiles(join(SRC_DIR, "app"));
   for (const file of phpFiles) {
     const rawFileImports = await analyzeImportsInFile(file);
