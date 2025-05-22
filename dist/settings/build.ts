@@ -2,6 +2,12 @@ import { join } from "path";
 import { generateFileListJson } from "./files-list.js";
 import { updateAllClassLogs } from "./class-log.js";
 import {
+  deleteFilesIfExist,
+  filesToDelete,
+  deleteDirectoriesIfExist,
+  dirsToDelete,
+} from "./project-name.js";
+import {
   analyzeImportsInFile,
   getAllPhpFiles,
   SRC_DIR,
@@ -13,6 +19,8 @@ import { checkComponentImports } from "./component-import-checker";
   console.log("📦 Generating files for production...");
 
   // 1) Run all watchers logic ONCE
+  await deleteFilesIfExist(filesToDelete);
+  await deleteDirectoriesIfExist(dirsToDelete);
   await generateFileListJson();
   await updateAllClassLogs();
   await updateComponentImports();

@@ -91,7 +91,9 @@ const configFilePath = join(__dirname, "..", "prisma-php.json");
 // Run the function with your config file path and the new project name
 updateProjectNameInConfig(configFilePath, newProjectName);
 
-const deleteFilesIfExist = async (filePaths: string[]): Promise<void> => {
+export const deleteFilesIfExist = async (
+  filePaths: string[]
+): Promise<void> => {
   for (const filePath of filePaths) {
     try {
       await fsPromises.unlink(filePath);
@@ -115,7 +117,9 @@ const deleteFilesIfExist = async (filePaths: string[]): Promise<void> => {
   }
 };
 
-async function deleteDirectoriesIfExist(dirPaths: string[]): Promise<void> {
+export async function deleteDirectoriesIfExist(
+  dirPaths: string[]
+): Promise<void> {
   for (const dirPath of dirPaths) {
     try {
       await fsPromises.rm(dirPath, { recursive: true, force: true });
@@ -126,13 +130,16 @@ async function deleteDirectoriesIfExist(dirPaths: string[]): Promise<void> {
   }
 }
 
-const filesToDelete = [
+export const filesToDelete = [
   join(__dirname, "request-data.json"),
   join(__dirname, "class-log.json"),
   join(__dirname, "class-imports.json"),
 ];
 
-const dirsToDelete = [join(__dirname, "..", "caches")];
+export const dirsToDelete = [
+  join(__dirname, "..", "caches"),
+  join(__dirname, "..", ".pphp"),
+];
 
 await deleteFilesIfExist(filesToDelete);
 await deleteDirectoriesIfExist(dirsToDelete);

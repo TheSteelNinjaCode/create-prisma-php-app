@@ -29,7 +29,7 @@ const watcher = chokidar.watch("src/app/**/*", {
 
 // On changes, generate file list and also update the class log
 const handleFileChange = async () => {
-  generateFileListJson();
+  await generateFileListJson();
   await updateAllClassLogs();
   await updateComponentImports();
 
