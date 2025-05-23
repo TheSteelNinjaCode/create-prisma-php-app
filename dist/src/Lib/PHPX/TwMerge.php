@@ -131,7 +131,12 @@ class TwMerge
                         if (strpos($classKey, ':') === false) {
                             $baseGroup = $classKey;
                             foreach ($classArray as $existingKey => $existingClass) {
-                                if ($existingKey !== $baseGroup && substr($existingKey, -strlen($baseGroup)) === $baseGroup) {
+
+                                if (
+                                    is_string($existingKey)                 // make sure we have a string
+                                    && $existingKey !== $baseGroup
+                                    && substr($existingKey, -strlen($baseGroup)) === $baseGroup
+                                ) {
                                     unset($classArray[$existingKey]);
                                 }
                             }
