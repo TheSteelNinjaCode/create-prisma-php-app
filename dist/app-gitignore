@@ -31,3 +31,4 @@ composer.lock
 # Prisma PHP settings files
 .pphp/
 caches/
+settings/bs-config.json
