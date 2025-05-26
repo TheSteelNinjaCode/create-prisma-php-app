@@ -130,9 +130,23 @@ class TemplateCompiler
         );
     }
 
+    private static function escapeMustacheAngles(string $content): string
+    {
+        return preg_replace_callback(
+            '/\{\{[\s\S]*?\}\}/u',
+            fn($m) => str_replace(['<', '>'], ['&lt;', '&gt;'], $m[0]),
+            $content
+        );
+    }
+
     public static function convertToXml(string $templateContent): DOMDocument
     {
-        $templateContent = self::escapeAttributeAngles(self::escapeAmpersands($templateContent));
+        $templateContent = self::escapeMustacheAngles(
+            self::escapeAttributeAngles(
+                self::escapeAmpersands($templateContent)
+            )
+        );
+
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
 
