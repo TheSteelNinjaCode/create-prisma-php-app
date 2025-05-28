@@ -58,7 +58,23 @@ class PHPX implements IPHPX
      */
     protected function getMergeClasses(string|array ...$classes): string
     {
-        return PrismaPHPSettings::$option->tailwindcss ? TwMerge::mergeClasses($classes, $this->class) : $this->mergeClasses($classes, $this->class);
+        $all = array_merge($classes, [$this->class]);
+
+        $expr = [];
+        foreach ($all as &$chunk) {
+            $chunk = preg_replace_callback('/\{\{[\s\S]*?\}\}/', function ($m) use (&$expr) {
+                $token = '__EXPR' . count($expr) . '__';
+                $expr[$token] = $m[0];
+                return $token;
+            }, $chunk);
+        }
+        unset($chunk);
+
+        $merged = PrismaPHPSettings::$option->tailwindcss
+            ? TwMerge::mergeClasses(...$all)
+            : $this->mergeClasses(...$all);
+
+        return str_replace(array_keys($expr), array_values($expr), $merged);
     }
 
     /**
