@@ -76,22 +76,17 @@ class TemplateCompiler
                 1
             );
 
-            $styleBlock = <<<HTML
-            <style>
-                html:not([data-initial-hydrated]) body {
-                    opacity: 0;
-                }
-                html[data-initial-hydrated] body {
-                    opacity: 1;
-                }
-            </style>
-            HTML;
-
             $htmlContent = preg_replace(
                 '/(<\/head\s*>)/i',
-                $styleBlock
-                    . MainLayout::outputHeadScripts()
+                MainLayout::outputHeadScripts()
                     . '$1',
+                $htmlContent,
+                1
+            );
+
+            $htmlContent = preg_replace(
+                '/<body([^>]*)>/i',
+                '<body$1 hidden>',
                 $htmlContent,
                 1
             );
@@ -184,7 +179,7 @@ class TemplateCompiler
         );
     }
 
-    protected static function processNode(DOMNode $node, bool $inBody = false): string
+    protected static function processNode(DOMNode $node): string
     {
         if ($node instanceof DOMText) {
             return self::processTextNode($node);
@@ -194,7 +189,7 @@ class TemplateCompiler
             $pushed = false;
             $tag    = strtolower($node->nodeName);
 
-            if ($tag === 'script' && $inBody && !$node->hasAttribute('src')) {
+            if ($tag === 'script' && !$node->hasAttribute('src')) {
                 $node->setAttribute('type', 'text/php');
             }
 
@@ -219,7 +214,7 @@ class TemplateCompiler
 
             $children = '';
             foreach ($node->childNodes as $c) {
-                $children .= self::processNode($c, $inBody || $tag === 'body');
+                $children .= self::processNode($c);
             }
             $attrs = self::getNodeAttributes($node) + ['children' => $children];
             $out   = self::renderAsHtml($node->nodeName, $attrs);
