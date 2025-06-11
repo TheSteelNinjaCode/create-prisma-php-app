@@ -290,6 +290,8 @@ class TemplateCompiler
         foreach ($node->childNodes as $c) {
             $childHtml .= self::processNode($c);
         }
+
+        $childHtml = self::sanitizeEventAttributes($childHtml);
         $instance->children = $childHtml;
 
         $baseId = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
@@ -377,6 +379,43 @@ class TemplateCompiler
         }
 
         return $htmlOut;
+    }
+
+    protected static function sanitizeEventAttributes(string $html): string
+    {
+        $fragDom = TemplateCompiler::convertToXml($html, false);
+        $xpath   = new DOMXPath($fragDom);
+
+        /** @var DOMElement $el */
+        foreach ($xpath->query('//*') as $el) {
+            foreach (iterator_to_array($el->attributes) as $attr) {
+                $name = strtolower($attr->name);
+
+                if (str_starts_with($name, 'on')) {
+                    $event = substr($name, 2);
+                    $value = trim($attr->value);
+
+                    if (
+                        $value !== '' &&
+                        in_array($event, PrismaPHPSettings::$htmlEvents, true)
+                    ) {
+                        $el->setAttribute("pp-original-on{$event}", $value);
+                    }
+
+                    $el->removeAttribute($name);
+                }
+            }
+        }
+
+        /** @var DOMDocument $doc */
+        $doc  = $fragDom;
+        $body = $doc->getElementsByTagName('body')[0] ?? $doc;
+
+        $html = '';
+        foreach ($body->childNodes as $child) {
+            $html .= $doc->saveHTML($child);
+        }
+        return $html;
     }
 
     private static function selectComponentMapping(string $componentName): array
