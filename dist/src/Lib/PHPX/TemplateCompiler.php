@@ -14,9 +14,12 @@ use DOMText;
 use RuntimeException;
 use Bootstrap;
 use LibXMLError;
+use DOMXPath;
 
 class TemplateCompiler
 {
+    protected const BINDING_REGEX = '/\{\{\s*((?:(?!\{\{|\}\})[\s\S])*?)\s*\}\}/uS';
+
     protected static array $classMappings = [];
     protected static array $selfClosingTags = [
         'area',
@@ -37,10 +40,16 @@ class TemplateCompiler
         'wbr'
     ];
     private static array $sectionStack = [];
-    protected const BINDING_REGEX = '/\{\{\s*((?:(?!\{\{|\}\})[\s\S])*?)\s*\}\}/uS';
+    private static int $compileDepth = 0;
+    private static array $componentInstanceCounts = [];
 
     public static function compile(string $templateContent): string
     {
+        if (self::$compileDepth === 0) {
+            self::$componentInstanceCounts = [];
+        }
+        self::$compileDepth++;
+
         if (empty(self::$classMappings)) {
             self::initializeClassMappings();
         }
@@ -52,6 +61,8 @@ class TemplateCompiler
         foreach ($root->childNodes as $child) {
             $output[] = self::processNode($child);
         }
+
+        self::$compileDepth--;
         return implode('', $output);
     }
 
@@ -134,13 +145,16 @@ class TemplateCompiler
         );
     }
 
-    public static function convertToXml(string $templateContent): DOMDocument
+    public static function convertToXml(string $templateContent, bool $escapeAttributes = true): DOMDocument
     {
-        $templateContent = self::escapeMustacheAngles(
-            self::escapeAttributeAngles(
-                self::escapeAmpersands($templateContent)
-            )
-        );
+
+        if ($escapeAttributes) {
+            $templateContent = self::escapeMustacheAngles(
+                self::escapeAttributeAngles(
+                    self::escapeAmpersands($templateContent)
+                )
+            );
+        }
 
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
@@ -255,33 +269,114 @@ class TemplateCompiler
 
     private static function processBindingExpression(string $expr): string
     {
+        $escaped = htmlspecialchars($expr, ENT_QUOTES, 'UTF-8');
+
         if (preg_match('/^[\w.]+$/u', $expr)) {
-            return "<span pp-bind=\"{$expr}\"></span>";
+            return "<span pp-bind=\"{$escaped}\"></span>";
         }
-        return "<span pp-bind-expr=\"{$expr}\"></span>";
+
+        return "<span pp-bind-expr=\"{$escaped}\"></span>";
     }
 
-    protected static function renderComponent(DOMElement $node, string $componentName, array $incomingProps): string
-    {
-        $mapping = self::selectComponentMapping($componentName);
-        $attributes = $incomingProps;
-
-        $attributes['pp-sync-script'] = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
-
-        $instance = self::initializeComponentInstance($mapping, $attributes);
+    protected static function renderComponent(
+        DOMElement $node,
+        string $componentName,
+        array $incomingProps
+    ): string {
+        $mapping  = self::selectComponentMapping($componentName);
+        $instance = self::initializeComponentInstance($mapping, $incomingProps);
 
         $childHtml = '';
         foreach ($node->childNodes as $c) {
-            $childHtml .= self::processNode($c, false);
+            $childHtml .= self::processNode($c);
         }
         $instance->children = $childHtml;
 
+        $baseId = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
+        $idx    = self::$componentInstanceCounts[$baseId] ?? 0;
+        self::$componentInstanceCounts[$baseId] = $idx + 1;
+        $sectionId = $idx === 0 ? $baseId : "{$baseId}{$idx}";
+
         $html = $instance->render();
-        if (strpos($html, '{{') !== false || self::hasComponentTag($html)) {
-            $html = self::compile($html);
+        $fragDom = self::convertToXml($html, false);
+        $xpath   = new DOMXPath($fragDom);
+
+        /** @var DOMElement $el */
+        foreach ($xpath->query('//*') as $el) {
+
+            $tag = $el->tagName;
+            if (ctype_upper($tag[0]) || isset(self::$classMappings[$tag])) {
+                continue;
+            }
+
+            $originalEvents  = [];
+            $componentEvents = [];
+
+            foreach (iterator_to_array($el->attributes) as $attr) {
+                $name  = $attr->name;
+                $value = $attr->value;
+
+                if (str_starts_with($name, 'pp-original-')) {
+                    $origName = substr($name, strlen('pp-original-'));
+                    $originalEvents[$origName] = $value;
+                } elseif (str_starts_with($name, 'on')) {
+                    $event = substr($name, 2);
+                    if (
+                        in_array($event, PrismaPHPSettings::$htmlEvents, true)
+                        && trim((string)$value) !== ''
+                    ) {
+                        $componentEvents[$name] = $value;
+                    }
+                }
+            }
+
+            foreach (array_keys($originalEvents)  as $k) $el->removeAttribute("pp-original-{$k}");
+            foreach (array_keys($componentEvents) as $k) $el->removeAttribute($k);
+
+            foreach ($componentEvents as $evAttr => $compValue) {
+
+                $el->setAttribute(
+                    "data-pp-child-{$evAttr}",
+                    $compValue
+                );
+
+                if (isset($originalEvents[$evAttr])) {
+                    $parentValue = $originalEvents[$evAttr];
+                    $el->setAttribute(
+                        "data-pp-parent-{$evAttr}",
+                        $parentValue
+                    );
+                    unset($originalEvents[$evAttr]);
+                }
+            }
+
+            foreach ($originalEvents as $name => $value) {
+                $el->setAttribute($name, $value);
+            }
         }
 
-        return $html;
+        $root = $fragDom->documentElement;
+        foreach ($root->childNodes as $c) {
+            if ($c instanceof DOMElement) {
+                $c->setAttribute('pp-phpx-id', $sectionId);
+                break;
+            }
+        }
+
+        $htmlOut = '';
+        foreach ($root->childNodes as $child) {
+            $htmlOut .= $fragDom->saveXML($child);
+        }
+
+        if (
+            str_contains($htmlOut, '{{') ||
+            self::hasComponentTag($htmlOut) ||
+            stripos($htmlOut, '<script') !== false
+        ) {
+            $htmlOut = self::compile($htmlOut);
+        }
+
+        return $htmlOut;
     }
 
     private static function selectComponentMapping(string $componentName): array

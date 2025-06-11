@@ -113,30 +113,44 @@ class PHPX implements IPHPX
      * @param array $exclude Attribute names to remove on the fly    (optional)
      * @return string Example: id="btn" data-id="7"
      */
-    protected function getAttributes(
-        array $params = [],
-        array $exclude = []
-    ): string {
+    protected function getAttributes(array $params = [], array $exclude = []): string
+    {
         $reserved = ['class', 'children'];
-
-        $filteredProps = array_diff_key(
+        $props = array_diff_key(
             $this->props,
-            array_flip([...$reserved, ...$exclude])
+            array_flip(array_merge($reserved, $exclude))
         );
 
-        $attributes = array_merge($params, $filteredProps);
+        $props = array_combine(
+            array_map('strtolower', array_keys($props)),
+            $props
+        );
+
+        foreach ($props as $key => $val) {
+            if (str_starts_with($key, 'on')) {
+                $event = substr($key, 2);
+                if (in_array($event, PrismaPHPSettings::$htmlEvents, true) && trim((string)$val) !== '') {
+                    $props["pp-original-on{$event}"] = (string)$val;
+                }
+                unset($props[$key]);
+            }
+        }
+
+        foreach ($params as $k => $v) {
+            $props[$k] = $v;
+        }
 
         $pairs = array_map(
             static fn($k, $v) => sprintf(
                 "%s='%s'",
                 htmlspecialchars($k, ENT_QUOTES, 'UTF-8'),
-                htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8')
+                htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')
             ),
-            array_keys($attributes),
-            $attributes
+            array_keys($props),
+            $props
         );
 
-        $this->attributesArray = $attributes;
+        $this->attributesArray = $props;
         return implode(' ', $pairs);
     }
 
@@ -171,7 +185,7 @@ class PHPX implements IPHPX
         try {
             return $this->render();
         } catch (Exception) {
-            return ''; // Return an empty string or a fallback message in case of errors
+            return '';
         }
     }
 }

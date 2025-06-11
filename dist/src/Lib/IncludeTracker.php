@@ -4,6 +4,11 @@ namespace Lib;
 
 use RuntimeException;
 use InvalidArgumentException;
+use Lib\PrismaPHPSettings;
+use DOMDocument;
+use DOMElement;
+use DOMXPath;
+use Lib\PHPX\TemplateCompiler;
 
 class IncludeTracker
 {
@@ -26,33 +31,32 @@ class IncludeTracker
         }
 
         ob_start();
+        match ($mode) {
+            'include'       => include $filePath,
+            'include_once'  => include_once $filePath,
+            'require'       => require $filePath,
+            'require_once'  => require_once $filePath,
+            default         => throw new InvalidArgumentException("Invalid include mode: $mode")
+        };
+        $html = ob_get_clean();
 
-        switch ($mode) {
-            case 'include':
-                include $filePath;
-                break;
-            case 'include_once':
-                include_once $filePath;
-                break;
-            case 'require':
-                require $filePath;
-                break;
-            case 'require_once':
-                require_once $filePath;
-                break;
-            default:
-                throw new InvalidArgumentException("Invalid include mode: $mode");
+        $wrapped = self::wrapWithId($filePath, $html);
+
+        $fragDom = TemplateCompiler::convertToXml($wrapped, false);
+
+        self::prefixInlineHandlers($fragDom);
+
+        $newHtml = '';
+        foreach ($fragDom->documentElement->childNodes as $c) {
+            $newHtml .= $fragDom->saveXML($c);
         }
-
-        $output = ob_get_clean();
-        $wrapped = self::wrapWithId($filePath, $output);
 
         self::$sections[$filePath] = [
             'path' => $filePath,
-            'html' => $wrapped,
+            'html' => $newHtml,
         ];
 
-        echo $wrapped;
+        echo $newHtml;
     }
 
     private static function wrapWithId(string $filePath, string $html): string
@@ -60,5 +64,38 @@ class IncludeTracker
         $id = 's' . base_convert(sprintf('%u', crc32($filePath)), 10, 36);
 
         return "<div pp-section-id=\"$id\">\n$html\n</div>";
+    }
+
+    private static function prefixInlineHandlers(DOMDocument $doc): void
+    {
+        $xp = new DOMXPath($doc);
+
+        /** @var DOMElement $el */
+        foreach ($xp->query('//*') as $el) {
+            $handlers = [];
+
+            foreach (iterator_to_array($el->attributes) as $attr) {
+                $name = $attr->name;
+
+                if (!str_starts_with($name, 'on')) {
+                    continue;
+                }
+
+                $event = substr($name, 2);
+                if (
+                    !in_array($event, PrismaPHPSettings::$htmlEvents, true) ||
+                    trim($attr->value) === ''
+                ) {
+                    continue;
+                }
+
+                $handlers[$name] = $attr->value;
+                $el->removeAttribute($name);
+            }
+
+            foreach ($handlers as $origName => $value) {
+                $el->setAttribute("pp-inc-{$origName}", $value);
+            }
+        }
     }
 }

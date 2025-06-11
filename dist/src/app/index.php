@@ -1,55 +1,72 @@
 <?php use Lib\Request; ?>
 
-<div class="flex flex-col min-h-[100vh] bg-linear-to-b from-[#a1b8c2] to-white dark:from-[#334455] dark:to-black">
-    <header class="px-4 lg:px-6 h-14 flex items-center">
-        <a class="flex items-center justify-center" href="/">
-            <img class="size-9" src="<?= Request::baseUrl ?>/assets/images/prisma-php.svg" alt="Prisma PHP" />
-            <span class="sr-only">Prisma PHP</span>
-        </a>
-        <nav class="ml-auto flex gap-4 sm:gap-6">
-            <a class="text-sm font-medium hover:underline underline-offset-4" href="https://prismaphp.tsnc.tech/features" target="_blank">
-                Features
+<div class="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
+    <main class="flex flex-col gap-5 row-start-2 items-center sm:items-center">
+        <h1 class="text-6xl font-bold tracking-tight">
+            <span class="text-black">PRISMA</span>
+            <span class="text-black text-2xl align-super">PHP</span>
+        </h1>
+
+        <ol class="list-inside list-decimal text-sm/6 text-center sm:text-left">
+            <li class="mb-2 tracking-[-.01em]">
+                Get started by editing
+                <code class="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
+                    src/app/index.php
+                </code>
+                .
+            </li>
+            <li class="tracking-[-.01em]">
+                Save and see your changes instantly.
+            </li>
+        </ol>
+
+        <div class="w-full flex items-center justify-center gap-4 sm:gap-6">
+            <a
+                class="rounded-full border border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
+                href="https://prismaphp.tsnc.tech/docs"
+                target="_blank"
+                rel="noopener noreferrer">
+                <img src="<?= Request::baseUrl ?>/assets/images/prisma-php-black.svg" alt="Read Docs" width="20" height="20" style="filter: invert(1) sepia(1) hue-rotate(180deg);" /> Read Docs
             </a>
-            <a class="text-sm font-medium hover:underline underline-offset-4" href="https://prismaphp.tsnc.tech/newsletter" target="_blank">
-                Join the Newsletter
-            </a>
-            <a class="text-sm font-medium hover:underline underline-offset-4" href="https://prismaphp.tsnc.tech/docs?doc=get-started" target="_blank">
-                Documentation
-            </a>
-            <a class="text-sm font-medium hover:underline underline-offset-4" href="#">
-                Community
-            </a>
-        </nav>
-    </header>
-    <main class="flex-1 flex justify-center items-center">
-        <section id="hero" class="w-full">
-            <div class="px-4 md:px-6">
-                <div class="flex flex-col items-center space-y-4 text-center">
-                    <h1 class="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none flex items-center gap-3 justify-center">
-                        Welcome to Prisma PHP <img class="size-20 hidden sm:block" src="<?= Request::baseUrl ?>/assets/images/prisma-php.svg" alt="Prisma PHP" />
-                    </h1>
-                    <p class="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                        Your Next Generation PHP Framework
-                    </p>
-                    <a class="inline-flex h-10 items-center justify-center rounded-md bg-gray-900 px-8 text-sm font-medium text-gray-50 shadow-sm transition-colors hover:bg-gray-900/90 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-50/90 dark:focus-visible:ring-gray-300" href="https://prismaphp.tsnc.tech/docs?doc=get-started" target="_blank">
-                        Get Started
-                    </a>
-                </div>
-            </div>
-        </section>
+        </div>
     </main>
-    <footer class="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p class="text-xs text-gray-500 dark:text-gray-400">© <?= date("Y"); ?> Prisma PHP. All rights reserved.</p>
-        <nav class="sm:ml-auto flex gap-4 sm:gap-6">
-            <a class="text-xs hover:underline underline-offset-4" href="#">
-                Twitter
-            </a>
-            <a class="text-xs hover:underline underline-offset-4" href="https://github.com/TheSteelNinjaCode" target="_blank">
-                GitHub
-            </a>
-            <a class="text-xs hover:underline underline-offset-4" href="https://www.facebook.com/The-Steel-Ninja-Code-106729874409662" target="_blank">
-                Facebook
-            </a>
-        </nav>
+
+    <footer class="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
+        <a
+            class="flex items-center gap-2 hover:underline hover:underline-offset-4"
+            href="https://prismaphp.tsnc.tech/docs?doc=learning-path"
+            target="_blank"
+            rel="noopener noreferrer">
+            <img
+                aria-hidden="true"
+                src="<?= Request::baseUrl ?>/assets/images/file.svg"
+                alt="File icon"
+                width="16"
+                height="16" /> Learn
+        </a>
+        <a
+            class="flex items-center gap-2 hover:underline hover:underline-offset-4"
+            href="https://prismaphp.tsnc.tech/docs?doc=todo-app"
+            target="_blank"
+            rel="noopener noreferrer">
+            <img
+                aria-hidden="true"
+                src="<?= Request::baseUrl ?>/assets/images/window.svg"
+                alt="File icon"
+                width="16"
+                height="16" /> Examples
+        </a>
+        <a
+            class="flex items-center gap-2 hover:underline hover:underline-offset-4"
+            href="https://prismaphp.tsnc.tech/"
+            target="_blank"
+            rel="noopener noreferrer">
+            <img
+                aria-hidden="true"
+                src="<?= Request::baseUrl ?>/assets/images/globe.svg"
+                alt="File icon"
+                width="16"
+                height="16" /> prismaphp.tsnc.tech →
+        </a>
     </footer>
 </div>
