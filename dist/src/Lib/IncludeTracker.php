@@ -17,10 +17,10 @@ class IncludeTracker
     /**
      * Includes and echoes a file wrapped in a unique pp-section-id container.
      * Supported $mode values: 'include', 'include_once', 'require', 'require_once'
-     * 
+     *
      * @param string $filePath The path to the file to be included.
-     * @param string $mode The mode of inclusion. Can be 'include', 'include_once', 'require', or 'require_once'.
-     * @throws RuntimeException If the file does not exist.
+     * @param string $mode     The mode of inclusion.
+     * @throws RuntimeException        If the file does not exist.
      * @throws InvalidArgumentException If an invalid mode is provided.
      * @return void
      */
@@ -36,20 +36,16 @@ class IncludeTracker
             'include_once'  => include_once $filePath,
             'require'       => require $filePath,
             'require_once'  => require_once $filePath,
-            default         => throw new InvalidArgumentException("Invalid include mode: $mode")
+            default         => throw new InvalidArgumentException("Invalid include mode: $mode"),
         };
         $html = ob_get_clean();
 
-        $wrapped = self::wrapWithId($filePath, $html);
-
-        $fragDom = TemplateCompiler::convertToXml($wrapped, false);
+        $wrapped  = self::wrapWithId($filePath, $html);
+        $fragDom  = TemplateCompiler::convertToXml($wrapped, false);
 
         self::prefixInlineHandlers($fragDom);
 
-        $newHtml = '';
-        foreach ($fragDom->documentElement->childNodes as $c) {
-            $newHtml .= $fragDom->saveXML($c);
-        }
+        $newHtml = TemplateCompiler::innerXml($fragDom);
 
         self::$sections[$filePath] = [
             'path' => $filePath,
@@ -62,7 +58,6 @@ class IncludeTracker
     private static function wrapWithId(string $filePath, string $html): string
     {
         $id = 's' . base_convert(sprintf('%u', crc32($filePath)), 10, 36);
-
         return "<div pp-section-id=\"$id\">\n$html\n</div>";
     }
 

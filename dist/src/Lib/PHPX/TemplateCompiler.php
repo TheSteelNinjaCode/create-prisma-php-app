@@ -169,6 +169,28 @@ class TemplateCompiler
         return $dom;
     }
 
+    /**
+     * Extracts the inner XML of a DOMNode, including all child nodes.
+     *
+     * @param DOMNode $node The node from which to extract the inner XML.
+     * @return string The inner XML as a string.
+     */
+    public static function innerXml(DOMNode $node): string
+    {
+        if ($node instanceof DOMDocument) {
+            $node = $node->documentElement;
+        }
+
+        /** @var DOMDocument $doc */
+        $doc  = $node->ownerDocument;
+
+        $html = '';
+        foreach ($node->childNodes as $child) {
+            $html .= $doc->saveXML($child);
+        }
+        return $html;
+    }
+
     protected static function getXmlErrors(): array
     {
         $errors = libxml_get_errors();
@@ -284,25 +306,23 @@ class TemplateCompiler
         array $incomingProps
     ): string {
         $incomingProps = self::sanitizeIncomingProps($incomingProps);
-        $mapping  = self::selectComponentMapping($componentName);
-        $instance = self::initializeComponentInstance($mapping, $incomingProps);
+        $mapping       = self::selectComponentMapping($componentName);
+        $instance      = self::initializeComponentInstance($mapping, $incomingProps);
 
         $childHtml = '';
         foreach ($node->childNodes as $c) {
             $childHtml .= self::processNode($c);
         }
+        $instance->children = self::sanitizeEventAttributes($childHtml);
 
-        $childHtml = self::sanitizeEventAttributes($childHtml);
-        $instance->children = $childHtml;
-
-        $baseId = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
-        $idx    = self::$componentInstanceCounts[$baseId] ?? 0;
+        $baseId   = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
+        $idx      = self::$componentInstanceCounts[$baseId] ?? 0;
         self::$componentInstanceCounts[$baseId] = $idx + 1;
         $sectionId = $idx === 0 ? $baseId : "{$baseId}{$idx}";
 
-        $html = $instance->render();
-        $fragDom = self::convertToXml($html, false);
-        $xpath   = new DOMXPath($fragDom);
+        $html     = $instance->render();
+        $fragDom  = self::convertToXml($html, false);
+        $xpath    = new DOMXPath($fragDom);
 
         /** @var DOMElement $el */
         foreach ($xpath->query('//*') as $el) {
@@ -320,14 +340,11 @@ class TemplateCompiler
                 $value = $attr->value;
 
                 if (str_starts_with($name, 'pp-original-')) {
-                    $origName = substr($name, strlen('pp-original-'));
-                    $originalEvents[$origName] = $value;
+                    $origName                   = substr($name, strlen('pp-original-'));
+                    $originalEvents[$origName]  = $value;
                 } elseif (str_starts_with($name, 'on')) {
                     $event = substr($name, 2);
-                    if (
-                        in_array($event, PrismaPHPSettings::$htmlEvents, true)
-                        && trim((string)$value) !== ''
-                    ) {
+                    if ($value !== '' && in_array($event, PrismaPHPSettings::$htmlEvents, true)) {
                         $componentEvents[$name] = $value;
                     }
                 }
@@ -337,18 +354,10 @@ class TemplateCompiler
             foreach (array_keys($componentEvents) as $k) $el->removeAttribute($k);
 
             foreach ($componentEvents as $evAttr => $compValue) {
-
-                $el->setAttribute(
-                    "data-pp-child-{$evAttr}",
-                    $compValue
-                );
+                $el->setAttribute("data-pp-child-{$evAttr}", $compValue);
 
                 if (isset($originalEvents[$evAttr])) {
-                    $parentValue = $originalEvents[$evAttr];
-                    $el->setAttribute(
-                        "data-pp-parent-{$evAttr}",
-                        $parentValue
-                    );
+                    $el->setAttribute("data-pp-parent-{$evAttr}", $originalEvents[$evAttr]);
                     unset($originalEvents[$evAttr]);
                 }
             }
@@ -366,11 +375,7 @@ class TemplateCompiler
             }
         }
 
-        $htmlOut = '';
-        foreach ($root->childNodes as $child) {
-            $htmlOut .= $fragDom->saveXML($child);
-        }
-
+        $htmlOut = self::innerXml($fragDom);
         if (
             str_contains($htmlOut, '{{') ||
             self::hasComponentTag($htmlOut) ||
@@ -399,7 +404,7 @@ class TemplateCompiler
 
     protected static function sanitizeEventAttributes(string $html): string
     {
-        $fragDom = TemplateCompiler::convertToXml($html, false);
+        $fragDom = self::convertToXml($html, false);
         $xpath   = new DOMXPath($fragDom);
 
         /** @var DOMElement $el */
@@ -407,31 +412,26 @@ class TemplateCompiler
             foreach (iterator_to_array($el->attributes) as $attr) {
                 $name = strtolower($attr->name);
 
-                if (str_starts_with($name, 'on')) {
-                    $event = substr($name, 2);
-                    $value = trim($attr->value);
-
-                    if (
-                        $value !== '' &&
-                        in_array($event, PrismaPHPSettings::$htmlEvents, true)
-                    ) {
-                        $el->setAttribute("pp-original-on{$event}", $value);
-                    }
-
-                    $el->removeAttribute($name);
+                if (!str_starts_with($name, 'on')) {
+                    continue;
                 }
+
+                $event = substr($name, 2);
+                $value = trim($attr->value);
+
+                if ($value !== '' && in_array($event, PrismaPHPSettings::$htmlEvents, true)) {
+                    $el->setAttribute("pp-original-on{$event}", $value);
+                }
+
+                $el->removeAttribute($name);
             }
         }
 
-        /** @var DOMDocument $doc */
-        $doc  = $fragDom;
-        $body = $doc->getElementsByTagName('body')[0] ?? $doc;
+        $body = $fragDom->getElementsByTagName('body')[0] ?? null;
 
-        $html = '';
-        foreach ($body->childNodes as $child) {
-            $html .= $doc->saveHTML($child);
-        }
-        return $html;
+        return $body instanceof DOMElement
+            ? self::innerXml($body)
+            : self::innerXml($fragDom);
     }
 
     private static function selectComponentMapping(string $componentName): array
