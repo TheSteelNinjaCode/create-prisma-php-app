@@ -313,6 +313,7 @@ class TemplateCompiler
         foreach ($node->childNodes as $c) {
             $childHtml .= self::processNode($c);
         }
+
         $instance->children = self::sanitizeEventAttributes($childHtml);
 
         $baseId   = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
@@ -471,7 +472,15 @@ class TemplateCompiler
             throw new RuntimeException("Class {$className} not found");
         }
 
-        return new $className($attributes);
+        $instance = new $className($attributes);
+
+        foreach ($attributes as $key => $value) {
+            if (property_exists($instance, $key)) {
+                $instance->$key = $value;
+            }
+        }
+
+        return $instance;
     }
 
     protected static function initializeClassMappings(): void
