@@ -15,6 +15,7 @@ use RuntimeException;
 use Bootstrap;
 use LibXMLError;
 use DOMXPath;
+use ReflectionClass;
 
 class TemplateCompiler
 {
@@ -473,9 +474,10 @@ class TemplateCompiler
         }
 
         $instance = new $className($attributes);
+        $ref = new ReflectionClass($instance);
 
         foreach ($attributes as $key => $value) {
-            if (property_exists($instance, $key)) {
+            if ($ref->hasProperty($key) && $ref->getProperty($key)->isPublic()) {
                 $instance->$key = $value;
             }
         }
