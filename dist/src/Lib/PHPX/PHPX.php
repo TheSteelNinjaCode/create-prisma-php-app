@@ -121,21 +121,6 @@ class PHPX implements IPHPX
             array_flip(array_merge($reserved, $exclude))
         );
 
-        $props = array_combine(
-            array_map('strtolower', array_keys($props)),
-            $props
-        );
-
-        foreach ($props as $key => $val) {
-            if (str_starts_with($key, 'on')) {
-                $event = substr($key, 2);
-                if (in_array($event, PrismaPHPSettings::$htmlEvents, true) && trim((string)$val) !== '') {
-                    $props["pp-original-on{$event}"] = (string)$val;
-                }
-                unset($props[$key]);
-            }
-        }
-
         foreach ($params as $k => $v) {
             $props[$k] = $v;
         }

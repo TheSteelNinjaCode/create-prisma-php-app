@@ -283,6 +283,7 @@ class TemplateCompiler
         string $componentName,
         array $incomingProps
     ): string {
+        $incomingProps = self::sanitizeIncomingProps($incomingProps);
         $mapping  = self::selectComponentMapping($componentName);
         $instance = self::initializeComponentInstance($mapping, $incomingProps);
 
@@ -379,6 +380,21 @@ class TemplateCompiler
         }
 
         return $htmlOut;
+    }
+
+    protected static function sanitizeIncomingProps(array $props): array
+    {
+        foreach ($props as $key => $val) {
+            if (str_starts_with($key, 'on')) {
+                $event = substr($key, 2);
+                if (in_array($event, PrismaPHPSettings::$htmlEvents, true) && trim((string)$val) !== '') {
+                    $props["pp-original-on{$event}"] = (string)$val;
+                    unset($props[$key]);
+                }
+            }
+        }
+
+        return $props;
     }
 
     protected static function sanitizeEventAttributes(string $html): string
