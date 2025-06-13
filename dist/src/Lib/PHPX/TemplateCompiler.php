@@ -146,6 +146,8 @@ class TemplateCompiler
 
     public static function convertToXml(string $templateContent): DOMDocument
     {
+        $templateContent = self::protectInlineScripts($templateContent);
+
         $templateContent = self::escapeMustacheAngles(
             self::escapeAttributeAngles(
                 self::escapeAmpersands($templateContent)
@@ -165,12 +167,31 @@ class TemplateCompiler
         return $dom;
     }
 
-    /**
-     * Extracts the inner XML of a DOMNode, including all child nodes.
-     *
-     * @param DOMNode $node The node from which to extract the inner XML.
-     * @return string The inner XML as a string.
-     */
+    private static function protectInlineScripts(string $html): string
+    {
+        return preg_replace_callback(
+            '#<script\b([^>]*?)>(.*?)</script>#is',
+            static function ($m) {
+                if (preg_match('/\bsrc\s*=/i', $m[1])) {
+                    return $m[0];
+                }
+
+                if (strpos($m[2], '<![CDATA[') !== false) {
+                    return $m[0];
+                }
+
+                if (preg_match('/\btype\s*=\s*(["\']?)(?!text\/|application\/javascript|module)/i', $m[1])) {
+                    return $m[0];
+                }
+
+                $code = str_replace(']]>', ']]]]><![CDATA[>', $m[2]);
+
+                return "<script{$m[1]}><![CDATA[\n{$code}\n]]></script>";
+            },
+            $html
+        );
+    }
+
     public static function innerXml(DOMNode $node): string
     {
         if ($node instanceof DOMDocument) {
@@ -505,12 +526,18 @@ class TemplateCompiler
     {
         $pairs = [];
         foreach ($attrs as $k => $v) {
-            if ($k !== 'children') {
-                $pairs[] = "{$k}=\"{$v}\"";
+            if ($k === 'children') {
+                continue;
             }
+            $pairs[] = sprintf(
+                '%s="%s"',
+                $k,
+                htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            );
         }
         $attrStr = $pairs ? ' ' . implode(' ', $pairs) : '';
-        return in_array(strtolower($tag), self::$selfClosingTags)
+
+        return in_array(strtolower($tag), self::$selfClosingTags, true)
             ? "<{$tag}{$attrStr} />"
             : "<{$tag}{$attrStr}>{$attrs['children']}</{$tag}>";
     }
