@@ -41,7 +41,7 @@ class IncludeTracker
         $html = ob_get_clean();
 
         $wrapped  = self::wrapWithId($filePath, $html);
-        $fragDom  = TemplateCompiler::convertToXml($wrapped, false);
+        $fragDom  = TemplateCompiler::convertToXml($wrapped);
 
         self::prefixInlineHandlers($fragDom);
 

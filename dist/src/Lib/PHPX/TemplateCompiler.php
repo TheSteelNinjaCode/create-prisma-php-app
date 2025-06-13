@@ -119,11 +119,9 @@ class TemplateCompiler
 
     private static function escapeAmpersands(string $content): string
     {
-        return preg_replace_callback(
-            '/&(.*?)/',
-            fn($m) => preg_match('/^&(?:[a-zA-Z]+|#[0-9]+|#x[0-9A-Fa-f]+);$/', $m[0])
-                ? $m[0]
-                : '&amp;' . substr($m[0], 1),
+        return preg_replace(
+            '/&(?![a-zA-Z][A-Za-z0-9]*;|#[0-9]+;|#x[0-9A-Fa-f]+;)/',
+            '&amp;',
             $content
         );
     }
@@ -146,16 +144,13 @@ class TemplateCompiler
         );
     }
 
-    public static function convertToXml(string $templateContent, bool $escapeAttributes = true): DOMDocument
+    public static function convertToXml(string $templateContent): DOMDocument
     {
-
-        if ($escapeAttributes) {
-            $templateContent = self::escapeMustacheAngles(
-                self::escapeAttributeAngles(
-                    self::escapeAmpersands($templateContent)
-                )
-            );
-        }
+        $templateContent = self::escapeMustacheAngles(
+            self::escapeAttributeAngles(
+                self::escapeAmpersands($templateContent)
+            )
+        );
 
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
@@ -323,7 +318,7 @@ class TemplateCompiler
         $sectionId = $idx === 0 ? $baseId : "{$baseId}{$idx}";
 
         $html     = $instance->render();
-        $fragDom  = self::convertToXml($html, false);
+        $fragDom  = self::convertToXml($html);
         $xpath    = new DOMXPath($fragDom);
 
         /** @var DOMElement $el */
