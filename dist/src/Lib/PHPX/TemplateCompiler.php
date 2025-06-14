@@ -16,6 +16,7 @@ use Bootstrap;
 use LibXMLError;
 use DOMXPath;
 use ReflectionClass;
+use ReflectionProperty;
 
 class TemplateCompiler
 {
@@ -43,6 +44,9 @@ class TemplateCompiler
     private static array $sectionStack = [];
     private static int $compileDepth = 0;
     private static array $componentInstanceCounts = [];
+    private static array $reflections       = [];
+    private static array $constructors      = [];
+    private static array $publicProperties  = [];
 
     public static function compile(string $templateContent): string
     {
@@ -481,6 +485,7 @@ class TemplateCompiler
         if (!isset($mapping['className'], $mapping['filePath'])) {
             throw new RuntimeException("Invalid mapping");
         }
+
         $className = $mapping['className'];
         $filePath  = $mapping['filePath'];
 
@@ -489,20 +494,32 @@ class TemplateCompiler
             throw new RuntimeException("Class {$className} not found");
         }
 
-        $ref      = new ReflectionClass($className);
-        $instance = $ref->newInstanceWithoutConstructor();
+        if (!isset(self::$reflections[$className])) {
+            $rc = new ReflectionClass($className);
+            self::$reflections[$className]      = $rc;
+            self::$constructors[$className]     = $rc->getConstructor();
+            self::$publicProperties[$className] = array_filter(
+                $rc->getProperties(ReflectionProperty::IS_PUBLIC),
+                fn(ReflectionProperty $p) => ! $p->isStatic()
+            );
+        }
 
-        foreach ($attributes as $key => $value) {
-            if ($ref->hasProperty($key) && $ref->getProperty($key)->isPublic()) {
-                $instance->$key = $value;
+        $ref  = self::$reflections[$className];
+        $ctor = self::$constructors[$className];
+        $inst = $ref->newInstanceWithoutConstructor();
+
+        foreach (self::$publicProperties[$className] as $prop) {
+            $name = $prop->getName();
+            if (array_key_exists($name, $attributes)) {
+                $inst->$name = $attributes[$name];
             }
         }
 
-        if ($ctor = $ref->getConstructor()) {
-            $ctor->invoke($instance, $attributes);
+        if ($ctor) {
+            $ctor->invoke($inst, $attributes);
         }
 
-        return $instance;
+        return $inst;
     }
 
     protected static function initializeClassMappings(): void
