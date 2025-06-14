@@ -489,13 +489,17 @@ class TemplateCompiler
             throw new RuntimeException("Class {$className} not found");
         }
 
-        $instance = new $className($attributes);
-        $ref = new ReflectionClass($instance);
+        $ref      = new ReflectionClass($className);
+        $instance = $ref->newInstanceWithoutConstructor();
 
         foreach ($attributes as $key => $value) {
             if ($ref->hasProperty($key) && $ref->getProperty($key)->isPublic()) {
                 $instance->$key = $value;
             }
+        }
+
+        if ($ctor = $ref->getConstructor()) {
+            $ctor->invoke($instance, $attributes);
         }
 
         return $instance;
