@@ -100,12 +100,14 @@ class TemplateCompiler
                 1
             );
 
-            $htmlContent = preg_replace(
-                '/<body([^>]*)>/i',
-                '<body$1 hidden>',
-                $htmlContent,
-                1
-            );
+            if (!isset($_SERVER['HTTP_X_PPHP_NAVIGATION'])) {
+                $htmlContent = preg_replace(
+                    '/<body([^>]*)>/i',
+                    '<body$1 hidden>',
+                    $htmlContent,
+                    1
+                );
+            }
         }
 
         $patternBodyClose = '/(<\/body\s*>)/i';
