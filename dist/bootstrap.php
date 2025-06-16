@@ -19,6 +19,8 @@ use Lib\MainLayout;
 use Lib\PHPX\TemplateCompiler;
 use Lib\CacheHandler;
 use Lib\ErrorHandler;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 
 final class Bootstrap
 {
@@ -66,6 +68,9 @@ final class Bootstrap
             'samesite' => 'Lax', // or 'Strict' depending on your requirements
         ]);
 
+        // Set a function call key as a cookie
+        self::functionCallNameEncrypt();
+
         $contentInfo = self::determineContentToInclude();
         self::$contentToInclude = $contentInfo['path'] ?? '';
         self::$layoutsToInclude = $contentInfo['layouts'] ?? [];
@@ -101,6 +106,46 @@ final class Bootstrap
 
         // Detect any fatal error that might have occurred before hitting this point
         ErrorHandler::checkFatalError();
+    }
+
+    private static function functionCallNameEncrypt(): void
+    {
+        $hmacSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
+        if ($hmacSecret === '') {
+            throw new RuntimeException("FUNCTION_CALL_SECRET is not set");
+        }
+
+        $aesKey = random_bytes(32);
+
+        $payload = [
+            'k'   => base64_encode($aesKey),
+            'exp' => time() + 3600,
+        ];
+        $jwt = JWT::encode($payload, $hmacSecret, 'HS256');
+
+        setcookie(
+            'pphp_function_call_jwt',
+            $jwt,
+            [
+                'expires'  => time() + 3600,
+                'path'     => '/',
+                'secure'   => true,
+                'httponly' => false,    // JS needs to read this
+                'samesite' => 'Strict',
+            ]
+        );
+
+        setcookie(
+            'pphp_function_call_key',
+            $hmacSecret,
+            [
+                'expires'  => time() + 3600,
+                'path'     => '/',
+                'secure'   => true,
+                'httponly' => false,    // JS needs to read this
+                'samesite' => 'Strict',
+            ]
+        );
     }
 
     private static function fileExistsCached(string $path): bool
@@ -533,35 +578,28 @@ final class Bootstrap
         return is_array($data) ? (object) $data : $data;
     }
 
-    /**
-     * Used specifically for wire (AJAX) calls.
-     * Ends execution with JSON response.
-     */
     public static function wireCallback()
     {
         try {
             $response = [
-                'success' => false,
-                'error' => 'Callback not provided',
-                'data' => null
+                'success'  => false,
+                'error'    => 'Callback not provided',
+                'response' => null,
             ];
-
-            $callbackResponse = null;
             $data = [];
 
             if (!empty($_FILES)) {
                 $data = $_POST;
-
                 foreach ($_FILES as $key => $file) {
                     if (is_array($file['name'])) {
                         $files = [];
-                        foreach ($file['name'] as $index => $name) {
+                        foreach ($file['name'] as $i => $name) {
                             $files[] = [
-                                'name' => $name,
-                                'type' => $file['type'][$index],
-                                'tmp_name' => $file['tmp_name'][$index],
-                                'error' => $file['error'][$index],
-                                'size' => $file['size'][$index],
+                                'name'     => $name,
+                                'type'     => $file['type'][$i],
+                                'tmp_name' => $file['tmp_name'][$i],
+                                'error'    => $file['error'][$i],
+                                'size'     => $file['size'][$i],
                             ];
                         }
                         $data[$key] = $files;
@@ -570,57 +608,96 @@ final class Bootstrap
                     }
                 }
             } else {
-                $input = file_get_contents('php://input');
-                $data = json_decode($input, true);
-
+                $raw = file_get_contents('php://input');
+                $data = json_decode($raw, true);
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     $data = $_POST;
                 }
             }
 
-            if (isset($data['callback'])) {
-                $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $data['callback']);
+            if (
+                isset($data['callback']) &&
+                $data['callback'] === PrismaPHPSettings::$localStoreKey
+            ) {
+                echo json_encode([
+                    'success'  => true,
+                    'response' => 'localStorage updated',
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
 
-                if (strpos($callbackName, '_') === 0) {
-                    $response['error'] = 'Invalid callback';
-                } elseif (function_exists($callbackName) && is_callable($callbackName)) {
-                    $dataObject = self::convertToArrayObject($data);
+            if (empty($data['callback'])) {
+                echo json_encode($response, JSON_UNESCAPED_UNICODE);
+                exit;
+            }
 
-                    $callbackResponse = call_user_func($callbackName, $dataObject);
-                    $response = [
-                        'success' => true,
-                        'response' => $callbackResponse
-                    ];
-                } else {
-                    if ($callbackName === PrismaPHPSettings::$localStoreKey) {
-                        $response = [
-                            'success' => true,
-                            'response' => 'localStorage updated'
-                        ];
-                    } else {
-                        $response['error'] = 'Invalid callback';
-                    }
+            $token     = $_COOKIE['pphp_function_call_jwt'] ?? null;
+            $jwtSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? null;
+            if (!$token || !$jwtSecret) {
+                echo json_encode(['success' => false, 'error' => 'Missing session key or secret'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            try {
+                $decoded = JWT::decode($token, new Key($jwtSecret, 'HS256'));
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => 'Invalid session key'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            $aesKey = base64_decode($decoded->k, true);
+            if ($aesKey === false || strlen($aesKey) !== 32) {
+                echo json_encode(['success' => false, 'error' => 'Bad key length'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $parts = explode(':', $data['callback'], 2);
+            if (count($parts) !== 2) {
+                echo json_encode(['success' => false, 'error' => 'Malformed callback payload'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            [$iv_b64, $ct_b64] = $parts;
+            $iv = base64_decode($iv_b64, true);
+            $ct = base64_decode($ct_b64, true);
+            if ($iv === false || strlen($iv) !== 16 || $ct === false) {
+                echo json_encode(['success' => false, 'error' => 'Invalid callback payload'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $plain = openssl_decrypt($ct, 'AES-256-CBC', $aesKey, OPENSSL_RAW_DATA, $iv);
+            if ($plain === false) {
+                echo json_encode(['success' => false, 'error' => 'Decryption failed'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $callbackName = preg_replace('/[^a-zA-Z0-9_]/', '', $plain);
+            if ($callbackName === '' || $callbackName[0] === '_') {
+                echo json_encode(['success' => false, 'error' => 'Invalid callback'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            if (function_exists($callbackName) && is_callable($callbackName)) {
+                $obj = self::convertToArrayObject($data);
+                $result = call_user_func($callbackName, $obj);
+
+                if ($result !== null) {
+                    echo json_encode([
+                        'success'  => true,
+                        'response' => $result,
+                    ], JSON_UNESCAPED_UNICODE);
                 }
             } else {
-                $response['error'] = 'No callback provided';
+                echo json_encode(['success' => false, 'error' => 'Invalid callback'], JSON_UNESCAPED_UNICODE);
             }
-
-            if ($callbackResponse !== null || isset($response['error'])) {
-                echo json_encode($response);
-            }
+            exit;
         } catch (Throwable $e) {
-            $response = [
+            echo json_encode([
                 'success' => false,
-                'error' => 'Exception occurred',
+                'error'   => 'Exception occurred',
                 'message' => htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'),
-                'file' => htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8'),
-                'line' => (int) $e->getLine()
-            ];
-
-            echo json_encode($response, JSON_UNESCAPED_UNICODE);
+                'file'    => htmlspecialchars($e->getFile(),    ENT_QUOTES, 'UTF-8'),
+                'line'    => $e->getLine(),
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
-
-        exit;
     }
 
     public static function getLoadingsFiles(): string
