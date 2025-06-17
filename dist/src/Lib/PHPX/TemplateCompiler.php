@@ -153,6 +153,7 @@ class TemplateCompiler
     public static function convertToXml(string $templateContent): DOMDocument
     {
         $templateContent = self::protectInlineScripts($templateContent);
+        $templateContent = self::normalizeNamedEntities($templateContent);
 
         $templateContent = self::escapeMustacheAngles(
             self::escapeAttributeAngles(
@@ -171,6 +172,28 @@ class TemplateCompiler
         libxml_clear_errors();
         libxml_use_internal_errors(false);
         return $dom;
+    }
+
+    private static function normalizeNamedEntities(string $html): string
+    {
+        return preg_replace_callback(
+            '/&([a-zA-Z][a-zA-Z0-9]+);/',
+            static function (array $m): string {
+                $decoded = html_entity_decode($m[0], ENT_HTML5, 'UTF-8');
+
+                if ($decoded === $m[0]) {
+                    return $m[0];
+                }
+
+                if (function_exists('mb_ord')) {
+                    return '&#' . mb_ord($decoded, 'UTF-8') . ';';
+                }
+
+                $code = unpack('N', mb_convert_encoding($decoded, 'UCS-4BE', 'UTF-8'))[1];
+                return '&#' . $code . ';';
+            },
+            $html
+        );
     }
 
     private static function protectInlineScripts(string $html): string
@@ -248,7 +271,11 @@ class TemplateCompiler
             $pushed = false;
             $tag    = strtolower($node->nodeName);
 
-            if ($tag === 'script' && !$node->hasAttribute('src')) {
+            if (
+                $tag === 'script' &&
+                !$node->hasAttribute('src') &&
+                !$node->hasAttribute('type')
+            ) {
                 $node->setAttribute('type', 'text/php');
             }
 
