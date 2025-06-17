@@ -99,13 +99,6 @@ class PrismaPHPSettings
      */
     public static array $htmlEvents = [];
 
-    /**
-     * The function call key for the app.
-     *
-     * @var string
-     */
-    public static string $functionCallKey;
-
     public static function init(): void
     {
         self::$option = self::getPrismaSettings();
@@ -114,7 +107,6 @@ class PrismaPHPSettings
         self::$includeFiles = self::getIncludeFiles();
         self::$localStoreKey = self::getLocalStorageKey();
         self::$htmlEvents = self::getHtmlEvents();
-        self::$functionCallKey = self::getFunctionCallKey();
     }
 
     /**
@@ -204,11 +196,5 @@ class PrismaPHPSettings
 
         $events = json_decode(file_get_contents($path), true);
         return is_array($events) ? $events : [];
-    }
-
-    private static function getFunctionCallKey(): string
-    {
-        $functionCallKey = $_ENV['FUNCTION_CALL_KEY'] ?? 'pphp_function_call_59e14';
-        return strtolower(preg_replace('/\s+/', '_', trim($functionCallKey)));
     }
 }
