@@ -73,52 +73,41 @@ class TemplateCompiler
 
     public static function injectDynamicContent(string $htmlContent): string
     {
-        $patternHeadOpen = '/(<head\b[^>]*>)/i';
-        if (preg_match($patternHeadOpen, $htmlContent)) {
+        $headOpenPattern = '/(<head\b[^>]*>)/i';
+
+        $htmlContent = preg_replace(
+            $headOpenPattern,
+            '$1' . MainLayout::outputMetadata(),
+            $htmlContent,
+            1
+        );
+
+        $headClosePattern = '/(<\/head\s*>)/i';
+        $headScripts      = MainLayout::outputHeadScripts();
+        $htmlContent = preg_replace(
+            $headClosePattern,
+            $headScripts . '$1',
+            $htmlContent,
+            1
+        );
+
+        if (!isset($_SERVER['HTTP_X_PPHP_NAVIGATION'])) {
             $htmlContent = preg_replace(
-                $patternHeadOpen,
-                '$1' . MainLayout::outputMetadata(),
+                '/<body([^>]*)>/i',
+                '<body$1 hidden>',
                 $htmlContent,
                 1
             );
         }
 
-        $patternHeadClose = '/(<\/head\s*>)/i';
-        if (preg_match($patternHeadClose, $htmlContent)) {
-            $htmlContent = preg_replace(
-                $patternHeadClose,
-                MainLayout::outputHeadScripts() . '$1',
-                $htmlContent,
-                1
-            );
+        $bodyClosePattern = '/(<\/body\s*>)/i';
 
-            $htmlContent = preg_replace(
-                '/(<\/head\s*>)/i',
-                MainLayout::outputHeadScripts()
-                    . '$1',
-                $htmlContent,
-                1
-            );
-
-            if (!isset($_SERVER['HTTP_X_PPHP_NAVIGATION'])) {
-                $htmlContent = preg_replace(
-                    '/<body([^>]*)>/i',
-                    '<body$1 hidden>',
-                    $htmlContent,
-                    1
-                );
-            }
-        }
-
-        $patternBodyClose = '/(<\/body\s*>)/i';
-        if (preg_match($patternBodyClose, $htmlContent)) {
-            $htmlContent = preg_replace(
-                $patternBodyClose,
-                MainLayout::outputFooterScripts() . '$1',
-                $htmlContent,
-                1
-            );
-        }
+        $htmlContent = preg_replace(
+            $bodyClosePattern,
+            MainLayout::outputFooterScripts() . '$1',
+            $htmlContent,
+            1
+        );
 
         return $htmlContent;
     }
