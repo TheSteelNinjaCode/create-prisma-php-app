@@ -21,6 +21,13 @@ use ReflectionProperty;
 class TemplateCompiler
 {
     protected const BINDING_REGEX = '/\{\{\s*((?:(?!\{\{|\}\})[\s\S])*?)\s*\}\}/uS';
+    private const LITERAL_TEXT_TAGS = [
+        'code' => true,
+        'pre'  => true,
+        'samp' => true,
+        'kbd'  => true,
+        'var'  => true,
+    ];
 
     protected static array $classMappings = [];
     protected static array $selfClosingTags = [
@@ -141,23 +148,22 @@ class TemplateCompiler
 
     public static function convertToXml(string $templateContent): DOMDocument
     {
-        $templateContent = self::protectInlineScripts($templateContent);
-        $templateContent = self::normalizeNamedEntities($templateContent);
+        $content = self::protectInlineScripts($templateContent);
+        $content = self::normalizeNamedEntities($content);
 
-        $templateContent = self::escapeMustacheAngles(
-            self::escapeAttributeAngles(
-                self::escapeAmpersands($templateContent)
-            )
-        );
+        $content = self::escapeAmpersands($content);
+        $content = self::escapeAttributeAngles($content);
+        $content = self::escapeMustacheAngles($content);
 
-        $dom = new DOMDocument();
+        $xml = "<root>{$content}</root>";
+
+        $dom = new DOMDocument('1.0', 'UTF-8');
         libxml_use_internal_errors(true);
-
-        if (!$dom->loadXML("<root>{$templateContent}</root>")) {
-            $errors = self::getXmlErrors();
-            throw new RuntimeException("XML Parsing Failed: " . implode("; ", $errors));
+        if (!$dom->loadXML($xml, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET)) {
+            throw new RuntimeException(
+                'XML Parsing Failed: ' . implode('; ', self::getXmlErrors())
+            );
         }
-
         libxml_clear_errors();
         libxml_use_internal_errors(false);
         return $dom;
@@ -309,6 +315,15 @@ class TemplateCompiler
 
     private static function processTextNode(DOMText $node): string
     {
+        $parent = strtolower($node->parentNode?->nodeName ?? '');
+        if (isset(self::LITERAL_TEXT_TAGS[$parent])) {
+            return htmlspecialchars(
+                $node->textContent,
+                ENT_NOQUOTES | ENT_SUBSTITUTE,
+                'UTF-8'
+            );
+        }
+
         return preg_replace_callback(
             self::BINDING_REGEX,
             fn($m) => self::processBindingExpression(trim($m[1])),
