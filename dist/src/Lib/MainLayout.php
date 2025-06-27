@@ -108,20 +108,15 @@ class MainLayout
                         '/<script\b([^>]*)>/i',
                         function ($m) use ($rawClassName) {
                             $attrs = $m[1];
-
-                            $attrs = preg_replace(
-                                '/\btype\s*=\s*("[^"]*"|\'[^\']*\'|\S+)/i',
-                                '',
-                                $attrs
-                            );
-
                             $encodedClass = 's' . base_convert(sprintf('%u', crc32($rawClassName)), 10, 36);
 
                             if (!str_contains($attrs, 'pp-sync-script=')) {
                                 $attrs .= " pp-sync-script=\"{$encodedClass}\"";
                             }
 
-                            $attrs .= ' type="text/php"';
+                            if (!preg_match('/\btype\s*=\s*(["\'])[^\1]*\1|\btype\s*=\s*\S+/i', $attrs)) {
+                                $attrs .= ' type="text/php"';
+                            }
 
                             return "<script{$attrs}>";
                         },
