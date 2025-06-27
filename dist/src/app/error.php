@@ -1,6 +1,6 @@
 <?php use Lib\ErrorHandler; ?>
 
-<div class="flex items-center justify-center h-screen">
+<div class="flex items-center justify-center">
     <div class="text-center max-w-md">
         <h1 class="text-6xl font-bold text-red-500">Oops!</h1>
         <p class="text-xl mt-4"><?= ErrorHandler::$content ?></p>

@@ -14,11 +14,11 @@ use DOMText;
 use RuntimeException;
 use Bootstrap;
 use LibXMLError;
-use DOMXPath;
 use ReflectionClass;
 use ReflectionProperty;
 use ReflectionType;
 use ReflectionNamedType;
+use Lib\PHPX\Exceptions\ComponentValidationException;
 
 class TemplateCompiler
 {
@@ -29,6 +29,11 @@ class TemplateCompiler
         'samp' => true,
         'kbd'  => true,
         'var'  => true,
+    ];
+    private const SYSTEM_PROPS = [
+        'children' => true,
+        'key' => true,
+        'ref' => true,
     ];
 
     protected static array $classMappings = [];
@@ -56,6 +61,7 @@ class TemplateCompiler
     private static array $reflections       = [];
     private static array $constructors      = [];
     private static array $publicProperties  = [];
+    private static array $allowedProps = [];
 
     public static function compile(string $templateContent): string
     {
@@ -276,8 +282,8 @@ class TemplateCompiler
                 $node->setAttribute('type', 'text/php');
             }
 
-            if ($node->hasAttribute('pp-section-id')) {
-                self::$sectionStack[] = $node->getAttribute('pp-section-id');
+            if ($node->hasAttribute('pp-component')) {
+                self::$sectionStack[] = $node->getAttribute('pp-component');
                 $pushed = true;
             }
 
@@ -361,7 +367,6 @@ class TemplateCompiler
         string $componentName,
         array $incomingProps
     ): string {
-        $incomingProps = self::sanitizeIncomingProps($incomingProps);
         $mapping       = self::selectComponentMapping($componentName);
         $instance      = self::initializeComponentInstance($mapping, $incomingProps);
 
@@ -370,7 +375,7 @@ class TemplateCompiler
             $childHtml .= self::processNode($c);
         }
 
-        $instance->children = self::sanitizeEventAttributes($childHtml);
+        $instance->children = $childHtml;
 
         $baseId   = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
         $idx      = self::$componentInstanceCounts[$baseId] ?? 0;
@@ -379,55 +384,10 @@ class TemplateCompiler
 
         $html     = $instance->render();
         $fragDom  = self::convertToXml($html);
-        $xpath    = new DOMXPath($fragDom);
-
-        /** @var DOMElement $el */
-        foreach ($xpath->query('//*') as $el) {
-
-            $tag = $el->tagName;
-            if (ctype_upper($tag[0]) || isset(self::$classMappings[$tag])) {
-                continue;
-            }
-
-            $originalEvents  = [];
-            $componentEvents = [];
-
-            foreach (iterator_to_array($el->attributes) as $attr) {
-                $name  = $attr->name;
-                $value = $attr->value;
-
-                if (str_starts_with($name, 'pp-original-')) {
-                    $origName                   = substr($name, strlen('pp-original-'));
-                    $originalEvents[$origName]  = $value;
-                } elseif (str_starts_with($name, 'on')) {
-                    $event = substr($name, 2);
-                    if ($value !== '' && in_array($event, PrismaPHPSettings::$htmlEvents, true)) {
-                        $componentEvents[$name] = $value;
-                    }
-                }
-            }
-
-            foreach (array_keys($originalEvents)  as $k) $el->removeAttribute("pp-original-{$k}");
-            foreach (array_keys($componentEvents) as $k) $el->removeAttribute($k);
-
-            foreach ($componentEvents as $evAttr => $compValue) {
-                $el->setAttribute("data-pp-child-{$evAttr}", $compValue);
-
-                if (isset($originalEvents[$evAttr])) {
-                    $el->setAttribute("data-pp-parent-{$evAttr}", $originalEvents[$evAttr]);
-                    unset($originalEvents[$evAttr]);
-                }
-            }
-
-            foreach ($originalEvents as $name => $value) {
-                $el->setAttribute($name, $value);
-            }
-        }
-
         $root = $fragDom->documentElement;
         foreach ($root->childNodes as $c) {
             if ($c instanceof DOMElement) {
-                $c->setAttribute('pp-phpx-id', $sectionId);
+                $c->setAttribute('pp-component', $sectionId);
                 break;
             }
         }
@@ -442,53 +402,6 @@ class TemplateCompiler
         }
 
         return $htmlOut;
-    }
-
-    protected static function sanitizeIncomingProps(array $props): array
-    {
-        foreach ($props as $key => $val) {
-            if (str_starts_with($key, 'on')) {
-                $event = substr($key, 2);
-                if (in_array($event, PrismaPHPSettings::$htmlEvents, true) && trim((string)$val) !== '') {
-                    $props["pp-original-on{$event}"] = (string)$val;
-                    unset($props[$key]);
-                }
-            }
-        }
-
-        return $props;
-    }
-
-    protected static function sanitizeEventAttributes(string $html): string
-    {
-        $fragDom = self::convertToXml($html, false);
-        $xpath   = new DOMXPath($fragDom);
-
-        /** @var DOMElement $el */
-        foreach ($xpath->query('//*') as $el) {
-            foreach (iterator_to_array($el->attributes) as $attr) {
-                $name = strtolower($attr->name);
-
-                if (!str_starts_with($name, 'on')) {
-                    continue;
-                }
-
-                $event = substr($name, 2);
-                $value = trim($attr->value);
-
-                if ($value !== '' && in_array($event, PrismaPHPSettings::$htmlEvents, true)) {
-                    $el->setAttribute("pp-original-on{$event}", $value);
-                }
-
-                $el->removeAttribute($name);
-            }
-        }
-
-        $body = $fragDom->getElementsByTagName('body')[0] ?? null;
-
-        return $body instanceof DOMElement
-            ? self::innerXml($body)
-            : self::innerXml($fragDom);
     }
 
     private static function selectComponentMapping(string $componentName): array
@@ -529,15 +442,19 @@ class TemplateCompiler
             throw new RuntimeException("Class {$className} not found");
         }
 
+        self::cacheClassReflection($className);
+
         if (!isset(self::$reflections[$className])) {
             $rc = new ReflectionClass($className);
             self::$reflections[$className]      = $rc;
             self::$constructors[$className]     = $rc->getConstructor();
             self::$publicProperties[$className] = array_filter(
                 $rc->getProperties(ReflectionProperty::IS_PUBLIC),
-                fn(ReflectionProperty $p) => ! $p->isStatic()
+                fn(ReflectionProperty $p) => !$p->isStatic()
             );
         }
+
+        self::validateComponentProps($className, $attributes);
 
         $ref  = self::$reflections[$className];
         $ctor = self::$constructors[$className];
@@ -558,6 +475,51 @@ class TemplateCompiler
         }
 
         return $inst;
+    }
+
+    private static function cacheClassReflection(string $className): void
+    {
+        if (isset(self::$reflections[$className])) {
+            return;
+        }
+
+        $rc = new ReflectionClass($className);
+        self::$reflections[$className] = $rc;
+        self::$constructors[$className] = $rc->getConstructor();
+
+        $publicProps = array_filter(
+            $rc->getProperties(ReflectionProperty::IS_PUBLIC),
+            fn(ReflectionProperty $p) => !$p->isStatic()
+        );
+        self::$publicProperties[$className] = $publicProps;
+
+        $allowed = self::SYSTEM_PROPS;
+        foreach ($publicProps as $prop) {
+            $allowed[$prop->getName()] = true;
+        }
+        self::$allowedProps[$className] = $allowed;
+    }
+
+    private static function validateComponentProps(string $className, array $attributes): void
+    {
+        foreach (self::$publicProperties[$className] as $prop) {
+            $name = $prop->getName();
+            $type = $prop->getType();
+
+            if (
+                $type instanceof ReflectionNamedType && $type->isBuiltin()
+                && ! $type->allowsNull()
+                && ! array_key_exists($name, $attributes)
+            ) {
+                throw new ComponentValidationException(
+                    $name,
+                    $className,
+                    array_map(fn($p) => $p->getName(), self::$publicProperties[$className])
+                );
+            }
+        }
+
+        return;
     }
 
     private static function coerce(mixed $value, ?ReflectionType $type): mixed

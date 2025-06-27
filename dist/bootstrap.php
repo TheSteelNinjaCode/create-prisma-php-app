@@ -22,7 +22,7 @@ use Lib\ErrorHandler;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
-final class Bootstrap
+final class Bootstrap extends RuntimeException
 {
     public static string $contentToInclude = '';
     public static array $layoutsToInclude = [];
@@ -35,12 +35,22 @@ final class Bootstrap
     public static bool $secondRequestC69CD = false;
     public static array $requestFilesData = [];
 
+    private string $context;
+
     private static array $fileExistCache = [];
     private static array $regexCache = [];
 
-    /**
-     * Main entry point to run the entire routing and rendering logic.
-     */
+    public function __construct(string $message, string $context = '', int $code = 0, ?Throwable $previous = null)
+    {
+        $this->context = $context;
+        parent::__construct($message, $code, $previous);
+    }
+
+    public function getContext(): string
+    {
+        return $this->context;
+    }
+
     public static function run(): void
     {
         // Load environment variables
@@ -1025,15 +1035,18 @@ try {
     }
 } catch (Throwable $e) {
     if (Bootstrap::isAjaxOrXFileRequestOrRouteFile()) {
-        $errorDetails = "Unhandled Exception: " . $e->getMessage() .
-            " in " . $e->getFile() .
-            " on line " . $e->getLine();
+        $errorDetails = json_encode([
+            'success' => false,
+            'error' => [
+                'type' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]
+        ]);
     } else {
-        $errorDetails = "Unhandled Exception: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
-        $errorDetails .= "<br>File: " . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
-        $errorDetails .= "<br>Line: " . htmlspecialchars((string)$e->getLine(), ENT_QUOTES, 'UTF-8');
-        $errorDetails .= "<br/>TraceAsString: " . htmlspecialchars($e->getTraceAsString(), ENT_QUOTES, 'UTF-8');
-        $errorDetails = "<div class='error'>{$errorDetails}</div>";
+        $errorDetails = ErrorHandler::formatExceptionForDisplay($e);
     }
     ErrorHandler::modifyOutputLayoutForError($errorDetails);
 }

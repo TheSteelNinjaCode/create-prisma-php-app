@@ -92,13 +92,6 @@ class PrismaPHPSettings
      */
     public static string $localStoreKey;
 
-    /**
-     * The HTML events loaded from the html-events.json file.
-     *
-     * @var array
-     */
-    public static array $htmlEvents = [];
-
     public static function init(): void
     {
         self::$option = self::getPrismaSettings();
@@ -106,7 +99,6 @@ class PrismaPHPSettings
         self::$classLogFiles = self::getClassesLogFiles();
         self::$includeFiles = self::getIncludeFiles();
         self::$localStoreKey = self::getLocalStorageKey();
-        self::$htmlEvents = self::getHtmlEvents();
     }
 
     /**
@@ -185,16 +177,5 @@ class PrismaPHPSettings
     {
         $localStorageKey = $_ENV['LOCALSTORE_KEY'] ?? 'pphp_local_store_59e13';
         return strtolower(preg_replace('/\s+/', '_', trim($localStorageKey)));
-    }
-
-    private static function getHtmlEvents(): array
-    {
-        $path = SETTINGS_PATH . '/html-events.json';
-        if (!file_exists($path)) {
-            return [];
-        }
-
-        $events = json_decode(file_get_contents($path), true);
-        return is_array($events) ? $events : [];
     }
 }

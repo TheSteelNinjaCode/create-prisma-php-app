@@ -4,10 +4,6 @@ namespace Lib;
 
 use RuntimeException;
 use InvalidArgumentException;
-use Lib\PrismaPHPSettings;
-use DOMDocument;
-use DOMElement;
-use DOMXPath;
 use Lib\PHPX\TemplateCompiler;
 
 class IncludeTracker
@@ -15,7 +11,7 @@ class IncludeTracker
     public static array $sections = [];
 
     /**
-     * Includes and echoes a file wrapped in a unique pp-section-id container.
+     * Includes and echoes a file wrapped in a unique pp-component container.
      * Supported $mode values: 'include', 'include_once', 'require', 'require_once'
      *
      * @param string $filePath The path to the file to be included.
@@ -43,8 +39,6 @@ class IncludeTracker
         $wrapped  = self::wrapWithId($filePath, $html);
         $fragDom  = TemplateCompiler::convertToXml($wrapped);
 
-        self::prefixInlineHandlers($fragDom);
-
         $newHtml = TemplateCompiler::innerXml($fragDom);
 
         self::$sections[$filePath] = [
@@ -58,39 +52,6 @@ class IncludeTracker
     private static function wrapWithId(string $filePath, string $html): string
     {
         $id = 's' . base_convert(sprintf('%u', crc32($filePath)), 10, 36);
-        return "<div pp-section-id=\"$id\">\n$html\n</div>";
-    }
-
-    private static function prefixInlineHandlers(DOMDocument $doc): void
-    {
-        $xp = new DOMXPath($doc);
-
-        /** @var DOMElement $el */
-        foreach ($xp->query('//*') as $el) {
-            $handlers = [];
-
-            foreach (iterator_to_array($el->attributes) as $attr) {
-                $name = $attr->name;
-
-                if (!str_starts_with($name, 'on')) {
-                    continue;
-                }
-
-                $event = substr($name, 2);
-                if (
-                    !in_array($event, PrismaPHPSettings::$htmlEvents, true) ||
-                    trim($attr->value) === ''
-                ) {
-                    continue;
-                }
-
-                $handlers[$name] = $attr->value;
-                $el->removeAttribute($name);
-            }
-
-            foreach ($handlers as $origName => $value) {
-                $el->setAttribute("pp-inc-{$origName}", $value);
-            }
-        }
+        return "<div pp-component=\"$id\">\n$html\n</div>";
     }
 }

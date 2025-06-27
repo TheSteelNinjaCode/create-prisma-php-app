@@ -20,11 +20,6 @@ class PHPX implements IPHPX
     public mixed $children;
 
     /**
-     * @var string The CSS class for custom styling.
-     */
-    protected string $class;
-
-    /**
      * @var array<string, mixed> The array representation of the HTML attributes.
      */
     protected array $attributesArray = [];
@@ -38,27 +33,27 @@ class PHPX implements IPHPX
     {
         $this->props = $props;
         $this->children = $props['children'] ?? '';
-        $this->class = $props['class'] ?? '';
     }
 
     /**
      * Combines and returns the CSS classes for the component.
      *
      * This method merges the provided classes, which can be either strings or arrays of strings,
-     * with the component's `$class` property. It uses the `Utils::mergeClasses` method to ensure
-     * that the resulting CSS class string is optimized, with duplicate or conflicting classes removed.
+     * without automatically including the component's `$class` property. It uses the `Utils::mergeClasses`
+     * method to ensure that the resulting CSS class string is optimized, with duplicate or conflicting
+     * classes removed.
      *
      * ### Features:
      * - Accepts multiple arguments as strings or arrays of strings.
-     * - Automatically merges the provided classes with `$this->class`.
+     * - Only merges the classes provided as arguments (does not include `$this->class` automatically).
      * - Ensures the final CSS class string is well-formatted and free of conflicts.
      *
      * @param string|array ...$classes The CSS classes to be merged. Each argument can be a string or an array of strings.
-     * @return string A single CSS class string with the merged and optimized classes, including `$this->class`.
+     * @return string A single CSS class string with the merged and optimized classes.
      */
     protected function getMergeClasses(string|array ...$classes): string
     {
-        $all = array_merge($classes, [$this->class]);
+        $all = array_merge($classes);
 
         $expr = [];
         foreach ($all as &$chunk) {
