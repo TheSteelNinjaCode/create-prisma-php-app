@@ -817,6 +817,10 @@ final class Bootstrap extends RuntimeException
 
     public static function createUpdateRequestData(): void
     {
+        if (Bootstrap::$contentToInclude === '') {
+            return;
+        }
+
         $requestJsonData = SETTINGS_PATH . '/request-data.json';
 
         if (file_exists($requestJsonData)) {
@@ -961,6 +965,9 @@ try {
         ob_start();
         require_once APP_PATH . '/not-found.php';
         MainLayout::$childLayoutChildren = ob_get_clean();
+
+        http_response_code(404);
+        CacheHandler::$isCacheable = false;
     }
 
     // If the top-level layout is in use
@@ -1011,7 +1018,9 @@ try {
         MainLayout::$html = TemplateCompiler::injectDynamicContent(MainLayout::$html);
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
 
-        if (isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true') {
+        if (
+            http_response_code() === 200 && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true'
+        ) {
             CacheHandler::saveCache(Request::$decodedUri, MainLayout::$html);
         }
 
