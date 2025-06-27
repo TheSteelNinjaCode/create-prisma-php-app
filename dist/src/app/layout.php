@@ -16,7 +16,7 @@ MainLayout::$description = !empty(MainLayout::$description) ? MainLayout::$descr
     <!-- Dynamic Header Scripts -->
 </head>
 
-<body>
+<body pp-component="app">
     <?= MainLayout::$children; ?>
     <!-- Dynamic Footer Scripts -->
 </body>
