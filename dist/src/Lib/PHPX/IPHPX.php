@@ -1,12 +1,8 @@
 <?php
 
-namespace Lib\PHPX;
+declare(strict_types=1);
 
-/**
- * Interface IPHPX
- * 
- * The interface for the PHPX component classes.
- */
+namespace Lib\PHPX;
 
 interface IPHPX
 {

@@ -18,6 +18,7 @@ use ReflectionClass;
 use ReflectionProperty;
 use ReflectionType;
 use ReflectionNamedType;
+use Lib\PHPX\TypeCoercer;
 use Lib\PHPX\Exceptions\ComponentValidationException;
 
 class TemplateCompiler
@@ -524,48 +525,7 @@ class TemplateCompiler
 
     private static function coerce(mixed $value, ?ReflectionType $type): mixed
     {
-        if (!$type instanceof ReflectionNamedType || $type->isBuiltin() === false) {
-            return $value;
-        }
-
-        $name = $type->getName();
-        if ($value === '' && $name === 'bool') return true;
-
-        return match ($name) {
-            'bool'  => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
-            'int'   => (int) $value,
-            'float' => (float) $value,
-            'array' => self::toArray($value),
-
-            default => $value,
-        };
-    }
-
-    private static function toArray(mixed $v): array
-    {
-        if (is_array($v)) {
-            return $v;
-        }
-        if (is_string($v)) {
-            $decoded = json_decode($v, true);
-            if (is_array($decoded)) {
-                return $decoded;
-            }
-            if (str_contains($v, ',')) {
-                return array_map('trim', explode(',', $v));
-            }
-            return [$decoded ?? self::coerceScalarString($v)];
-        }
-        return [$v];
-    }
-
-    private static function coerceScalarString(string $s): mixed
-    {
-        return match (strtolower($s)) {
-            'true'  => true,
-            'false' => false,
-            default => $s,
-        };
+        return TypeCoercer::coerce($value, $type);
     }
 
     protected static function initializeClassMappings(): void
