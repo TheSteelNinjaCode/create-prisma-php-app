@@ -21,6 +21,7 @@ use Lib\CacheHandler;
 use Lib\ErrorHandler;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use Lib\PartialRenderer;
 
 final class Bootstrap extends RuntimeException
 {
@@ -34,6 +35,8 @@ final class Bootstrap extends RuntimeException
     public static bool $isContentVariableIncluded = false;
     public static bool $secondRequestC69CD = false;
     public static array $requestFilesData = [];
+    public static array $partialSelectors = [];
+    public static bool  $isPartialRequest = false;
 
     private string $context;
 
@@ -112,9 +115,16 @@ final class Bootstrap extends RuntimeException
         }
 
         self::$secondRequestC69CD = Request::$data['secondRequestC69CD'] ?? false;
+        self::$isPartialRequest =
+            !empty(Request::$data['pphpSync71163'])
+            && !empty(Request::$data['selectors'])
+            && self::$secondRequestC69CD;
+
+        if (self::$isPartialRequest) {
+            self::$partialSelectors = (array)Request::$data['selectors'];
+        }
         self::$requestFilesData = PrismaPHPSettings::$includeFiles;
 
-        // Detect any fatal error that might have occurred before hitting this point
         ErrorHandler::checkFatalError();
     }
 
@@ -1022,6 +1032,24 @@ try {
             http_response_code() === 200 && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true'
         ) {
             CacheHandler::saveCache(Request::$decodedUri, MainLayout::$html);
+        }
+
+        if (Bootstrap::$isPartialRequest) {
+            $parts = PartialRenderer::extract(
+                MainLayout::$html,
+                Bootstrap::$partialSelectors
+            );
+
+            if (count($parts) === 1) {
+                echo reset($parts);
+            } else {
+                header('Content-Type: application/json');
+                echo json_encode(
+                    ['success' => true, 'fragments' => $parts],
+                    JSON_UNESCAPED_UNICODE
+                );
+            }
+            exit;
         }
 
         echo MainLayout::$html;
