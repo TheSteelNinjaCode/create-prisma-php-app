@@ -7,451 +7,380 @@ import{execSync}from"child_process";import fs from"fs";import{fileURLToPath}from
  * @param {boolean} [isDev=false] - Whether to install the dependencies as devDependencies.
  */
 async function installNpmDependencies(baseDir, dependencies, isDev = false) {
-  console.log("Initializing new Node.js project...");
-  // Initialize a package.json if it doesn't exist
-  if (!fs.existsSync(path.join(baseDir, "package.json"))) {
-    execSync("npm init -y", {
-      stdio: "inherit",
-      cwd: baseDir,
-    });
-  }
-  // Log the dependencies being installed
-  console.log(
-    `${
-      isDev ? "Installing development dependencies" : "Installing dependencies"
-    }:`
-  );
-  dependencies.forEach((dep) => console.log(`- ${chalk.blue(dep)}`));
-  // Prepare the npm install command with the appropriate flag for dev dependencies
-  const npmInstallCommand = `npm install ${
-    isDev ? "--save-dev" : ""
-  } ${dependencies.join(" ")}`;
-  // Execute the npm install command
-  execSync(npmInstallCommand, {
-    stdio: "inherit",
-    cwd: baseDir,
-  });
-}
-async function installComposerDependencies(baseDir, dependencies) {
-  console.log("Initializing new Composer project...");
-  // Initialize a composer.json if it doesn't exist
-  if (!fs.existsSync(path.join(baseDir, "composer.json"))) {
-    execSync(
-      `composer init -n --name="tsnc/prisma-php-app" --require="php:^8.2"`,
-      {
+    console.log("Initializing new Node.js project...");
+    // Initialize a package.json if it doesn't exist
+    if (!fs.existsSync(path.join(baseDir, "package.json"))) {
+        execSync("npm init -y", {
+            stdio: "inherit",
+            cwd: baseDir,
+        });
+    }
+    // Log the dependencies being installed
+    console.log(`${isDev ? "Installing development dependencies" : "Installing dependencies"}:`);
+    dependencies.forEach((dep) => console.log(`- ${chalk.blue(dep)}`));
+    // Prepare the npm install command with the appropriate flag for dev dependencies
+    const npmInstallCommand = `npm install ${isDev ? "--save-dev" : ""} ${dependencies.join(" ")}`;
+    // Execute the npm install command
+    execSync(npmInstallCommand, {
         stdio: "inherit",
         cwd: baseDir,
-      }
-    );
-  }
-  // Log the dependencies being installed
-  console.log("Installing Composer dependencies:");
-  dependencies.forEach((dep) => console.log(`- ${chalk.blue(dep)}`));
-  // Prepare the composer require command
-  const composerRequireCommand = `C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar require ${dependencies.join(
-    " "
-  )}`;
-  // Execute the composer require command
-  execSync(composerRequireCommand, {
-    stdio: "inherit",
-    cwd: baseDir,
-  });
+    });
+}
+async function installComposerDependencies(baseDir, dependencies) {
+    console.log("Initializing new Composer project...");
+    // Initialize a composer.json if it doesn't exist
+    if (!fs.existsSync(path.join(baseDir, "composer.json"))) {
+        execSync(`composer init -n --name="tsnc/prisma-php-app" --require="php:^8.2"`, {
+            stdio: "inherit",
+            cwd: baseDir,
+        });
+    }
+    // Log the dependencies being installed
+    console.log("Installing Composer dependencies:");
+    dependencies.forEach((dep) => console.log(`- ${chalk.blue(dep)}`));
+    // Prepare the composer require command
+    const composerRequireCommand = `C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar require ${dependencies.join(" ")}`;
+    // Execute the composer require command
+    execSync(composerRequireCommand, {
+        stdio: "inherit",
+        cwd: baseDir,
+    });
 }
 const npmPinnedVersions = {
-  "@tailwindcss/postcss": "^4.1.11",
-  "@types/browser-sync": "^2.29.0",
-  "@types/node": "^24.0.7",
-  "@types/prompts": "^2.4.9",
-  "browser-sync": "^3.0.4",
-  chalk: "^5.4.1",
-  "chokidar-cli": "^3.0.0",
-  cssnano: "^7.0.7",
-  "http-proxy-middleware": "^3.0.5",
-  "npm-run-all": "^4.1.5",
-  "php-parser": "^3.2.4",
-  postcss: "^8.5.6",
-  "postcss-cli": "^11.0.1",
-  prompts: "^2.4.2",
-  tailwindcss: "^4.1.11",
-  tsx: "^4.20.3",
-  typescript: "^5.8.3",
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/browser-sync": "^2.29.0",
+    "@types/node": "^24.0.7",
+    "@types/prompts": "^2.4.9",
+    "browser-sync": "^3.0.4",
+    chalk: "^5.4.1",
+    "chokidar-cli": "^3.0.0",
+    cssnano: "^7.0.7",
+    "http-proxy-middleware": "^3.0.5",
+    "npm-run-all": "^4.1.5",
+    "php-parser": "^3.2.4",
+    postcss: "^8.5.6",
+    "postcss-cli": "^11.0.1",
+    prompts: "^2.4.2",
+    tailwindcss: "^4.1.11",
+    tsx: "^4.20.3",
+    typescript: "^5.8.3",
 };
 function npmPkg(name) {
-  return npmPinnedVersions[name] ? `${name}@${npmPinnedVersions[name]}` : name;
+    return npmPinnedVersions[name] ? `${name}@${npmPinnedVersions[name]}` : name;
 }
 const composerPinnedVersions = {
-  "vlucas/phpdotenv": "^5.6.2",
-  "firebase/php-jwt": "^6.11.1",
-  "phpmailer/phpmailer": "^6.10.0",
-  "guzzlehttp/guzzle": "^7.9.3",
-  "ezyang/htmlpurifier": "^4.18.0",
-  "symfony/uid": "^7.2.0",
-  "brick/math": "^0.13.1",
-  "cboden/ratchet": "^0.4.4",
-  "tsnc/prisma-php": "^1.0",
+    "vlucas/phpdotenv": "^5.6.2",
+    "firebase/php-jwt": "^6.11.1",
+    "phpmailer/phpmailer": "^6.10.0",
+    "guzzlehttp/guzzle": "^7.9.3",
+    "ezyang/htmlpurifier": "^4.18.0",
+    "symfony/uid": "^7.2.0",
+    "brick/math": "^0.13.1",
+    "cboden/ratchet": "^0.4.4",
+    "tsnc/prisma-php": "^1.0.0",
 };
 function composerPkg(name) {
-  return composerPinnedVersions[name]
-    ? `${name}:${composerPinnedVersions[name]}`
-    : name;
+    return composerPinnedVersions[name]
+        ? `${name}:${composerPinnedVersions[name]}`
+        : name;
 }
 async function main() {
-  try {
-    const args = process.argv.slice(2);
-    let projectName = args[0];
-    let answer = null;
-    if (projectName) {
-      let useBackendOnly = args.includes("--backend-only");
-      let useSwaggerDocs = args.includes("--swagger-docs");
-      let useTailwind = args.includes("--tailwindcss");
-      let useWebsocket = args.includes("--websocket");
-      let usePrisma = args.includes("--prisma");
-      let useDocker = args.includes("--docker");
-      const predefinedAnswers = {
-        projectName,
-        backendOnly: useBackendOnly,
-        swaggerDocs: useSwaggerDocs,
-        tailwindcss: useTailwind,
-        websocket: useWebsocket,
-        prisma: usePrisma,
-        docker: useDocker,
-      };
-      answer = await getAnswer(predefinedAnswers);
-      if (answer === null) {
-        console.log(chalk.red("Installation cancelled."));
-        return;
-      }
-      const currentDir = process.cwd();
-      const configPath = path.join(currentDir, "prisma-php.json");
-      if (fs.existsSync(configPath)) {
-        const localSettings = readJsonFile(configPath);
-        let excludeFiles = [];
-        localSettings.excludeFiles?.map((file) => {
-          const filePath = path.join(currentDir, file);
-          if (fs.existsSync(filePath))
-            excludeFiles.push(filePath.replace(/\\/g, "/"));
-        });
-        updateAnswer = {
-          projectName,
-          backendOnly: answer?.backendOnly ?? false,
-          swaggerDocs: answer?.swaggerDocs ?? false,
-          tailwindcss: answer?.tailwindcss ?? false,
-          websocket: answer?.websocket ?? false,
-          prisma: answer?.prisma ?? false,
-          docker: answer?.docker ?? false,
-          isUpdate: true,
-          excludeFiles: localSettings.excludeFiles ?? [],
-          excludeFilePath: excludeFiles ?? [],
-          filePath: currentDir,
+    try {
+        const args = process.argv.slice(2);
+        let projectName = args[0];
+        let answer = null;
+        if (projectName) {
+            let useBackendOnly = args.includes("--backend-only");
+            let useSwaggerDocs = args.includes("--swagger-docs");
+            let useTailwind = args.includes("--tailwindcss");
+            let useWebsocket = args.includes("--websocket");
+            let usePrisma = args.includes("--prisma");
+            let useDocker = args.includes("--docker");
+            const predefinedAnswers = {
+                projectName,
+                backendOnly: useBackendOnly,
+                swaggerDocs: useSwaggerDocs,
+                tailwindcss: useTailwind,
+                websocket: useWebsocket,
+                prisma: usePrisma,
+                docker: useDocker,
+            };
+            answer = await getAnswer(predefinedAnswers);
+            if (answer === null) {
+                console.log(chalk.red("Installation cancelled."));
+                return;
+            }
+            const currentDir = process.cwd();
+            const configPath = path.join(currentDir, "prisma-php.json");
+            if (fs.existsSync(configPath)) {
+                const localSettings = readJsonFile(configPath);
+                let excludeFiles = [];
+                localSettings.excludeFiles?.map((file) => {
+                    const filePath = path.join(currentDir, file);
+                    if (fs.existsSync(filePath))
+                        excludeFiles.push(filePath.replace(/\\/g, "/"));
+                });
+                updateAnswer = {
+                    projectName,
+                    backendOnly: answer?.backendOnly ?? false,
+                    swaggerDocs: answer?.swaggerDocs ?? false,
+                    tailwindcss: answer?.tailwindcss ?? false,
+                    websocket: answer?.websocket ?? false,
+                    prisma: answer?.prisma ?? false,
+                    docker: answer?.docker ?? false,
+                    isUpdate: true,
+                    excludeFiles: localSettings.excludeFiles ?? [],
+                    excludeFilePath: excludeFiles ?? [],
+                    filePath: currentDir,
+                };
+            }
+        }
+        else {
+            answer = await getAnswer();
+        }
+        if (answer === null) {
+            console.warn(chalk.red("Installation cancelled."));
+            return;
+        }
+        const latestVersionOfCreatePrismaPhpApp = await fetchPackageVersion("create-prisma-php-app");
+        const isCreatePrismaPhpAppInstalled = getInstalledPackageVersion("create-prisma-php-app");
+        if (isCreatePrismaPhpAppInstalled) {
+            if (compareVersions(isCreatePrismaPhpAppInstalled, latestVersionOfCreatePrismaPhpApp) === -1) {
+                execSync("npm uninstall -g create-prisma-php-app", {
+                    stdio: "inherit",
+                });
+                execSync("npm install -g create-prisma-php-app", {
+                    stdio: "inherit",
+                });
+            }
+        }
+        else {
+            execSync("npm install -g create-prisma-php-app", { stdio: "inherit" });
+        }
+        // Create the project directory
+        if (!projectName)
+            fs.mkdirSync(answer.projectName);
+        const currentDir = process.cwd();
+        let projectPath = projectName
+            ? currentDir
+            : path.join(currentDir, answer.projectName);
+        if (!projectName)
+            process.chdir(answer.projectName);
+        let npmDependencies = [
+            npmPkg("typescript"),
+            npmPkg("@types/node"),
+            npmPkg("tsx"),
+            npmPkg("http-proxy-middleware"),
+            npmPkg("chalk"),
+            npmPkg("npm-run-all"),
+            npmPkg("browser-sync"),
+            npmPkg("@types/browser-sync"),
+            npmPkg("php-parser"),
+        ];
+        let composerDependencies = [
+            composerPkg("vlucas/phpdotenv"),
+            composerPkg("firebase/php-jwt"),
+            composerPkg("phpmailer/phpmailer"),
+            composerPkg("guzzlehttp/guzzle"),
+            composerPkg("ezyang/htmlpurifier"),
+            composerPkg("symfony/uid"),
+            composerPkg("brick/math"),
+            composerPkg("tsnc/prisma-php"),
+        ];
+        if (answer.swaggerDocs) {
+            npmDependencies.push(npmPkg("swagger-jsdoc"), npmPkg("@types/swagger-jsdoc"));
+        }
+        if (answer.swaggerDocs && answer.prisma) {
+            npmDependencies.push(npmPkg("prompts"), npmPkg("@types/prompts"));
+        }
+        if (answer.tailwindcss) {
+            npmDependencies.push(npmPkg("tailwindcss"), npmPkg("postcss"), npmPkg("postcss-cli"), npmPkg("@tailwindcss/postcss"), npmPkg("cssnano"));
+        }
+        if (answer.websocket) {
+            npmDependencies.push(npmPkg("chokidar-cli"));
+            composerDependencies.push("cboden/ratchet");
+        }
+        if (answer.prisma) {
+            execSync("npm install -g prisma-client-php", { stdio: "inherit" });
+        }
+        await installNpmDependencies(projectPath, npmDependencies, true);
+        await installComposerDependencies(projectPath, composerDependencies);
+        if (!projectName) {
+            execSync("npx tsc --init", { stdio: "inherit" });
+        }
+        await createDirectoryStructure(projectPath, answer);
+        if (answer.prisma) {
+            execSync("npx ppo init --prisma-php", { stdio: "inherit" });
+        }
+        if (answer.swaggerDocs) {
+            const swaggerDocsPath = path.join(projectPath, "src", "app", "swagger-docs");
+            // Check if the directory exists
+            if (fs.existsSync(swaggerDocsPath)) {
+                // If it exists and is not empty, remove it before cloning
+                if (fs.readdirSync(swaggerDocsPath).length > 0) {
+                    console.log("Removing existing swagger-docs directory...");
+                    fs.rmSync(swaggerDocsPath, { recursive: true, force: true });
+                }
+            }
+            // Clone the Git repository into the swagger-docs directory
+            execSync(`git clone https://github.com/TheSteelNinjaCode/prisma-php-swagger-docs.git ${swaggerDocsPath}`, { stdio: "inherit" });
+            // delete the folder .git
+            fs.rmSync(path.join(swaggerDocsPath, ".git"), {
+                recursive: true,
+                force: true,
+            });
+        }
+        if (updateAnswer?.isUpdate) {
+            const updateUninstallNpmDependencies = [];
+            const updateUninstallComposerDependencies = [];
+            if (updateAnswer.backendOnly) {
+                nonBackendFiles.forEach((file) => {
+                    const filePath = path.join(projectPath, "src", "app", file);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath); // Delete each file if it exists
+                        console.log(`${file} was deleted successfully.`);
+                    }
+                    else {
+                        console.log(`${file} does not exist.`);
+                    }
+                });
+                const backendOnlyFolders = ["js", "css"];
+                backendOnlyFolders.forEach((folder) => {
+                    const folderPath = path.join(projectPath, "src", "app", folder);
+                    if (fs.existsSync(folderPath)) {
+                        fs.rmSync(folderPath, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
+                        console.log(`${folder} was deleted successfully.`);
+                    }
+                    else {
+                        console.log(`${folder} does not exist.`);
+                    }
+                });
+            }
+            if (!updateAnswer.swaggerDocs) {
+                const swaggerDocsFolder = path.join(projectPath, "src", "app", "swagger-docs");
+                if (fs.existsSync(swaggerDocsFolder)) {
+                    fs.rmSync(swaggerDocsFolder, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
+                    console.log(`swagger-docs was deleted successfully.`);
+                }
+                const swaggerFiles = ["swagger-config.ts"];
+                swaggerFiles.forEach((file) => {
+                    const filePath = path.join(projectPath, "settings", file);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath); // Delete each file if it exists
+                        console.log(`${file} was deleted successfully.`);
+                    }
+                    else {
+                        console.log(`${file} does not exist.`);
+                    }
+                });
+                updateUninstallNpmDependencies.push("swagger-jsdoc", "@types/swagger-jsdoc", "prompts", "@types/prompts");
+            }
+            if (!updateAnswer.tailwindcss) {
+                const tailwindFiles = ["postcss.config.js"];
+                tailwindFiles.forEach((file) => {
+                    const filePath = path.join(projectPath, file);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath); // Delete each file if it exists
+                        console.log(`${file} was deleted successfully.`);
+                    }
+                    else {
+                        console.log(`${file} does not exist.`);
+                    }
+                });
+                updateUninstallNpmDependencies.push("tailwindcss", "postcss", "postcss-cli", "@tailwindcss/postcss", "cssnano");
+            }
+            if (!updateAnswer.websocket) {
+                const websocketFiles = [
+                    "restart-websocket.ts",
+                    "restart-websocket.bat",
+                ];
+                websocketFiles.forEach((file) => {
+                    const filePath = path.join(projectPath, "settings", file);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath); // Delete each file if it exists
+                        console.log(`${file} was deleted successfully.`);
+                    }
+                    else {
+                        console.log(`${file} does not exist.`);
+                    }
+                });
+                const websocketFolder = path.join(projectPath, "src", "Websocket");
+                if (fs.existsSync(websocketFolder)) {
+                    fs.rmSync(websocketFolder, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
+                    console.log(`Websocket folder was deleted successfully.`);
+                }
+                const websocketServerFile = path.join(projectPath, "websocket-server.php");
+                if (fs.existsSync(websocketServerFile)) {
+                    fs.unlinkSync(websocketServerFile); // Delete the file if it exists
+                    console.log(`websocket-server.php was deleted successfully.`);
+                }
+                updateUninstallNpmDependencies.push("chokidar-cli");
+                updateUninstallComposerDependencies.push("cboden/ratchet");
+            }
+            if (!updateAnswer.prisma) {
+                updateUninstallNpmDependencies.push("prisma", "@prisma/client", "@prisma/internals");
+            }
+            if (!updateAnswer.docker) {
+                const dockerFiles = [
+                    ".dockerignore",
+                    "docker-compose.yml",
+                    "Dockerfile",
+                    "apache.conf",
+                ];
+                dockerFiles.forEach((file) => {
+                    const filePath = path.join(projectPath, file);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath); // Delete each file if it exists
+                        console.log(`${file} was deleted successfully.`);
+                    }
+                    else {
+                        console.log(`${file} does not exist.`);
+                    }
+                });
+            }
+            if (updateUninstallNpmDependencies.length > 0) {
+                await uninstallNpmDependencies(projectPath, updateUninstallNpmDependencies, true);
+            }
+            if (updateUninstallComposerDependencies.length > 0) {
+                await uninstallComposerDependencies(projectPath, updateUninstallComposerDependencies);
+            }
+        }
+        const projectPathModified = projectPath.replace(/\\/g, "\\");
+        const bsConfig = bsConfigUrls(projectPathModified);
+        const prismaPhpConfig = {
+            projectName: answer.projectName,
+            projectRootPath: projectPathModified,
+            phpEnvironment: "XAMPP",
+            phpRootPathExe: "C:\\xampp\\php\\php.exe",
+            bsTarget: bsConfig.bsTarget,
+            bsPathRewrite: bsConfig.bsPathRewrite,
+            backendOnly: answer.backendOnly,
+            swaggerDocs: answer.swaggerDocs,
+            tailwindcss: answer.tailwindcss,
+            websocket: answer.websocket,
+            prisma: answer.prisma,
+            docker: answer.docker,
+            version: latestVersionOfCreatePrismaPhpApp,
+            excludeFiles: updateAnswer?.excludeFiles ?? [],
         };
-      }
-    } else {
-      answer = await getAnswer();
-    }
-    if (answer === null) {
-      console.warn(chalk.red("Installation cancelled."));
-      return;
-    }
-    const latestVersionOfCreatePrismaPhpApp = await fetchPackageVersion(
-      "create-prisma-php-app"
-    );
-    const isCreatePrismaPhpAppInstalled = getInstalledPackageVersion(
-      "create-prisma-php-app"
-    );
-    if (isCreatePrismaPhpAppInstalled) {
-      if (
-        compareVersions(
-          isCreatePrismaPhpAppInstalled,
-          latestVersionOfCreatePrismaPhpApp
-        ) === -1
-      ) {
-        execSync("npm uninstall -g create-prisma-php-app", {
-          stdio: "inherit",
-        });
-        execSync("npm install -g create-prisma-php-app", {
-          stdio: "inherit",
-        });
-      }
-    } else {
-      execSync("npm install -g create-prisma-php-app", { stdio: "inherit" });
-    }
-    // Create the project directory
-    if (!projectName) fs.mkdirSync(answer.projectName);
-    const currentDir = process.cwd();
-    let projectPath = projectName
-      ? currentDir
-      : path.join(currentDir, answer.projectName);
-    if (!projectName) process.chdir(answer.projectName);
-    let npmDependencies = [
-      npmPkg("typescript"),
-      npmPkg("@types/node"),
-      npmPkg("tsx"),
-      npmPkg("http-proxy-middleware"),
-      npmPkg("chalk"),
-      npmPkg("npm-run-all"),
-      npmPkg("browser-sync"),
-      npmPkg("@types/browser-sync"),
-      npmPkg("php-parser"),
-    ];
-    let composerDependencies = [
-      composerPkg("vlucas/phpdotenv"),
-      composerPkg("firebase/php-jwt"),
-      composerPkg("phpmailer/phpmailer"),
-      composerPkg("guzzlehttp/guzzle"),
-      composerPkg("ezyang/htmlpurifier"),
-      composerPkg("symfony/uid"),
-      composerPkg("brick/math"),
-      composerPkg("tsnc/prisma-php"),
-    ];
-    if (answer.swaggerDocs) {
-      npmDependencies.push(
-        npmPkg("swagger-jsdoc"),
-        npmPkg("@types/swagger-jsdoc")
-      );
-    }
-    if (answer.swaggerDocs && answer.prisma) {
-      npmDependencies.push(npmPkg("prompts"), npmPkg("@types/prompts"));
-    }
-    if (answer.tailwindcss) {
-      npmDependencies.push(
-        npmPkg("tailwindcss"),
-        npmPkg("postcss"),
-        npmPkg("postcss-cli"),
-        npmPkg("@tailwindcss/postcss"),
-        npmPkg("cssnano")
-      );
-    }
-    if (answer.websocket) {
-      npmDependencies.push(npmPkg("chokidar-cli"));
-      composerDependencies.push("cboden/ratchet");
-    }
-    if (answer.prisma) {
-      execSync("npm install -g prisma-client-php", { stdio: "inherit" });
-    }
-    await installNpmDependencies(projectPath, npmDependencies, true);
-    await installComposerDependencies(projectPath, composerDependencies);
-    if (!projectName) {
-      execSync("npx tsc --init", { stdio: "inherit" });
-    }
-    await createDirectoryStructure(projectPath, answer);
-    if (answer.prisma) {
-      execSync("npx ppo init --prisma-php", { stdio: "inherit" });
-    }
-    if (answer.swaggerDocs) {
-      const swaggerDocsPath = path.join(
-        projectPath,
-        "src",
-        "app",
-        "swagger-docs"
-      );
-      // Check if the directory exists
-      if (fs.existsSync(swaggerDocsPath)) {
-        // If it exists and is not empty, remove it before cloning
-        if (fs.readdirSync(swaggerDocsPath).length > 0) {
-          console.log("Removing existing swagger-docs directory...");
-          fs.rmSync(swaggerDocsPath, { recursive: true, force: true });
+        fs.writeFileSync(path.join(projectPath, "prisma-php.json"), JSON.stringify(prismaPhpConfig, null, 2), { flag: "w" });
+        if (updateAnswer?.isUpdate) {
+            execSync("C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar update", {
+                stdio: "inherit",
+            });
         }
-      }
-      // Clone the Git repository into the swagger-docs directory
-      execSync(
-        `git clone https://github.com/TheSteelNinjaCode/prisma-php-swagger-docs.git ${swaggerDocsPath}`,
-        { stdio: "inherit" }
-      );
-      // delete the folder .git
-      fs.rmSync(path.join(swaggerDocsPath, ".git"), {
-        recursive: true,
-        force: true,
-      });
+        else {
+            execSync("C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar install", {
+                stdio: "inherit",
+            });
+        }
+        console.log("\n=========================\n");
+        console.log(`${chalk.green("Success!")} Prisma PHP project successfully created in ${chalk.green(`${currentDir.replace(/\\/g, "/")}/${answer.projectName}`)}!`);
+        console.log("\n=========================");
     }
-    if (updateAnswer?.isUpdate) {
-      const updateUninstallNpmDependencies = [];
-      const updateUninstallComposerDependencies = [];
-      if (updateAnswer.backendOnly) {
-        nonBackendFiles.forEach((file) => {
-          const filePath = path.join(projectPath, "src", "app", file);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
-            console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
-          }
-        });
-        const backendOnlyFolders = ["js", "css"];
-        backendOnlyFolders.forEach((folder) => {
-          const folderPath = path.join(projectPath, "src", "app", folder);
-          if (fs.existsSync(folderPath)) {
-            fs.rmSync(folderPath, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
-            console.log(`${folder} was deleted successfully.`);
-          } else {
-            console.log(`${folder} does not exist.`);
-          }
-        });
-      }
-      if (!updateAnswer.swaggerDocs) {
-        const swaggerDocsFolder = path.join(
-          projectPath,
-          "src",
-          "app",
-          "swagger-docs"
-        );
-        if (fs.existsSync(swaggerDocsFolder)) {
-          fs.rmSync(swaggerDocsFolder, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
-          console.log(`swagger-docs was deleted successfully.`);
-        }
-        const swaggerFiles = ["swagger-config.ts"];
-        swaggerFiles.forEach((file) => {
-          const filePath = path.join(projectPath, "settings", file);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
-            console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
-          }
-        });
-        updateUninstallNpmDependencies.push(
-          "swagger-jsdoc",
-          "@types/swagger-jsdoc",
-          "prompts",
-          "@types/prompts"
-        );
-      }
-      if (!updateAnswer.tailwindcss) {
-        const tailwindFiles = ["postcss.config.js"];
-        tailwindFiles.forEach((file) => {
-          const filePath = path.join(projectPath, file);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
-            console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
-          }
-        });
-        updateUninstallNpmDependencies.push(
-          "tailwindcss",
-          "postcss",
-          "postcss-cli",
-          "@tailwindcss/postcss",
-          "cssnano"
-        );
-      }
-      if (!updateAnswer.websocket) {
-        const websocketFiles = [
-          "restart-websocket.ts",
-          "restart-websocket.bat",
-        ];
-        websocketFiles.forEach((file) => {
-          const filePath = path.join(projectPath, "settings", file);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
-            console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
-          }
-        });
-        const websocketFolder = path.join(projectPath, "src", "Websocket");
-        if (fs.existsSync(websocketFolder)) {
-          fs.rmSync(websocketFolder, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
-          console.log(`Websocket folder was deleted successfully.`);
-        }
-        const websocketServerFile = path.join(
-          projectPath,
-          "websocket-server.php"
-        );
-        if (fs.existsSync(websocketServerFile)) {
-          fs.unlinkSync(websocketServerFile); // Delete the file if it exists
-          console.log(`websocket-server.php was deleted successfully.`);
-        }
-        updateUninstallNpmDependencies.push("chokidar-cli");
-        updateUninstallComposerDependencies.push("cboden/ratchet");
-      }
-      if (!updateAnswer.prisma) {
-        updateUninstallNpmDependencies.push(
-          "prisma",
-          "@prisma/client",
-          "@prisma/internals"
-        );
-      }
-      if (!updateAnswer.docker) {
-        const dockerFiles = [
-          ".dockerignore",
-          "docker-compose.yml",
-          "Dockerfile",
-          "apache.conf",
-        ];
-        dockerFiles.forEach((file) => {
-          const filePath = path.join(projectPath, file);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
-            console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
-          }
-        });
-      }
-      if (updateUninstallNpmDependencies.length > 0) {
-        await uninstallNpmDependencies(
-          projectPath,
-          updateUninstallNpmDependencies,
-          true
-        );
-      }
-      if (updateUninstallComposerDependencies.length > 0) {
-        await uninstallComposerDependencies(
-          projectPath,
-          updateUninstallComposerDependencies
-        );
-      }
+    catch (error) {
+        console.error("Error while creating the project:", error);
+        process.exit(1);
     }
-    const projectPathModified = projectPath.replace(/\\/g, "\\");
-    const bsConfig = bsConfigUrls(projectPathModified);
-    const prismaPhpConfig = {
-      projectName: answer.projectName,
-      projectRootPath: projectPathModified,
-      phpEnvironment: "XAMPP",
-      phpRootPathExe: "C:\\xampp\\php\\php.exe",
-      bsTarget: bsConfig.bsTarget,
-      bsPathRewrite: bsConfig.bsPathRewrite,
-      backendOnly: answer.backendOnly,
-      swaggerDocs: answer.swaggerDocs,
-      tailwindcss: answer.tailwindcss,
-      websocket: answer.websocket,
-      prisma: answer.prisma,
-      docker: answer.docker,
-      version: latestVersionOfCreatePrismaPhpApp,
-      excludeFiles: updateAnswer?.excludeFiles ?? [],
-    };
-    fs.writeFileSync(
-      path.join(projectPath, "prisma-php.json"),
-      JSON.stringify(prismaPhpConfig, null, 2),
-      { flag: "w" }
-    );
-    if (updateAnswer?.isUpdate) {
-      execSync(
-        "C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar update",
-        {
-          stdio: "inherit",
-        }
-      );
-    } else {
-      execSync(
-        "C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar install",
-        {
-          stdio: "inherit",
-        }
-      );
-    }
-    console.log("\n=========================\n");
-    console.log(
-      `${chalk.green(
-        "Success!"
-      )} Prisma PHP project successfully created in ${chalk.green(
-        `${currentDir.replace(/\\/g, "/")}/${answer.projectName}`
-      )}!`
-    );
-    console.log("\n=========================");
-  } catch (error) {
-    console.error("Error while creating the project:", error);
-    process.exit(1);
-  }
 }
 main();
