@@ -88,7 +88,7 @@ const composerPinnedVersions = {
   "symfony/uid": "^7.2.0",
   "brick/math": "^0.13.1",
   "cboden/ratchet": "^0.4.4",
-  "tsnc/prisma-php": "^1.0.2",
+  "tsnc/prisma-php": "^1.0",
 };
 function composerPkg(name) {
   return composerPinnedVersions[name]
