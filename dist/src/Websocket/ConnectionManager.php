@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Lib\Websocket;
+namespace Websocket;
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
@@ -11,31 +11,35 @@ use SplObjectStorage;
 
 class ConnectionManager implements MessageComponentInterface
 {
-    protected $clients;
+    protected SplObjectStorage $clients;
 
     public function __construct()
     {
         $this->clients = new SplObjectStorage;
     }
 
-    public function onOpen(ConnectionInterface $conn)
+    public function onOpen(ConnectionInterface $conn): void
     {
         $this->clients->attach($conn);
         echo "New connection! ({$conn->resourceId})";
     }
 
-    public function onMessage(ConnectionInterface $from, $msg)
+    public function onMessage(ConnectionInterface $from, $msg): void
     {
-        // Message handling code
+        foreach ($this->clients as $client) {
+            if ($from !== $client) {
+                $client->send($msg);
+            }
+        }
     }
 
-    public function onClose(ConnectionInterface $conn)
+    public function onClose(ConnectionInterface $conn): void
     {
         $this->clients->detach($conn);
         echo "Connection {$conn->resourceId} has disconnected";
     }
 
-    public function onError(ConnectionInterface $conn, Exception $e)
+    public function onError(ConnectionInterface $conn, Exception $e): void
     {
         echo "An error has occurred: {$e->getMessage()}";
         $conn->close();

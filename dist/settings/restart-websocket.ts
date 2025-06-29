@@ -5,29 +5,18 @@ import { getFileMeta } from "./utils.js";
 
 const { __dirname } = getFileMeta();
 
-// Define paths
-const phpPath = "php"; // Adjust if necessary to include the full path to PHP
-const serverScriptPath = join(
-  __dirname,
-  "..",
-  "src",
-  "Lib",
-  "Websocket",
-  "server.php"
-);
+const phpPath = "php";
+const serverScriptPath = join(__dirname, "..", "websocket-server.php");
 
-// Hold the server process
 let serverProcess: ChildProcess | null = null;
 
 const restartServer = (): void => {
-  // If a server process already exists, kill it
   if (serverProcess) {
     console.log("Stopping WebSocket server...");
-    serverProcess.kill("SIGINT"); // Adjust the signal as necessary for your environment
+    serverProcess.kill("SIGINT");
     serverProcess = null;
   }
 
-  // Start a new WebSocket server process
   console.log("Starting WebSocket server...");
   serverProcess = spawn(phpPath, [serverScriptPath]);
 
@@ -40,18 +29,18 @@ const restartServer = (): void => {
   });
 
   serverProcess.on("close", (code: number) => {
-    console.log(`WebSocket server process exited with code ${code}`);
+    console.log(`WebSocket server exited with code ${code}`);
   });
 };
 
 // Initial start
 restartServer();
 
-// Watch for changes and restart the server
+// Watch for changes
 chokidar
-  .watch(join(__dirname, "..", "src", "Lib", "Websocket", "**", "*"))
+  .watch(join(__dirname, "..", "src", "Websocket", "**", "*"))
   .on("change", (path: string) => {
     const fileChanged = path.split("\\").pop();
-    console.log(`File changed: src/Lib/Websocket/${fileChanged}`);
+    console.log(`File changed: src/Websocket/${fileChanged}`);
     restartServer();
   });

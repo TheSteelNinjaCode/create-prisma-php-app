@@ -1,7 +1,7 @@
 @echo off
 set PORT=8080
 set "PHP_PATH=php"
-set "SERVER_SCRIPT_PATH= src\Lib\Websocket\server.php"
+set "SERVER_SCRIPT_PATH=websocket-server.php"
 
 echo [INFO] Checking for processes using port %PORT%...
 netstat -aon | findstr :%PORT%
@@ -16,11 +16,9 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :%PORT%') do (
     )
 )
 
-:: Ensure the previous command's failure does not prevent the server from starting
-:: Wait a bit to ensure the port is freed
-timeout /t 2
+:: Wait to ensure the port is freed
+timeout /t 2 >nul
 
-:: Start the WebSocket server
 echo [INFO] Starting WebSocket server on port %PORT%...
 %PHP_PATH% %SERVER_SCRIPT_PATH%
 if %ERRORLEVEL% == 0 (
