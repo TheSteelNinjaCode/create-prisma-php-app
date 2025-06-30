@@ -6,7 +6,14 @@ import { getFileMeta } from "./utils.js";
 const { __dirname } = getFileMeta();
 
 const phpPath = "php";
-const serverScriptPath = join(__dirname, "..", "websocket-server.php");
+const serverScriptPath = join(
+  __dirname,
+  "..",
+  "src",
+  "Lib",
+  "Websocket",
+  "websocket-server.php"
+);
 
 let serverProcess: ChildProcess | null = null;
 
@@ -41,6 +48,6 @@ chokidar
   .watch(join(__dirname, "..", "src", "Websocket", "**", "*"))
   .on("change", (path: string) => {
     const fileChanged = path.split("\\").pop();
-    console.log(`File changed: src/Websocket/${fileChanged}`);
+    console.log(`File changed: src/Lib/Websocket/${fileChanged}`);
     restartServer();
   });
