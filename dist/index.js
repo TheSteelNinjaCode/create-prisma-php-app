@@ -406,6 +406,7 @@ async function main() {
       projectRootPath: projectPathModified,
       phpEnvironment: "XAMPP",
       phpRootPathExe: "C:\\xampp\\php\\php.exe",
+      phpGenerateClassPath: "src/Lib/Prisma/Classes",
       bsTarget: bsConfig.bsTarget,
       bsPathRewrite: bsConfig.bsPathRewrite,
       backendOnly: answer.backendOnly,
