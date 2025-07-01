@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Websocket;
+namespace Lib\Websocket;
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
