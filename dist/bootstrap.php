@@ -10,18 +10,18 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/settings/paths.php';
 
 use Dotenv\Dotenv;
-use PPHP\Request;
-use PPHP\PrismaPHPSettings;
-use PPHP\StateManager;
-use PPHP\Middleware\AuthMiddleware;
-use PPHP\Auth\Auth;
-use PPHP\MainLayout;
-use PPHP\PHPX\TemplateCompiler;
-use PPHP\CacheHandler;
-use PPHP\ErrorHandler;
+use Lib\Request;
+use Lib\PrismaPHPSettings;
+use Lib\StateManager;
+use Lib\Middleware\AuthMiddleware;
+use Lib\Auth\Auth;
+use Lib\MainLayout;
+use Lib\PHPX\TemplateCompiler;
+use Lib\CacheHandler;
+use Lib\ErrorHandler;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use PPHP\PartialRenderer;
+use Lib\PartialRenderer;
 
 final class Bootstrap extends RuntimeException
 {

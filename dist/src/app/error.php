@@ -1,4 +1,4 @@
-<?php use PPHP\ErrorHandler; ?>
+<?php use Lib\ErrorHandler; ?>
 
 <div class="flex items-center justify-center">
     <div class="text-center max-w-md">
