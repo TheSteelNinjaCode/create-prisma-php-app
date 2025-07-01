@@ -88,7 +88,6 @@ const composerPinnedVersions = {
   "symfony/uid": "^7.2.0",
   "brick/math": "^0.13.1",
   "cboden/ratchet": "^0.4.4",
-  "tsnc/prisma-php": "^1.0.0",
 };
 function composerPkg(name) {
   return composerPinnedVersions[name]
@@ -201,7 +200,6 @@ async function main() {
       composerPkg("ezyang/htmlpurifier"),
       composerPkg("symfony/uid"),
       composerPkg("brick/math"),
-      composerPkg("tsnc/prisma-php"),
     ];
     if (answer.swaggerDocs) {
       npmDependencies.push(
