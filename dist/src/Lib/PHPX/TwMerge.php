@@ -162,7 +162,7 @@ class TwMerge
     private static function getClassGroup($class)
     {
         // Match optional prefixes (responsive and variants).
-        $pattern = '/^((?:[a-z-]+:)*)(.+)$/';
+        $pattern = '/^((?:[^:]+:)*)([^:]+)$/';
         if (preg_match($pattern, $class, $matches)) {
             $prefixes = $matches[1];
             $utilityClass = $matches[2];
@@ -183,7 +183,7 @@ class TwMerge
     private static function getConflictingKeys($classKey)
     {
         // Remove any responsive or variant prefixes.
-        $baseClassKey = preg_replace("/^(?:[a-z-]+:)+/", "", $classKey);
+        $baseClassKey = preg_replace("/^(?:[^:]+:)+/", "", $classKey);
         if (isset(self::$conflictGroups[$baseClassKey])) {
             $prefix = preg_replace("/" . preg_quote($baseClassKey, "/") . '$/', "", $classKey);
             return array_map(function ($conflict) use ($prefix) {
