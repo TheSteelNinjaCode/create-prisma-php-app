@@ -33,15 +33,23 @@ async function installNpmDependencies(baseDir, dependencies, isDev = false) {
   });
 }
 async function installComposerDependencies(baseDir, dependencies) {
-  console.log("Initializing new Composer project...");
+  console.log(
+    chalk.green(
+      `Composer project initialization: ${
+        updateAnswer?.isUpdate
+          ? "Updating existing project..."
+          : "Setting up new project..."
+      }`
+    )
+  );
   // Initialize a composer.json if it doesn't exist
   if (!fs.existsSync(path.join(baseDir, "composer.json"))) {
     execSync(
-      `composer init -n --name="tsnc/prisma-php-app" --require="php:^8.2"`,
-      {
-        stdio: "inherit",
-        cwd: baseDir,
-      }
+      `composer init -n \
+      --name="tsnc/prisma-php-app" \
+      --require="php:^8.2" \
+      --version="1.0.0"`,
+      { stdio: "inherit", cwd: baseDir }
     );
   }
   // Log the dependencies being installed
