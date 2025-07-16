@@ -202,9 +202,12 @@ class TemplateCompiler
 
     private static function protectInlineScripts(string $html): string
     {
-        return preg_replace_callback(
-            '#<script\b([^>]*?)>(.*?)</script>#is',
-            static function ($m) {
+        if (stripos($html, '<script') === false) {
+            return $html;
+        }
+
+        $processScripts = static function (string $content): string {
+            $callback = static function (array $m): string {
                 if (preg_match('/\bsrc\s*=/i', $m[1])) {
                     return $m[0];
                 }
@@ -233,9 +236,33 @@ class TemplateCompiler
                 $code = str_replace(']]>', ']]]]><![CDATA[>', $m[2]);
 
                 return "<script{$m[1]}><![CDATA[\n{$code}\n]]></script>";
-            },
-            $html
-        );
+            };
+
+            $result = preg_replace_callback(
+                '#<script\b([^>]*?)>(.*?)</script>#is',
+                $callback,
+                $content
+            );
+
+            if ($result === null) {
+                $result = preg_replace_callback(
+                    '#<script\b([^>]*?)>(.*?)</script>#is',
+                    $callback,
+                    $content
+                );
+
+                return $result ?? $content;
+            }
+
+            return $result;
+        };
+
+        if (preg_match('/^(.*?<body\b[^>]*>)(.*?)(<\/body>.*)$/is', $html, $parts)) {
+            [$all, $beforeBody, $body, $afterBody] = $parts;
+            return $beforeBody . $processScripts($body) . $afterBody;
+        }
+
+        return $processScripts($html);
     }
 
     public static function innerXml(DOMNode $node): string
