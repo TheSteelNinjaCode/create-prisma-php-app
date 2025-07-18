@@ -313,7 +313,7 @@ async function main() {
       composerPkg("ezyang/htmlpurifier"),
       composerPkg("symfony/uid"),
       composerPkg("brick/math"),
-      composerPkg("tsnc/prisma-php"),
+      // composerPkg("tsnc/prisma-php"),
     ];
     if (answer.swaggerDocs) {
       npmDependencies.push(
