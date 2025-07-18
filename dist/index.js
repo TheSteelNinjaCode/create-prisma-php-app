@@ -7,7 +7,11 @@ import{execSync,spawnSync}from"child_process";import fs from"fs";import{fileURLT
  * @param {boolean} [isDev=false] - Whether to install the dependencies as devDependencies.
  */
 async function installNpmDependencies(baseDir, dependencies, isDev = false) {
-  console.log("Initializing new Node.js project...");
+  if (!fs.existsSync(path.join(baseDir, "package.json"))) {
+    console.log("Initializing new Node.js project...");
+  } else {
+    console.log("Updating existing Node.js project...");
+  }
   // Initialize a package.json if it doesn't exist
   if (!fs.existsSync(path.join(baseDir, "package.json"))) {
     execSync("npm init -y", {
@@ -173,29 +177,11 @@ async function main() {
     let projectName = args[0];
     let answer = null;
     if (projectName) {
-      let useBackendOnly = args.includes("--backend-only");
-      let useSwaggerDocs = args.includes("--swagger-docs");
-      let useTailwind = args.includes("--tailwindcss");
-      let useWebsocket = args.includes("--websocket");
-      let usePrisma = args.includes("--prisma");
-      let useDocker = args.includes("--docker");
-      const predefinedAnswers = {
-        projectName,
-        backendOnly: useBackendOnly,
-        swaggerDocs: useSwaggerDocs,
-        tailwindcss: useTailwind,
-        websocket: useWebsocket,
-        prisma: usePrisma,
-        docker: useDocker,
-      };
-      answer = await getAnswer(predefinedAnswers);
-      if (answer === null) {
-        console.log(chalk.red("Installation cancelled."));
-        return;
-      }
+      // Check if it's an update FIRST
       const currentDir = process.cwd();
       const configPath = path.join(currentDir, "prisma-php.json");
       if (fs.existsSync(configPath)) {
+        // It's an update - read existing settings
         const localSettings = readJsonFile(configPath);
         let excludeFiles = [];
         localSettings.excludeFiles?.map((file) => {
@@ -205,19 +191,56 @@ async function main() {
         });
         updateAnswer = {
           projectName,
-          backendOnly: answer?.backendOnly ?? false,
-          swaggerDocs: answer?.swaggerDocs ?? false,
-          tailwindcss: answer?.tailwindcss ?? false,
-          websocket: answer?.websocket ?? false,
-          prisma: answer?.prisma ?? false,
-          docker: answer?.docker ?? false,
+          backendOnly: localSettings.backendOnly,
+          swaggerDocs: localSettings.swaggerDocs,
+          tailwindcss: localSettings.tailwindcss,
+          websocket: localSettings.websocket,
+          prisma: localSettings.prisma,
+          docker: localSettings.docker,
           isUpdate: true,
           excludeFiles: localSettings.excludeFiles ?? [],
           excludeFilePath: excludeFiles ?? [],
           filePath: currentDir,
         };
+        // For updates, use existing settings but allow CLI overrides
+        const predefinedAnswers = {
+          projectName,
+          backendOnly:
+            args.includes("--backend-only") || localSettings.backendOnly,
+          swaggerDocs:
+            args.includes("--swagger-docs") || localSettings.swaggerDocs,
+          tailwindcss:
+            args.includes("--tailwindcss") || localSettings.tailwindcss,
+          websocket: args.includes("--websocket") || localSettings.websocket,
+          prisma: args.includes("--prisma") || localSettings.prisma,
+          docker: args.includes("--docker") || localSettings.docker,
+        };
+        answer = await getAnswer(predefinedAnswers);
+      } else {
+        // It's a new project - use CLI arguments
+        let useBackendOnly = args.includes("--backend-only");
+        let useSwaggerDocs = args.includes("--swagger-docs");
+        let useTailwind = args.includes("--tailwindcss");
+        let useWebsocket = args.includes("--websocket");
+        let usePrisma = args.includes("--prisma");
+        let useDocker = args.includes("--docker");
+        const predefinedAnswers = {
+          projectName,
+          backendOnly: useBackendOnly,
+          swaggerDocs: useSwaggerDocs,
+          tailwindcss: useTailwind,
+          websocket: useWebsocket,
+          prisma: usePrisma,
+          docker: useDocker,
+        };
+        answer = await getAnswer(predefinedAnswers);
+      }
+      if (answer === null) {
+        console.log(chalk.red("Installation cancelled."));
+        return;
       }
     } else {
+      // No project name provided - interactive mode
       answer = await getAnswer();
     }
     if (answer === null) {
@@ -338,24 +361,57 @@ async function main() {
     if (updateAnswer?.isUpdate) {
       const updateUninstallNpmDependencies = [];
       const updateUninstallComposerDependencies = [];
+      // Helper function to check if a composer package is installed
+      const isComposerPackageInstalled = (packageName) => {
+        try {
+          const composerJsonPath = path.join(projectPath, "composer.json");
+          if (fs.existsSync(composerJsonPath)) {
+            const composerJson = JSON.parse(
+              fs.readFileSync(composerJsonPath, "utf8")
+            );
+            return !!(
+              composerJson.require && composerJson.require[packageName]
+            );
+          }
+          return false;
+        } catch {
+          return false;
+        }
+      };
+      // Helper function to check if an npm package is installed
+      const isNpmPackageInstalled = (packageName) => {
+        try {
+          const packageJsonPath = path.join(projectPath, "package.json");
+          if (fs.existsSync(packageJsonPath)) {
+            const packageJson = JSON.parse(
+              fs.readFileSync(packageJsonPath, "utf8")
+            );
+            return !!(
+              (packageJson.dependencies &&
+                packageJson.dependencies[packageName]) ||
+              (packageJson.devDependencies &&
+                packageJson.devDependencies[packageName])
+            );
+          }
+          return false;
+        } catch {
+          return false;
+        }
+      };
       if (updateAnswer.backendOnly) {
         nonBackendFiles.forEach((file) => {
           const filePath = path.join(projectPath, "src", "app", file);
           if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
+            fs.unlinkSync(filePath);
             console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
           }
         });
         const backendOnlyFolders = ["js", "css"];
         backendOnlyFolders.forEach((folder) => {
           const folderPath = path.join(projectPath, "src", "app", folder);
           if (fs.existsSync(folderPath)) {
-            fs.rmSync(folderPath, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
+            fs.rmSync(folderPath, { recursive: true, force: true });
             console.log(`${folder} was deleted successfully.`);
-          } else {
-            console.log(`${folder} does not exist.`);
           }
         });
       }
@@ -367,44 +423,53 @@ async function main() {
           "swagger-docs"
         );
         if (fs.existsSync(swaggerDocsFolder)) {
-          fs.rmSync(swaggerDocsFolder, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
+          fs.rmSync(swaggerDocsFolder, { recursive: true, force: true });
           console.log(`swagger-docs was deleted successfully.`);
         }
         const swaggerFiles = ["swagger-config.ts"];
         swaggerFiles.forEach((file) => {
           const filePath = path.join(projectPath, "settings", file);
           if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
+            fs.unlinkSync(filePath);
             console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
           }
         });
-        updateUninstallNpmDependencies.push(
-          "swagger-jsdoc",
-          "@types/swagger-jsdoc",
-          "prompts",
-          "@types/prompts"
-        );
+        // Only add to uninstall list if packages are actually installed
+        if (isNpmPackageInstalled("swagger-jsdoc")) {
+          updateUninstallNpmDependencies.push("swagger-jsdoc");
+        }
+        if (isNpmPackageInstalled("@types/swagger-jsdoc")) {
+          updateUninstallNpmDependencies.push("@types/swagger-jsdoc");
+        }
+        if (isNpmPackageInstalled("prompts")) {
+          updateUninstallNpmDependencies.push("prompts");
+        }
+        if (isNpmPackageInstalled("@types/prompts")) {
+          updateUninstallNpmDependencies.push("@types/prompts");
+        }
       }
       if (!updateAnswer.tailwindcss) {
         const tailwindFiles = ["postcss.config.js"];
         tailwindFiles.forEach((file) => {
           const filePath = path.join(projectPath, file);
           if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
+            fs.unlinkSync(filePath);
             console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
           }
         });
-        updateUninstallNpmDependencies.push(
+        // Only add to uninstall list if packages are actually installed
+        const tailwindPackages = [
           "tailwindcss",
           "postcss",
           "postcss-cli",
           "@tailwindcss/postcss",
-          "cssnano"
-        );
+          "cssnano",
+        ];
+        tailwindPackages.forEach((pkg) => {
+          if (isNpmPackageInstalled(pkg)) {
+            updateUninstallNpmDependencies.push(pkg);
+          }
+        });
       }
       if (!updateAnswer.websocket) {
         const websocketFiles = [
@@ -414,10 +479,8 @@ async function main() {
         websocketFiles.forEach((file) => {
           const filePath = path.join(projectPath, "settings", file);
           if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
+            fs.unlinkSync(filePath);
             console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
           }
         });
         const websocketFolder = path.join(
@@ -427,18 +490,28 @@ async function main() {
           "Websocket"
         );
         if (fs.existsSync(websocketFolder)) {
-          fs.rmSync(websocketFolder, { recursive: true, force: true }); // Use fs.rmSync instead of fs.rmdirSync
+          fs.rmSync(websocketFolder, { recursive: true, force: true });
           console.log(`Websocket folder was deleted successfully.`);
         }
-        updateUninstallNpmDependencies.push("chokidar-cli");
-        updateUninstallComposerDependencies.push("cboden/ratchet");
+        // Only add to uninstall list if packages are actually installed
+        if (isNpmPackageInstalled("chokidar-cli")) {
+          updateUninstallNpmDependencies.push("chokidar-cli");
+        }
+        if (isComposerPackageInstalled("cboden/ratchet")) {
+          updateUninstallComposerDependencies.push("cboden/ratchet");
+        }
       }
       if (!updateAnswer.prisma) {
-        updateUninstallNpmDependencies.push(
+        const prismaPackages = [
           "prisma",
           "@prisma/client",
-          "@prisma/internals"
-        );
+          "@prisma/internals",
+        ];
+        prismaPackages.forEach((pkg) => {
+          if (isNpmPackageInstalled(pkg)) {
+            updateUninstallNpmDependencies.push(pkg);
+          }
+        });
       }
       if (!updateAnswer.docker) {
         const dockerFiles = [
@@ -450,14 +523,18 @@ async function main() {
         dockerFiles.forEach((file) => {
           const filePath = path.join(projectPath, file);
           if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath); // Delete each file if it exists
+            fs.unlinkSync(filePath);
             console.log(`${file} was deleted successfully.`);
-          } else {
-            console.log(`${file} does not exist.`);
           }
         });
       }
+      // Only uninstall if there are packages to uninstall
       if (updateUninstallNpmDependencies.length > 0) {
+        console.log(
+          `Uninstalling npm packages: ${updateUninstallNpmDependencies.join(
+            ", "
+          )}`
+        );
         await uninstallNpmDependencies(
           projectPath,
           updateUninstallNpmDependencies,
@@ -465,6 +542,11 @@ async function main() {
         );
       }
       if (updateUninstallComposerDependencies.length > 0) {
+        console.log(
+          `Uninstalling composer packages: ${updateUninstallComposerDependencies.join(
+            ", "
+          )}`
+        );
         await uninstallComposerDependencies(
           projectPath,
           updateUninstallComposerDependencies
