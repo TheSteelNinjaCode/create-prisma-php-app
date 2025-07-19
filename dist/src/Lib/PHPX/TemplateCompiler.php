@@ -408,23 +408,23 @@ class TemplateCompiler
         string $componentName,
         array $incomingProps
     ): string {
-        $mapping       = self::selectComponentMapping($componentName);
-        $instance      = self::initializeComponentInstance($mapping, $incomingProps);
+        $mapping  = self::selectComponentMapping($componentName);
+        $instance = self::initializeComponentInstance($mapping, $incomingProps);
 
         $childHtml = '';
         foreach ($node->childNodes as $c) {
             $childHtml .= self::processNode($c);
         }
 
-        $instance->children = $childHtml;
+        $instance->children = trim($childHtml);
 
-        $baseId   = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
-        $idx      = self::$componentInstanceCounts[$baseId] ?? 0;
+        $baseId = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
+        $idx = self::$componentInstanceCounts[$baseId] ?? 0;
         self::$componentInstanceCounts[$baseId] = $idx + 1;
         $sectionId = $idx === 0 ? $baseId : "{$baseId}{$idx}";
 
-        $html     = $instance->render();
-        $fragDom  = self::convertToXml($html);
+        $html = $instance->render();
+        $fragDom = self::convertToXml($html);
         $root = $fragDom->documentElement;
         foreach ($root->childNodes as $c) {
             if ($c instanceof DOMElement) {
