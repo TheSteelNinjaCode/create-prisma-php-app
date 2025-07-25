@@ -6,190 +6,390 @@ namespace Lib\PHPX;
 
 class TwMerge
 {
-    private static $classGroupPatterns = [
-        // **General Padding classes**
-        "p" => "/^p-/",
-        // **Specific Padding classes**
-        "pt" => "/^pt-/",
-        "pr" => "/^pr-/",
-        "pb" => "/^pb-/",
-        "pl" => "/^pl-/",
-        "px" => "/^px-/",
-        "py" => "/^py-/",
-        // **Margin classes**
-        "m" => "/^m-/",
-        "mt" => "/^mt-/",
-        "mr" => "/^mr-/",
-        "mb" => "/^mb-/",
-        "ml" => "/^ml-/",
-        "mx" => "/^mx-/",
-        "my" => "/^my-/",
-        // **Background color classes**
-        "bg" => "/^bg-/",
-        // **Text size classes**
-        "text-size" => '/^text-(xs|sm|base|lg|xl|[2-9]xl)$/',
-        // **Text alignment classes**
-        "text-alignment" => '/^text-(left|center|right|justify)$/',
-        // **Text color classes**
-        "text-color" => '/^text-(?!xs$|sm$|base$|lg$|xl$|[2-9]xl$).+$/',
-        // **Text transform classes**
-        "text-transform" => '/^text-(uppercase|lowercase|capitalize|normal-case)$/',
-        // **Text decoration classes**
-        "text-decoration" => '/^text-(underline|line-through|no-underline)$/',
-        // **Border width classes**
-        "border-width" => '/^border(-[0-9]+)?$/',
-        // **Border color classes**
-        "border-color" => "/^border-(?![0-9])/",
-        // **Border radius classes**
-        "rounded" => '/^rounded(-.*)?$/',
-        // **Font weight classes**
-        "font" => '/^font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)$/',
-        // **Hover background color classes**
-        "hover:bg" => "/^hover:bg-/",
-        // **Hover text color classes**
-        "hover:text" => "/^hover:text-/",
-        // **Transition classes**
-        "transition" => '/^transition(-[a-z]+)?$/',
-        // **Opacity classes**
-        "opacity" => '/^opacity(-[0-9]+)?$/',
-        // **Flexbox alignment classes**
-        "justify" => "/^justify-(start|end|center|between|around|evenly)$/",
-        // **Flexbox alignment classes**
-        "items" => "/^items-(start|end|center|baseline|stretch)$/",
-        // **Width classes**
-        "w" => "/^w-(full|[0-9]+|\\[.+\\])$/",
-        // **Max-width classes**
-        "max-w" => '/^max-w-(full|[0-9]+|\\[.+\\]|[a-zA-Z]+)$/',
-        // **Other utility classes can be added here**
+    private const IMPORTANT_MODIFIER = '!';
+
+    private static array $classGroups = [
+        // Layout
+        'aspect' => ['aspect-auto', 'aspect-square', 'aspect-video', '/^aspect-\[.+\]$/'],
+        'container' => ['container'],
+        'columns' => ['/^columns-(\d+|auto|\[.+\])$/'],
+        'break-after' => ['/^break-after-(auto|avoid|all|avoid-page|page|left|right|column)$/'],
+        'break-before' => ['/^break-before-(auto|avoid|all|avoid-page|page|left|right|column)$/'],
+        'break-inside' => ['/^break-inside-(auto|avoid|avoid-page|avoid-column)$/'],
+        'box-decoration' => ['/^box-decoration-(clone|slice)$/'],
+        'box' => ['/^box-(border|content)$/'],
+        'display' => ['block', 'inline-block', 'inline', 'flex', 'inline-flex', 'table', 'inline-table', 'table-caption', 'table-cell', 'table-column', 'table-column-group', 'table-footer-group', 'table-header-group', 'table-row-group', 'table-row', 'flow-root', 'grid', 'inline-grid', 'contents', 'list-item', 'hidden'],
+        'float' => ['/^float-(right|left|none)$/'],
+        'clear' => ['/^clear-(left|right|both|none)$/'],
+        'isolation' => ['isolate', 'isolation-auto'],
+        'object-fit' => ['/^object-(contain|cover|fill|none|scale-down)$/'],
+        'object-position' => ['/^object-(bottom|center|left|left-bottom|left-top|right|right-bottom|right-top|top|\[.+\])$/'],
+        'overflow' => ['/^overflow-(auto|hidden|clip|visible|scroll)$/'],
+        'overflow-x' => ['/^overflow-x-(auto|hidden|clip|visible|scroll)$/'],
+        'overflow-y' => ['/^overflow-y-(auto|hidden|clip|visible|scroll)$/'],
+        'overscroll' => ['/^overscroll-(auto|contain|none)$/'],
+        'overscroll-x' => ['/^overscroll-x-(auto|contain|none)$/'],
+        'overscroll-y' => ['/^overscroll-y-(auto|contain|none)$/'],
+        'position' => ['static', 'fixed', 'absolute', 'relative', 'sticky'],
+        'inset' => ['/^inset-(\d+(\.\d+)?|auto|\[.+\]|px|full)$/', '/^-inset-(\d+(\.\d+)?|\[.+\])$/'],
+        'inset-x' => ['/^inset-x-(\d+(\.\d+)?|auto|\[.+\]|px|full)$/', '/^-inset-x-(\d+(\.\d+)?|\[.+\])$/'],
+        'inset-y' => ['/^inset-y-(\d+(\.\d+)?|auto|\[.+\]|px|full)$/', '/^-inset-y-(\d+(\.\d+)?|\[.+\])$/'],
+        'top' => ['/^top-(\d+(\.\d+)?|auto|\[.+\]|px|full)$/', '/^-top-(\d+(\.\d+)?|\[.+\])$/'],
+        'right' => ['/^right-(\d+(\.\d+)?|auto|\[.+\]|px|full)$/', '/^-right-(\d+(\.\d+)?|\[.+\])$/'],
+        'bottom' => ['/^bottom-(\d+(\.\d+)?|auto|\[.+\]|px|full)$/', '/^-bottom-(\d+(\.\d+)?|\[.+\])$/'],
+        'left' => ['/^left-(\d+(\.\d+)?|auto|\[.+\]|px|full)$/', '/^-left-(\d+(\.\d+)?|\[.+\])$/'],
+        'visibility' => ['visible', 'invisible', 'collapse'],
+        'z' => ['/^z-(\d+|auto|\[.+\])$/', '/^-z-(\d+|\[.+\])$/'],
+
+        // Flexbox & Grid
+        'flex-basis' => ['/^basis-(\d+(\.\d+)?\/\d+|\d+(\.\d+)?|auto|px|full|\[.+\])$/'],
+        'flex-direction' => ['/^flex-(row|row-reverse|col|col-reverse)$/'],
+        'flex-wrap' => ['/^flex-(wrap|wrap-reverse|nowrap)$/'],
+        'flex' => ['/^flex-(1|auto|initial|none|\[.+\])$/'],
+        'flex-grow' => ['/^grow(-0|\[.+\])?$/'],
+        'flex-shrink' => ['/^shrink(-0|\[.+\])?$/'],
+        'order' => ['/^order-(\d+|first|last|none|\[.+\])$/'],
+        'grid-template-columns' => ['/^grid-cols-(\d+|none|subgrid|\[.+\])$/'],
+        'grid-column' => ['/^col-(auto|span-(\d+|full)|\[.+\])$/'],
+        'grid-column-start' => ['/^col-start-(\d+|auto|\[.+\])$/'],
+        'grid-column-end' => ['/^col-end-(\d+|auto|\[.+\])$/'],
+        'grid-template-rows' => ['/^grid-rows-(\d+|none|subgrid|\[.+\])$/'],
+        'grid-row' => ['/^row-(auto|span-(\d+|full)|\[.+\])$/'],
+        'grid-row-start' => ['/^row-start-(\d+|auto|\[.+\])$/'],
+        'grid-row-end' => ['/^row-end-(\d+|auto|\[.+\])$/'],
+        'grid-auto-flow' => ['/^grid-flow-(row|col|dense|row-dense|col-dense)$/'],
+        'grid-auto-columns' => ['/^auto-cols-(auto|min|max|fr|\[.+\])$/'],
+        'grid-auto-rows' => ['/^auto-rows-(auto|min|max|fr|\[.+\])$/'],
+        'gap' => ['/^gap-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'gap-x' => ['/^gap-x-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'gap-y' => ['/^gap-y-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'justify-content' => ['/^justify-(start|end|center|between|around|evenly)$/'],
+        'justify-items' => ['/^justify-items-(start|end|center|stretch)$/'],
+        'justify-self' => ['/^justify-self-(auto|start|end|center|stretch)$/'],
+        'align-content' => ['/^content-(center|start|end|between|around|evenly|baseline|stretch)$/'],
+        'align-items' => ['/^items-(start|end|center|baseline|stretch)$/'],
+        'align-self' => ['/^self-(auto|start|end|center|stretch|baseline)$/'],
+        'place-content' => ['/^place-content-(center|start|end|between|around|evenly|baseline|stretch)$/'],
+        'place-items' => ['/^place-items-(start|end|center|baseline|stretch)$/'],
+        'place-self' => ['/^place-self-(auto|start|end|center|stretch)$/'],
+
+        // Spacing
+        'p' => ['/^p-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'px' => ['/^px-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'py' => ['/^py-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'pt' => ['/^pt-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'pr' => ['/^pr-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'pb' => ['/^pb-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'pl' => ['/^pl-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'm' => ['/^-?m-(\d+(\.\d+)?|px|auto|\[.+\])$/'],
+        'mx' => ['/^-?mx-(\d+(\.\d+)?|px|auto|\[.+\])$/'],
+        'my' => ['/^-?my-(\d+(\.\d+)?|px|auto|\[.+\])$/'],
+        'mt' => ['/^-?mt-(\d+(\.\d+)?|px|auto|\[.+\])$/'],
+        'mr' => ['/^-?mr-(\d+(\.\d+)?|px|auto|\[.+\])$/'],
+        'mb' => ['/^-?mb-(\d+(\.\d+)?|px|auto|\[.+\])$/'],
+        'ml' => ['/^-?ml-(\d+(\.\d+)?|px|auto|\[.+\])$/'],
+        'space-x' => ['/^-?space-x-(\d+(\.\d+)?|px|reverse|\[.+\])$/'],
+        'space-y' => ['/^-?space-y-(\d+(\.\d+)?|px|reverse|\[.+\])$/'],
+
+        // Sizing
+        'w' => ['/^w-(\d+(\.\d+)?\/\d+|\d+(\.\d+)?|auto|px|full|screen|svw|lvw|dvw|min|max|fit|\[.+\])$/'],
+        'min-w' => ['/^min-w-(\d+|px|full|min|max|fit|\[.+\])$/'],
+        'max-w' => ['/^max-w-(\d+|px|full|min|max|fit|prose|screen-\w+|\[.+\])$/'],
+        'h' => ['/^h-(\d+(\.\d+)?\/\d+|\d+(\.\d+)?|auto|px|full|screen|svh|lvh|dvh|min|max|fit|\[.+\])$/'],
+        'min-h' => ['/^min-h-(\d+|px|full|screen|svh|lvh|dvh|min|max|fit|\[.+\])$/'],
+        'max-h' => ['/^max-h-(\d+|px|full|screen|svh|lvh|dvh|min|max|fit|\[.+\])$/'],
+        'size' => ['/^size-(\d+(\.\d+)?|auto|px|full|\[.+\])$/'],
+
+        // Typography
+        'font-family' => ['/^font-(sans|serif|mono|\[.+\])$/'],
+        'font-size' => ['/^text-(xs|sm|base|lg|xl|[2-9]xl|\[.+\])$/'],
+        'font-smoothing' => ['antialiased', 'subpixel-antialiased'],
+        'font-style' => ['italic', 'not-italic'],
+        'font-weight' => ['/^font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black|\[.+\])$/'],
+        'font-variant-numeric' => ['/^(normal-nums|ordinal|slashed-zero|lining-nums|oldstyle-nums|proportional-nums|tabular-nums|diagonal-fractions|stacked-fractions)$/'],
+        'letter-spacing' => ['/^tracking-(tighter|tight|normal|wide|wider|widest|\[.+\])$/'],
+        'line-clamp' => ['/^line-clamp-(\d+|none)$/'],
+        'line-height' => ['/^leading-(\d+(\.\d+)?|none|tight|snug|normal|relaxed|loose|\[.+\])$/'],
+        'list-image' => ['/^list-image-(none|\[.+\])$/'],
+        'list-style-position' => ['/^list-(inside|outside)$/'],
+        'list-style-type' => ['/^list-(none|disc|decimal|\[.+\])$/'],
+        'text-align' => ['/^text-(left|center|right|justify|start|end)$/'],
+        'text-color' => ['/^text-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'text-decoration' => ['underline', 'overline', 'line-through', 'no-underline'],
+        'text-decoration-color' => ['/^decoration-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'text-decoration-style' => ['/^decoration-(solid|double|dotted|dashed|wavy)$/'],
+        'text-decoration-thickness' => ['/^decoration-(auto|from-font|\d+|px|\[.+\])$/'],
+        'text-underline-offset' => ['/^underline-offset-(auto|\d+|px|\[.+\])$/'],
+        'text-transform' => ['uppercase', 'lowercase', 'capitalize', 'normal-case'],
+        'text-overflow' => ['truncate', 'text-ellipsis', 'text-clip'],
+        'text-wrap' => ['/^text-(wrap|nowrap|balance|pretty)$/'],
+        'text-indent' => ['/^indent-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'vertical-align' => ['/^align-(baseline|top|middle|bottom|text-top|text-bottom|sub|super|\[.+\])$/'],
+        'whitespace' => ['/^whitespace-(normal|nowrap|pre|pre-line|pre-wrap|break-spaces)$/'],
+        'word-break' => ['/^break-(normal|words|all|keep)$/'],
+        'hyphens' => ['/^hyphens-(none|manual|auto)$/'],
+
+        // Backgrounds
+        'bg-attachment' => ['/^bg-(fixed|local|scroll)$/'],
+        'bg-clip' => ['/^bg-clip-(border|padding|content|text)$/'],
+        'bg-color' => ['/^bg-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'bg-origin' => ['/^bg-origin-(border|padding|content)$/'],
+        'bg-position' => ['/^bg-(bottom|center|left|left-bottom|left-top|right|right-bottom|right-top|top|\[.+\])$/'],
+        'bg-repeat' => ['/^bg-(no-repeat|repeat|repeat-x|repeat-y|repeat-round|repeat-space)$/'],
+        'bg-size' => ['/^bg-(auto|cover|contain|\[.+\])$/'],
+        'bg-image' => ['/^bg-(none|gradient-to-(t|tr|r|br|b|bl|l|tl)|\[.+\])$/'],
+        'gradient-from' => ['/^from-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'gradient-via' => ['/^via-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'gradient-to' => ['/^to-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+
+        // Borders
+        'rounded' => ['/^rounded(-(\w+))?(-(\d+(\.\d+)?|px|full|\[.+\]))?$/'],
+        'border-w-all' => ['/^border(-(\d+|px|\[.+\]))?$/', '/^border-0$/'],
+        'border-w-x' => ['/^border-x(-(\d+|px|\[.+\]))?$/'],
+        'border-w-y' => ['/^border-y(-(\d+|px|\[.+\]))?$/'],
+        'border-w-t' => ['/^border-t(-(\d+|px|\[.+\]))?$/'],
+        'border-w-r' => ['/^border-r(-(\d+|px|\[.+\]))?$/'],
+        'border-w-b' => ['/^border-b(-(\d+|px|\[.+\]))?$/'],
+        'border-w-l' => ['/^border-l(-(\d+|px|\[.+\]))?$/'],
+        'border-color' => ['/^border(-[trbl])?-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|primary|secondary|accent|muted|card|popover|border|input|ring|background|foreground|destructive|success|warning|info|\[.+\])$/'],
+        'border-style' => ['/^border-(solid|dashed|dotted|double|hidden|none)$/'],
+        'divide-x' => ['/^divide-x(-(\d+|px|reverse|\[.+\]))?$/'],
+        'divide-y' => ['/^divide-y(-(\d+|px|reverse|\[.+\]))?$/'],
+        'divide-color' => ['/^divide-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|primary|secondary|accent|muted|card|popover|border|input|ring|background|foreground|destructive|success|warning|info|\[.+\])$/'],
+        'divide-style' => ['/^divide-(solid|dashed|dotted|double|none)$/'],
+        'outline-w' => ['/^outline(-(\d+|px|\[.+\]))?$/'],
+        'outline-color' => ['/^outline-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|primary|secondary|accent|muted|card|popover|border|input|ring|background|foreground|destructive|success|warning|info|\[.+\])$/'],
+        'outline-style' => ['/^outline-(none|solid|dashed|dotted|double)$/'],
+        'outline-offset' => ['/^outline-offset-(\d+|px|\[.+\])$/'],
+        'ring-w' => ['/^ring(-(\d+|px|inset|\[.+\]))?$/'],
+        'ring-color' => ['/^ring-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|primary|secondary|accent|muted|card|popover|border|input|ring|background|foreground|destructive|success|warning|info|\[.+\])$/'],
+        'ring-offset-w' => ['/^ring-offset-(\d+|px|\[.+\])$/'],
+        'ring-offset-color' => ['/^ring-offset-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|primary|secondary|accent|muted|card|popover|border|input|ring|background|foreground|destructive|success|warning|info|\[.+\])$/'],
+
+        // Effects
+        'shadow' => ['/^shadow(-(\w+|\[.+\]))?$/'],
+        'shadow-color' => ['/^shadow-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'opacity' => ['/^opacity-(\d+|\[.+\])$/'],
+        'mix-blend' => ['/^mix-blend-(normal|multiply|screen|overlay|darken|lighten|color-dodge|color-burn|hard-light|soft-light|difference|exclusion|hue|saturation|color|luminosity|plus-lighter)$/'],
+        'bg-blend' => ['/^bg-blend-(normal|multiply|screen|overlay|darken|lighten|color-dodge|color-burn|hard-light|soft-light|difference|exclusion|hue|saturation|color|luminosity)$/'],
+
+        // Filters
+        'blur' => ['/^blur(-(\w+|\[.+\]))?$/'],
+        'brightness' => ['/^brightness-(\d+|\[.+\])$/'],
+        'contrast' => ['/^contrast-(\d+|\[.+\])$/'],
+        'drop-shadow' => ['/^drop-shadow(-(\w+|\[.+\]))?$/'],
+        'grayscale' => ['/^grayscale(-(\d+|\[.+\]))?$/'],
+        'hue-rotate' => ['/^hue-rotate-(\d+|\[.+\])$/'],
+        'invert' => ['/^invert(-(\d+|\[.+\]))?$/'],
+        'saturate' => ['/^saturate-(\d+|\[.+\])$/'],
+        'sepia' => ['/^sepia(-(\d+|\[.+\]))?$/'],
+        'backdrop-blur' => ['/^backdrop-blur(-(\w+|\[.+\]))?$/'],
+        'backdrop-brightness' => ['/^backdrop-brightness-(\d+|\[.+\])$/'],
+        'backdrop-contrast' => ['/^backdrop-contrast-(\d+|\[.+\])$/'],
+        'backdrop-grayscale' => ['/^backdrop-grayscale(-(\d+|\[.+\]))?$/'],
+        'backdrop-hue-rotate' => ['/^backdrop-hue-rotate-(\d+|\[.+\])$/'],
+        'backdrop-invert' => ['/^backdrop-invert(-(\d+|\[.+\]))?$/'],
+        'backdrop-opacity' => ['/^backdrop-opacity-(\d+|\[.+\])$/'],
+        'backdrop-saturate' => ['/^backdrop-saturate-(\d+|\[.+\])$/'],
+        'backdrop-sepia' => ['/^backdrop-sepia(-(\d+|\[.+\]))?$/'],
+
+        // Transitions & Animation
+        'transition-property' => ['/^transition(-(\w+|\[.+\]))?$/'],
+        'transition-duration' => ['/^duration-(\d+|\[.+\])$/'],
+        'transition-timing' => ['/^ease-(linear|in|out|in-out|\[.+\])$/'],
+        'transition-delay' => ['/^delay-(\d+|\[.+\])$/'],
+        'animate' => ['/^animate-(none|spin|ping|pulse|bounce|\[.+\])$/'],
+
+        // Transforms
+        'scale' => ['/^scale(-[xy])?-(\d+|\[.+\])$/'],
+        'rotate' => ['/^-?rotate-(\d+|\[.+\])$/'],
+        'translate-x' => ['/^-?translate-x-(\d+(\.\d+)?\/\d+|\d+(\.\d+)?|px|full|\[.+\])$/'],
+        'translate-y' => ['/^-?translate-y-(\d+(\.\d+)?\/\d+|\d+(\.\d+)?|px|full|\[.+\])$/'],
+        'skew-x' => ['/^-?skew-x-(\d+|\[.+\])$/'],
+        'skew-y' => ['/^-?skew-y-(\d+|\[.+\])$/'],
+        'transform-origin' => ['/^origin-(center|top|top-right|right|bottom-right|bottom|bottom-left|left|top-left|\[.+\])$/'],
+
+        // Interactivity
+        'accent' => ['/^accent-(auto|inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'appearance' => ['/^appearance-(none|auto)$/'],
+        'cursor' => ['/^cursor-(auto|default|pointer|wait|text|move|help|not-allowed|none|context-menu|progress|cell|crosshair|vertical-text|alias|copy|no-drop|grab|grabbing|all-scroll|col-resize|row-resize|n-resize|e-resize|s-resize|w-resize|ne-resize|nw-resize|se-resize|sw-resize|ew-resize|ns-resize|nesw-resize|nwse-resize|zoom-in|zoom-out|\[.+\])$/'],
+        'caret-color' => ['/^caret-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'pointer-events' => ['/^pointer-events-(none|auto)$/'],
+        'resize' => ['/^resize(-none|-y|-x)?$/'],
+        'scroll-behavior' => ['/^scroll-(auto|smooth)$/'],
+        'scroll-m' => ['/^scroll-m[trbl]?x?y?-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'scroll-p' => ['/^scroll-p[trbl]?x?y?-(\d+(\.\d+)?|px|\[.+\])$/'],
+        'scroll-snap-align' => ['/^snap-(start|end|center|align-none)$/'],
+        'scroll-snap-stop' => ['/^snap-(normal|always)$/'],
+        'scroll-snap-type' => ['/^snap-(none|x|y|both|mandatory|proximity)$/'],
+        'touch' => ['/^touch-(auto|none|pan-x|pan-left|pan-right|pan-y|pan-up|pan-down|pinch-zoom|manipulation)$/'],
+        'user-select' => ['/^select-(none|text|all|auto)$/'],
+        'will-change' => ['/^will-change-(auto|scroll|contents|transform|\[.+\])$/'],
     ];
 
-    private static $conflictGroups = [
-        // **Padding conflict groups**
-        "p" => ["p", "px", "py", "pt", "pr", "pb", "pl"],
-        "px" => ["px", "pl", "pr"],
-        "py" => ["py", "pt", "pb"],
-        "pt" => ["pt"],
-        "pr" => ["pr"],
-        "pb" => ["pb"],
-        "pl" => ["pl"],
-        // **Margin conflict groups**
-        "m" => ["m", "mx", "my", "mt", "mr", "mb", "ml"],
-        "mx" => ["mx", "ml", "mr"],
-        "my" => ["my", "mt", "mb"],
-        "mt" => ["mt"],
-        "mr" => ["mr"],
-        "mb" => ["mb"],
-        "ml" => ["ml"],
-        // **Border width conflict group**
-        "border-width" => ["border-width"],
-        // **Border color conflict group**
-        "border-color" => ["border-color"],
-        // **Text size conflict group**
-        "text-size" => ["text-size"],
-        // **Text color conflict group**
-        "text-color" => ["text-color"],
-        // **Text alignment conflict group**
-        "text-alignment" => ["text-alignment"],
-        // **Text transform conflict group**
-        "text-transform" => ["text-transform"],
-        // **Text decoration conflict group**
-        "text-decoration" => ["text-decoration"],
-        // **Opacity conflict group**
-        "opacity" => ["opacity"],
-        // **Flexbox alignment conflict groups**
-        "justify" => ["justify"],
-        // **Flexbox alignment conflict group**
-        "items" => ["items"],
-        // **Width conflict group**
-        "w" => ["w"],
-        // **Max-width conflict group**
-        "max-w" => ["max-w"],
-        // **Add other conflict groups as needed**
+    private static array $conflictingClassGroups = [
+        'overflow' => ['overflow-x', 'overflow-y'],
+        'overscroll' => ['overscroll-x', 'overscroll-y'],
+        'inset' => ['inset-x', 'inset-y', 'top', 'right', 'bottom', 'left'],
+        'inset-x' => ['right', 'left'],
+        'inset-y' => ['top', 'bottom'],
+        'flex' => ['basis', 'grow', 'shrink'],
+        'gap' => ['gap-x', 'gap-y'],
+        'p' => ['px', 'py', 'pt', 'pr', 'pb', 'pl'],
+        'px' => ['pr', 'pl'],
+        'py' => ['pt', 'pb'],
+        'm' => ['mx', 'my', 'mt', 'mr', 'mb', 'ml'],
+        'mx' => ['mr', 'ml'],
+        'my' => ['mt', 'mb'],
+        'font-size' => ['line-height'],
+        'fvn-normal' => ['fvn-ordinal', 'fvn-slashed-zero', 'fvn-figure', 'fvn-spacing', 'fvn-fraction'],
+        'rounded' => ['rounded-s', 'rounded-e', 'rounded-t', 'rounded-r', 'rounded-b', 'rounded-l', 'rounded-ss', 'rounded-se', 'rounded-ee', 'rounded-es', 'rounded-tl', 'rounded-tr', 'rounded-br', 'rounded-bl'],
+        'rounded-s' => ['rounded-ss', 'rounded-es'],
+        'rounded-e' => ['rounded-se', 'rounded-ee'],
+        'rounded-t' => ['rounded-tl', 'rounded-tr'],
+        'rounded-r' => ['rounded-tr', 'rounded-br'],
+        'rounded-b' => ['rounded-br', 'rounded-bl'],
+        'rounded-l' => ['rounded-tl', 'rounded-bl'],
+        'border-spacing' => ['border-spacing-x', 'border-spacing-y'],
+        'border-w-all' => [],
+        'border-w-x' => ['border-w-all'],
+        'border-w-y' => ['border-w-all'],
+        'border-w-t' => ['border-w-all', 'border-w-y'],
+        'border-w-r' => ['border-w-all', 'border-w-x'],
+        'border-w-b' => ['border-w-all', 'border-w-y'],
+        'border-w-l' => ['border-w-all', 'border-w-x'],
+        'border-color' => ['border-color-t', 'border-color-r', 'border-color-b', 'border-color-l'],
+        'border-color-x' => ['border-color-r', 'border-color-l'],
+        'border-color-y' => ['border-color-t', 'border-color-b'],
+        'scroll-m' => ['scroll-mx', 'scroll-my', 'scroll-mt', 'scroll-mr', 'scroll-mb', 'scroll-ml'],
+        'scroll-mx' => ['scroll-mr', 'scroll-ml'],
+        'scroll-my' => ['scroll-mt', 'scroll-mb'],
+        'scroll-p' => ['scroll-px', 'scroll-py', 'scroll-pt', 'scroll-pr', 'scroll-pb', 'scroll-pl'],
+        'scroll-px' => ['scroll-pr', 'scroll-pl'],
+        'scroll-py' => ['scroll-pt', 'scroll-pb'],
     ];
 
-    /**
-     * Merges multiple CSS class strings or arrays of CSS class strings into a single, optimized CSS class string.
-     *
-     * @param string|array ...$classes The CSS classes to be merged.
-     * @return string A single CSS class string with duplicates and conflicts resolved.
-     */
-    public static function mergeClasses(string|array ...$classes): string
+    public static function merge(string ...$inputs): string
     {
-        $classArray = [];
+        return self::twMerge(...$inputs);
+    }
 
-        foreach ($classes as $class) {
-            // Handle arrays by flattening them into strings.
-            $classList = is_array($class) ? $class : [$class];
-            foreach ($classList as $item) {
-                if (!empty(trim($item))) {
-                    // Split the classes by any whitespace characters.
-                    $splitClasses = preg_split("/\s+/", $item);
-                    foreach ($splitClasses as $individualClass) {
-                        $classKey = self::getClassGroup($individualClass);
+    public static function twMerge(string|array ...$inputs): string
+    {
+        $allClasses = [];
 
-                        // If the class is non-responsive (no colon), remove any responsive variants for the same base.
-                        if (strpos($classKey, ':') === false) {
-                            $baseGroup = $classKey;
-                            foreach ($classArray as $existingKey => $existingClass) {
+        foreach ($inputs as $input) {
+            if (is_array($input)) {
+                $allClasses = array_merge($allClasses, $input);
+            } else {
+                $classes = preg_split('/\s+/', trim($input));
+                $allClasses = array_merge($allClasses, array_filter($classes));
+            }
+        }
 
-                                if (
-                                    is_string($existingKey)                 // make sure we have a string
-                                    && $existingKey !== $baseGroup
-                                    && substr($existingKey, -strlen($baseGroup)) === $baseGroup
-                                ) {
-                                    unset($classArray[$existingKey]);
-                                }
-                            }
-                        }
+        return self::mergeClassList($allClasses);
+    }
 
-                        // Remove conflicting classes based on the conflict groups.
-                        $conflictingKeys = self::getConflictingKeys($classKey);
-                        foreach ($conflictingKeys as $key) {
-                            unset($classArray[$key]);
-                        }
+    private static function mergeClassList(array $classes): string
+    {
+        $classGroupsInConflict = [];
+        $result = [];
 
-                        // Update the array, prioritizing the last occurrence.
-                        $classArray[$classKey] = $individualClass;
+        foreach ($classes as $originalClass) {
+            if (empty(trim($originalClass))) {
+                continue;
+            }
+
+            $modifiersAndClass = self::parseClass($originalClass);
+            $modifiers = $modifiersAndClass['modifiers'];
+            $baseClass = $modifiersAndClass['baseClass'];
+            $hasImportantModifier = $modifiersAndClass['hasImportantModifier'];
+
+            $classGroup = self::getClassGroup($baseClass);
+            if (!$classGroup) {
+                $result[] = $originalClass;
+                continue;
+            }
+
+            $variantModifier = implode(':', $modifiers);
+            $modifierId = $hasImportantModifier ? $variantModifier . self::IMPORTANT_MODIFIER : $variantModifier;
+            $classGroupId = $modifierId . ':' . $classGroup;
+
+            $conflictGroups = self::getConflictingClassGroups($classGroup);
+
+            foreach ($conflictGroups as $group) {
+                $groupId = $modifierId . ':' . $group;
+                if (isset($classGroupsInConflict[$groupId])) {
+                    unset($result[array_search($classGroupsInConflict[$groupId], $result)]);
+                }
+                unset($classGroupsInConflict[$groupId]);
+            }
+
+            $classGroupsInConflict[$classGroupId] = $originalClass;
+            $result[] = $originalClass;
+        }
+
+        return implode(' ', array_values($result));
+    }
+
+    private static function parseClass(string $className): array
+    {
+        $modifiers = [];
+        $hasImportantModifier = false;
+        $baseClass = $className;
+
+        if (str_starts_with($className, '!')) {
+            $hasImportantModifier = true;
+            $baseClass = substr($className, 1);
+        }
+
+        $parts = explode(':', $baseClass);
+        if (count($parts) > 1) {
+            $baseClass = array_pop($parts);
+            $modifiers = $parts;
+        }
+
+        return [
+            'modifiers' => $modifiers,
+            'baseClass' => $baseClass,
+            'hasImportantModifier' => $hasImportantModifier
+        ];
+    }
+
+    private static function getClassGroup(string $className): ?string
+    {
+        foreach (self::$classGroups as $groupName => $patterns) {
+            foreach ($patterns as $pattern) {
+                if (is_string($pattern) && str_starts_with($pattern, '/')) {
+                    if (preg_match($pattern, $className)) {
+                        return $groupName;
+                    }
+                } else {
+                    if ($pattern === $className) {
+                        return $groupName;
                     }
                 }
             }
         }
-
-        // Combine the final classes into a single string.
-        return implode(" ", array_values($classArray));
+        return null;
     }
 
-    private static function getClassGroup($class)
+    private static function getConflictingClassGroups(string $classGroup): array
     {
-        // Match optional prefixes (responsive and variants).
-        $pattern = '/^((?:[^:]+:)*)([^:]+)$/';
-        if (preg_match($pattern, $class, $matches)) {
-            $prefixes = $matches[1];
-            $utilityClass = $matches[2];
+        $conflicts = self::$conflictingClassGroups[$classGroup] ?? [];
+        $allConflicts = [$classGroup];
 
-            // Match the utilityClass against patterns.
-            foreach (self::$classGroupPatterns as $groupKey => $regex) {
-                if (preg_match($regex, $utilityClass)) {
-                    return $prefixes . $groupKey;
-                }
-            }
-            // If no match, use the full class.
-            return $prefixes . $utilityClass;
+        foreach ($conflicts as $conflict) {
+            $allConflicts[] = $conflict;
+            $nestedConflicts = self::getConflictingClassGroups($conflict);
+            $allConflicts = array_merge($allConflicts, $nestedConflicts);
         }
-        // For classes without a recognizable prefix, return the class itself.
-        return $class;
+
+        return array_unique($allConflicts);
     }
 
-    private static function getConflictingKeys($classKey)
+    public static function mergeClasses(string|array ...$classes): string
     {
-        // Remove any responsive or variant prefixes.
-        $baseClassKey = preg_replace("/^(?:[^:]+:)+/", "", $classKey);
-        if (isset(self::$conflictGroups[$baseClassKey])) {
-            $prefix = preg_replace("/" . preg_quote($baseClassKey, "/") . '$/', "", $classKey);
-            return array_map(function ($conflict) use ($prefix) {
-                return $prefix . $conflict;
-            }, self::$conflictGroups[$baseClassKey]);
-        }
-        return [$classKey];
+        return self::twMerge(...$classes);
     }
 }

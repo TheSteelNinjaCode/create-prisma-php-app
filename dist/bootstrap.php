@@ -84,6 +84,13 @@ final class Bootstrap extends RuntimeException
         // Set a function call key as a cookie
         self::functionCallNameEncrypt();
 
+        self::$secondRequestC69CD = Request::$data['secondRequestC69CD'] ?? false;
+
+        // Check if the request is for a local store callback
+        if (Request::$isWire && !self::$secondRequestC69CD) {
+            self::isLocalStoreCallback();
+        }
+
         $contentInfo = self::determineContentToInclude();
         self::$contentToInclude = $contentInfo['path'] ?? '';
         self::$layoutsToInclude = $contentInfo['layouts'] ?? [];
@@ -114,7 +121,6 @@ final class Bootstrap extends RuntimeException
             self::$isContentIncluded = true;
         }
 
-        self::$secondRequestC69CD = Request::$data['secondRequestC69CD'] ?? false;
         self::$isPartialRequest =
             !empty(Request::$data['pphpSync71163'])
             && !empty(Request::$data['selectors'])
@@ -126,6 +132,31 @@ final class Bootstrap extends RuntimeException
         self::$requestFilesData = PrismaPHPSettings::$includeFiles;
 
         ErrorHandler::checkFatalError();
+    }
+
+    private static function isLocalStoreCallback(): void
+    {
+        $data = self::getRequestData();
+
+        if (empty($data['callback'])) {
+            self::jsonExit(['success' => false, 'error' => 'Callback not provided', 'response' => null]);
+        }
+
+        try {
+            $aesKey = self::getAesKeyFromJwt();
+        } catch (RuntimeException $e) {
+            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
+        }
+
+        try {
+            $callbackName = self::decryptCallback($data['callback'], $aesKey);
+        } catch (RuntimeException $e) {
+            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
+        }
+
+        if ($callbackName === PrismaPHPSettings::$localStoreKey) {
+            self::jsonExit(['success' => true, 'response' => 'localStorage updated']);
+        }
     }
 
     private static function functionCallNameEncrypt(): void
@@ -588,108 +619,117 @@ final class Bootstrap extends RuntimeException
 
     public static function wireCallback(): void
     {
-        $response = [
-            'success'  => false,
-            'error'    => 'Callback not provided',
-            'response' => null,
-        ];
+        $data = self::getRequestData();
 
+        if (empty($data['callback'])) {
+            self::jsonExit(['success' => false, 'error' => 'Callback not provided', 'response' => null]);
+        }
+
+        try {
+            $aesKey = self::getAesKeyFromJwt();
+        } catch (RuntimeException $e) {
+            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
+        }
+
+        try {
+            $callbackName = self::decryptCallback($data['callback'], $aesKey);
+        } catch (RuntimeException $e) {
+            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
+        }
+
+        $args = self::convertToArrayObject($data);
+        $out  = str_contains($callbackName, '->') || str_contains($callbackName, '::')
+            ? self::dispatchMethod($callbackName, $args)
+            : self::dispatchFunction($callbackName, $args);
+
+        if ($out !== null) {
+            self::jsonExit($out);
+        }
+        exit;
+    }
+
+    private static function getAesKeyFromJwt(): string
+    {
+        $token     = $_COOKIE['pphp_function_call_jwt'] ?? null;
+        $jwtSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? null;
+
+        if (!$token || !$jwtSecret) {
+            throw new RuntimeException('Missing session key or secret');
+        }
+
+        try {
+            $decoded = JWT::decode($token, new Key($jwtSecret, 'HS256'));
+        } catch (Throwable) {
+            throw new RuntimeException('Invalid session key');
+        }
+
+        $aesKey = base64_decode($decoded->k, true);
+        if ($aesKey === false || strlen($aesKey) !== 32) {
+            throw new RuntimeException('Bad key length');
+        }
+
+        return $aesKey;
+    }
+
+    private static function jsonExit(array $payload): void
+    {
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    private static function decryptCallback(string $encrypted, string $aesKey): string
+    {
+        $parts = explode(':', $encrypted, 2);
+        if (count($parts) !== 2) {
+            throw new RuntimeException('Malformed callback payload');
+        }
+        [$ivB64, $ctB64] = $parts;
+
+        $iv = base64_decode($ivB64, true);
+        $ct = base64_decode($ctB64, true);
+
+        if ($iv === false || strlen($iv) !== 16 || $ct === false) {
+            throw new RuntimeException('Invalid callback payload');
+        }
+
+        $plain = openssl_decrypt($ct, 'AES-256-CBC', $aesKey, OPENSSL_RAW_DATA, $iv);
+        if ($plain === false) {
+            throw new RuntimeException('Decryption failed');
+        }
+
+        $callback = preg_replace('/[^a-zA-Z0-9_:\->]/', '', $plain);
+        if ($callback === '' || $callback[0] === '_') {
+            throw new RuntimeException('Invalid callback');
+        }
+
+        return $callback;
+    }
+
+    private static function getRequestData(): array
+    {
         if (!empty($_FILES)) {
             $data = $_POST;
             foreach ($_FILES as $key => $file) {
-                if (is_array($file['name'])) {
-                    $files = [];
-                    foreach ($file['name'] as $i => $name) {
-                        $files[] = [
-                            'name'     => $name,
+                $data[$key] = is_array($file['name'])
+                    ? array_map(
+                        fn($i) => [
+                            'name'     => $file['name'][$i],
                             'type'     => $file['type'][$i],
                             'tmp_name' => $file['tmp_name'][$i],
                             'error'    => $file['error'][$i],
                             'size'     => $file['size'][$i],
-                        ];
-                    }
-                    $data[$key] = $files;
-                } else {
-                    $data[$key] = $file;
-                }
+                        ],
+                        array_keys($file['name'])
+                    )
+                    : $file;
             }
-        } else {
-            $raw = file_get_contents('php://input');
-            $data = json_decode($raw, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                $data = $_POST;
-            }
+            return $data;
         }
 
-        if (empty($data['callback'])) {
-            echo json_encode($response, JSON_UNESCAPED_UNICODE);
-            exit;
-        }
+        $raw  = file_get_contents('php://input');
+        $json = json_decode($raw, true);
 
-        $token     = $_COOKIE['pphp_function_call_jwt'] ?? null;
-        $jwtSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? null;
-        if (!$token || !$jwtSecret) {
-            echo json_encode(['success' => false, 'error' => 'Missing session key or secret'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-        try {
-            $decoded = JWT::decode($token, new Key($jwtSecret, 'HS256'));
-        } catch (Throwable) {
-            echo json_encode(['success' => false, 'error' => 'Invalid session key'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-        $aesKey = base64_decode($decoded->k, true);
-        if ($aesKey === false || strlen($aesKey) !== 32) {
-            echo json_encode(['success' => false, 'error' => 'Bad key length'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-
-        $parts = explode(':', $data['callback'], 2);
-        if (count($parts) !== 2) {
-            echo json_encode(['success' => false, 'error' => 'Malformed callback payload'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-        [$iv_b64, $ct_b64] = $parts;
-        $iv = base64_decode($iv_b64, true);
-        $ct = base64_decode($ct_b64, true);
-        if ($iv === false || strlen($iv) !== 16 || $ct === false) {
-            echo json_encode(['success' => false, 'error' => 'Invalid callback payload'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-        $plain = openssl_decrypt($ct, 'AES-256-CBC', $aesKey, OPENSSL_RAW_DATA, $iv);
-        if ($plain === false) {
-            echo json_encode(['success' => false, 'error' => 'Decryption failed'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-
-        $callbackName = preg_replace('/[^a-zA-Z0-9_:\->]/', '', $plain);
-        if ($callbackName === '' || $callbackName[0] === '_') {
-            echo json_encode(['success' => false, 'error' => 'Invalid callback'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-
-        if (
-            isset($data['callback']) &&
-            $callbackName === PrismaPHPSettings::$localStoreKey
-        ) {
-            echo json_encode([
-                'success'  => true,
-                'response' => 'localStorage updated',
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-
-        $args = self::convertToArrayObject($data);
-        if (strpos($callbackName, '->') !== false || strpos($callbackName, '::') !== false) {
-            $out = self::dispatchMethod($callbackName, $args);
-        } else {
-            $out = self::dispatchFunction($callbackName, $args);
-        }
-
-        if ($out !== null) {
-            echo json_encode($out, JSON_UNESCAPED_UNICODE);
-        }
-        exit;
+        return (json_last_error() === JSON_ERROR_NONE) ? $json : $_POST;
     }
 
     private static function dispatchFunction(string $fn, mixed $args)
