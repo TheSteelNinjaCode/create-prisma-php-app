@@ -1033,13 +1033,6 @@ try {
             Bootstrap::createUpdateRequestData();
         }
 
-        // If there’s caching
-        if (isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
-            if ($_ENV['CACHE_ENABLED'] === 'true') {
-                CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL']));
-            }
-        }
-
         // For wire calls, re-include the files if needed
         if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
             if (isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
@@ -1059,6 +1052,13 @@ try {
             Bootstrap::wireCallback();
         }
 
+        // If there’s caching
+        if ((!Request::$isWire && !Bootstrap::$secondRequestC69CD) && isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
+            if ($_ENV['CACHE_ENABLED'] === 'true') {
+                CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL']));
+            }
+        }
+
         MainLayout::$children = MainLayout::$childLayoutChildren . Bootstrap::getLoadingsFiles();
 
         ob_start();
@@ -1069,7 +1069,7 @@ try {
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
 
         if (
-            http_response_code() === 200 && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true'
+            http_response_code() === 200 && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true' && (!Request::$isWire && !Bootstrap::$secondRequestC69CD)
         ) {
             CacheHandler::saveCache(Request::$decodedUri, MainLayout::$html);
         }

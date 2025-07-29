@@ -424,6 +424,8 @@ class TemplateCompiler
         $sectionId = $idx === 0 ? $baseId : "{$baseId}{$idx}";
 
         $html = $instance->render();
+        $html = self::preprocessFragmentSyntax($html);
+
         $fragDom = self::convertToXml($html);
         $root = $fragDom->documentElement;
         foreach ($root->childNodes as $c) {
@@ -443,6 +445,14 @@ class TemplateCompiler
         }
 
         return $htmlOut;
+    }
+
+    private static function preprocessFragmentSyntax(string $content): string
+    {
+        $content = preg_replace('/<>/', '<Fragment>', $content);
+        $content = preg_replace('/<\/>/', '</Fragment>', $content);
+
+        return $content;
     }
 
     private static function selectComponentMapping(string $componentName): array
