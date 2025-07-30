@@ -6,8 +6,6 @@ namespace Lib\PHPX;
 
 class TwMerge
 {
-    private const IMPORTANT_MODIFIER = '!';
-
     private static array $classGroups = [
         // Layout
         'aspect' => ['aspect-auto', 'aspect-square', 'aspect-video', '/^aspect-\[.+\]$/'],
@@ -92,13 +90,13 @@ class TwMerge
         'space-y' => ['/^-?space-y-(\d+(\.\d+)?|px|reverse|\[.+\])$/'],
 
         // Sizing
-        'w' => ['/^w-(\d+(\.\d+)?\/\d+|\d+(\.\d+)?|auto|px|full|screen|svw|lvw|dvw|min|max|fit|\[.+\])$/'],
-        'min-w' => ['/^min-w-(\d+|px|full|min|max|fit|\[.+\])$/'],
-        'max-w' => ['/^max-w-(\d+|px|full|min|max|fit|prose|screen-\w+|\[.+\])$/'],
-        'h' => ['/^h-(\d+(\.\d+)?\/\d+|\d+(\.\d+)?|auto|px|full|screen|svh|lvh|dvh|min|max|fit|\[.+\])$/'],
-        'min-h' => ['/^min-h-(\d+|px|full|screen|svh|lvh|dvh|min|max|fit|\[.+\])$/'],
-        'max-h' => ['/^max-h-(\d+|px|full|screen|svh|lvh|dvh|min|max|fit|\[.+\])$/'],
-        'size' => ['/^size-(\d+(\.\d+)?|auto|px|full|\[.+\])$/'],
+        'w' => ['/^w-(?!$).+$/'],
+        'min-w' => ['/^min-w-(?!$).+$/'],
+        'max-w' => ['/^max-w-(?!$).+$/'],
+        'h' => ['/^h-(?!$).+$/'],
+        'min-h' => ['/^min-h-(?!$).+$/'],
+        'max-h' => ['/^max-h-(?!$).+$/'],
+        'size' => ['/^size-(?!$).+$/'],
 
         // Typography
         'font-family' => ['/^font-(sans|serif|mono|\[.+\])$/'],
@@ -114,9 +112,9 @@ class TwMerge
         'list-style-position' => ['/^list-(inside|outside)$/'],
         'list-style-type' => ['/^list-(none|disc|decimal|\[.+\])$/'],
         'text-align' => ['/^text-(left|center|right|justify|start|end)$/'],
-        'text-color' => ['/^text-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'text-color' => ['/^text-(?!xs$|sm$|base$|lg$|xl$|[2-9]xl$).+$/'],
         'text-decoration' => ['underline', 'overline', 'line-through', 'no-underline'],
-        'text-decoration-color' => ['/^decoration-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'text-decoration-color' => ['/^decoration-(?!auto$|from-font$|\d+$|px$).+$/'],
         'text-decoration-style' => ['/^decoration-(solid|double|dotted|dashed|wavy)$/'],
         'text-decoration-thickness' => ['/^decoration-(auto|from-font|\d+|px|\[.+\])$/'],
         'text-underline-offset' => ['/^underline-offset-(auto|\d+|px|\[.+\])$/'],
@@ -132,15 +130,15 @@ class TwMerge
         // Backgrounds
         'bg-attachment' => ['/^bg-(fixed|local|scroll)$/'],
         'bg-clip' => ['/^bg-clip-(border|padding|content|text)$/'],
-        'bg-color' => ['/^bg-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'bg-color' => ['/^bg-(?!fixed$|local$|scroll$|clip-|origin-|no-repeat$|repeat|auto$|cover$|contain$|none$|gradient-to-).+$/'],
         'bg-origin' => ['/^bg-origin-(border|padding|content)$/'],
         'bg-position' => ['/^bg-(bottom|center|left|left-bottom|left-top|right|right-bottom|right-top|top|\[.+\])$/'],
         'bg-repeat' => ['/^bg-(no-repeat|repeat|repeat-x|repeat-y|repeat-round|repeat-space)$/'],
         'bg-size' => ['/^bg-(auto|cover|contain|\[.+\])$/'],
         'bg-image' => ['/^bg-(none|gradient-to-(t|tr|r|br|b|bl|l|tl)|\[.+\])$/'],
-        'gradient-from' => ['/^from-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
-        'gradient-via' => ['/^via-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
-        'gradient-to' => ['/^to-(inherit|current|transparent|black|white|slate-\d+|gray-\d+|zinc-\d+|neutral-\d+|stone-\d+|red-\d+|orange-\d+|amber-\d+|yellow-\d+|lime-\d+|green-\d+|emerald-\d+|teal-\d+|cyan-\d+|sky-\d+|blue-\d+|indigo-\d+|violet-\d+|purple-\d+|fuchsia-\d+|pink-\d+|rose-\d+|\[.+\])$/'],
+        'gradient-from' => ['/^from-.+$/'],
+        'gradient-via' => ['/^via-.+$/'],
+        'gradient-to' => ['/^to-.+$/'],
 
         // Borders
         'rounded' => ['/^rounded(-(\w+))?(-(\d+(\.\d+)?|px|full|\[.+\]))?$/'],
@@ -242,6 +240,8 @@ class TwMerge
         'mx' => ['mr', 'ml'],
         'my' => ['mt', 'mb'],
         'font-size' => ['line-height'],
+        'bg-color' => ['bg-color'],
+        'text-color' => ['text-color'],
         'fvn-normal' => ['fvn-ordinal', 'fvn-slashed-zero', 'fvn-figure', 'fvn-spacing', 'fvn-fraction'],
         'rounded' => ['rounded-s', 'rounded-e', 'rounded-t', 'rounded-r', 'rounded-b', 'rounded-l', 'rounded-ss', 'rounded-se', 'rounded-ee', 'rounded-es', 'rounded-tl', 'rounded-tr', 'rounded-br', 'rounded-bl'],
         'rounded-s' => ['rounded-ss', 'rounded-es'],
@@ -269,12 +269,7 @@ class TwMerge
         'scroll-py' => ['scroll-pt', 'scroll-pb'],
     ];
 
-    public static function merge(string ...$inputs): string
-    {
-        return self::twMerge(...$inputs);
-    }
-
-    public static function twMerge(string|array ...$inputs): string
+    public static function merge(string|array ...$inputs): string
     {
         $allClasses = [];
 
@@ -292,7 +287,6 @@ class TwMerge
 
     private static function mergeClassList(array $classes): string
     {
-        $classGroupsInConflict = [];
         $result = [];
 
         foreach ($classes as $originalClass) {
@@ -300,96 +294,53 @@ class TwMerge
                 continue;
             }
 
-            $modifiersAndClass = self::parseClass($originalClass);
-            $modifiers = $modifiersAndClass['modifiers'];
-            $baseClass = $modifiersAndClass['baseClass'];
-            $hasImportantModifier = $modifiersAndClass['hasImportantModifier'];
+            $classKey = self::getClassGroup($originalClass);
 
-            $classGroup = self::getClassGroup($baseClass);
-            if (!$classGroup) {
-                $result[] = $originalClass;
-                continue;
+            $conflictingKeys = self::getConflictingKeys($classKey);
+            foreach ($conflictingKeys as $key) {
+                unset($result[$key]);
             }
 
-            $variantModifier = implode(':', $modifiers);
-            $modifierId = $hasImportantModifier ? $variantModifier . self::IMPORTANT_MODIFIER : $variantModifier;
-            $classGroupId = $modifierId . ':' . $classGroup;
-
-            $conflictGroups = self::getConflictingClassGroups($classGroup);
-
-            foreach ($conflictGroups as $group) {
-                $groupId = $modifierId . ':' . $group;
-                if (isset($classGroupsInConflict[$groupId])) {
-                    unset($result[array_search($classGroupsInConflict[$groupId], $result)]);
-                }
-                unset($classGroupsInConflict[$groupId]);
-            }
-
-            $classGroupsInConflict[$classGroupId] = $originalClass;
-            $result[] = $originalClass;
+            $result[$classKey] = $originalClass;
         }
 
         return implode(' ', array_values($result));
     }
 
-    private static function parseClass(string $className): array
+    private static function getClassGroup(string $class): string
     {
-        $modifiers = [];
-        $hasImportantModifier = false;
-        $baseClass = $className;
+        $pattern = '/^((?:[^:]+:)*)([^:]+)$/';
+        if (preg_match($pattern, $class, $matches)) {
+            $prefixes = $matches[1];
+            $utilityClass = $matches[2];
 
-        if (str_starts_with($className, '!')) {
-            $hasImportantModifier = true;
-            $baseClass = substr($className, 1);
-        }
-
-        $parts = explode(':', $baseClass);
-        if (count($parts) > 1) {
-            $baseClass = array_pop($parts);
-            $modifiers = $parts;
-        }
-
-        return [
-            'modifiers' => $modifiers,
-            'baseClass' => $baseClass,
-            'hasImportantModifier' => $hasImportantModifier
-        ];
-    }
-
-    private static function getClassGroup(string $className): ?string
-    {
-        foreach (self::$classGroups as $groupName => $patterns) {
-            foreach ($patterns as $pattern) {
-                if (is_string($pattern) && str_starts_with($pattern, '/')) {
-                    if (preg_match($pattern, $className)) {
-                        return $groupName;
-                    }
-                } else {
-                    if ($pattern === $className) {
-                        return $groupName;
+            foreach (self::$classGroups as $groupKey => $patterns) {
+                foreach ($patterns as $pattern) {
+                    if (is_string($pattern) && str_starts_with($pattern, '/')) {
+                        if (preg_match($pattern, $utilityClass)) {
+                            return $prefixes . $groupKey;
+                        }
+                    } else {
+                        if ($pattern === $utilityClass) {
+                            return $prefixes . $groupKey;
+                        }
                     }
                 }
             }
+            return $prefixes . $utilityClass;
         }
-        return null;
+        return $class;
     }
 
-    private static function getConflictingClassGroups(string $classGroup): array
+    private static function getConflictingKeys(string $classKey): array
     {
-        $conflicts = self::$conflictingClassGroups[$classGroup] ?? [];
-        $allConflicts = [$classGroup];
-
-        foreach ($conflicts as $conflict) {
-            $allConflicts[] = $conflict;
-            $nestedConflicts = self::getConflictingClassGroups($conflict);
-            $allConflicts = array_merge($allConflicts, $nestedConflicts);
+        $baseClassKey = preg_replace("/^(?:[^:]+:)+/", "", $classKey);
+        if (isset(self::$conflictingClassGroups[$baseClassKey])) {
+            $prefix = preg_replace("/" . preg_quote($baseClassKey, "/") . '$/i', "", $classKey);
+            return array_map(function ($conflict) use ($prefix) {
+                return $prefix . $conflict;
+            }, self::$conflictingClassGroups[$baseClassKey]);
         }
-
-        return array_unique($allConflicts);
-    }
-
-    public static function mergeClasses(string|array ...$classes): string
-    {
-        return self::twMerge(...$classes);
+        return [$classKey];
     }
 }

@@ -68,7 +68,7 @@ class PHPX implements IPHPX
         unset($chunk);
 
         $merged = PrismaPHPSettings::$option->tailwindcss
-            ? TwMerge::mergeClasses(...$all)
+            ? TwMerge::merge(...$all)
             : $this->mergeClasses(...$all);
 
         return str_replace(array_keys($expr), array_values($expr), $merged);
