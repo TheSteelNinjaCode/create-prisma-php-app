@@ -436,6 +436,14 @@ class TemplateCompiler
         }
 
         $htmlOut = self::innerXml($fragDom);
+        $htmlOut = preg_replace_callback(
+            '/<([a-z0-9-]+)([^>]*)\/>/i',
+            fn($m) => in_array(strtolower($m[1]), self::$selfClosingTags, true)
+                ? $m[0]
+                : "<{$m[1]}{$m[2]}></{$m[1]}>",
+            $htmlOut
+        );
+
         if (
             str_contains($htmlOut, '{{') ||
             self::hasComponentTag($htmlOut) ||
