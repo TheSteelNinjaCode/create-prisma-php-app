@@ -287,12 +287,22 @@ final class Validator
      * Validate a JSON string.
      *
      * @param mixed $value The value to validate.
-     * @return bool True if valid JSON, false otherwise.
+     * @return string The JSON string if valid, or throws an exception if invalid.
      */
-    public static function json($value): bool
+    public static function json(mixed $value): string
     {
-        json_decode($value);
-        return json_last_error() === JSON_ERROR_NONE;
+        if (is_string($value)) {
+            json_decode($value);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new InvalidArgumentException('Invalid JSON string');
+            }
+            return $value;
+        }
+
+        return json_encode(
+            $value,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
     }
 
     /**
