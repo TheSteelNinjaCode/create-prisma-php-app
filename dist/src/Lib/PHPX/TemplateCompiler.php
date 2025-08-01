@@ -108,12 +108,14 @@ class TemplateCompiler
         );
 
         if (!isset($_SERVER['HTTP_X_PPHP_NAVIGATION'])) {
-            $htmlContent = preg_replace(
-                '/<body([^>]*)>/i',
-                '<body$1 hidden>',
-                $htmlContent,
-                1
-            );
+            if (!PrismaPHPSettings::$option->backendOnly) {
+                $htmlContent = preg_replace(
+                    '/<body([^>]*)>/i',
+                    '<body$1 hidden>',
+                    $htmlContent,
+                    1
+                );
+            }
         }
 
         $bodyClosePattern = '/(<\/body\s*>)/i';
