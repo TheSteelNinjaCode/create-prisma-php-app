@@ -284,17 +284,21 @@ final class Validator
     // Other Validation
 
     /**
-     * Validate a JSON string.
+     * Validate a JSON string or convert an array to a JSON string.
      *
-     * @param mixed $value The value to validate.
-     * @return string The JSON string if valid, or throws an exception if invalid.
+     * This function checks if the input is a valid JSON string. If it is, it returns the string.
+     * If the input is an array, it converts it to a JSON string with specific options.
+     * If the input is invalid, it returns an error message.
+     *
+     * @param mixed $value The value to validate or convert.
+     * @return string The valid JSON string or an error message if invalid.
      */
     public static function json(mixed $value): string
     {
         if (is_string($value)) {
             json_decode($value);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new InvalidArgumentException('Invalid JSON string');
+                return json_last_error_msg();
             }
             return $value;
         }
