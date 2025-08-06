@@ -118,9 +118,7 @@ class PHPX implements IPHPX
             array_flip(array_merge($reserved, $exclude))
         );
 
-        foreach ($params as $k => $v) {
-            $props[$k] = $v;
-        }
+        $props = array_merge($params, $props);
 
         $pairs = array_map(
             static fn($k, $v) => sprintf(
