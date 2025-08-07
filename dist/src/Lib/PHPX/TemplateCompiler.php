@@ -413,19 +413,24 @@ class TemplateCompiler
         $mapping  = self::selectComponentMapping($componentName);
         $instance = self::initializeComponentInstance($mapping, $incomingProps);
 
-        $childHtml = '';
-        foreach ($node->childNodes as $c) {
-            $childHtml .= self::processNode($c);
-        }
-
-        $instance->children = trim($childHtml);
-
         $baseId = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
         $idx = self::$componentInstanceCounts[$baseId] ?? 0;
         self::$componentInstanceCounts[$baseId] = $idx + 1;
         $sectionId = $idx === 0 ? $baseId : "{$baseId}{$idx}";
 
-        PHPX::setRenderingContext(self::$sectionStack, $sectionId);
+        $originalStack = self::$sectionStack;
+        self::$sectionStack[] = $sectionId;
+
+        $childHtml = '';
+        foreach ($node->childNodes as $c) {
+            $childHtml .= self::processNode($c);
+        }
+
+        self::$sectionStack = $originalStack;
+
+        $instance->children = trim($childHtml);
+
+        PHPX::setRenderingContext($originalStack, $sectionId);
 
         $html = $instance->render();
         $html = self::preprocessFragmentSyntax($html);

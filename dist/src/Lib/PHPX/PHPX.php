@@ -66,15 +66,13 @@ class PHPX implements IPHPX
      */
     protected function getParentComponent(): ?string
     {
-        // Use the same logic as getComponentHierarchy to get full hierarchy
         $fullHierarchy = $this->getComponentHierarchy();
 
-        // Return the parent component (second to last in full hierarchy)
         if (count($fullHierarchy) >= 2) {
             return $fullHierarchy[count($fullHierarchy) - 2];
         }
 
-        return null; // No parent
+        return null;
     }
 
     /**
@@ -97,7 +95,6 @@ class PHPX implements IPHPX
     {
         $hierarchy = self::$currentHierarchy ?? ['app'];
 
-        // Ensure current component is included
         if (self::$currentComponentId && !in_array(self::$currentComponentId, $hierarchy)) {
             $hierarchy[] = self::$currentComponentId;
         }
