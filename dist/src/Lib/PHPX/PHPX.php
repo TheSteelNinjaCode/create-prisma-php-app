@@ -27,14 +27,95 @@ class PHPX implements IPHPX
     protected array $attributesArray = [];
 
     /**
+     * @var array|null Component hierarchy set during rendering
+     */
+    protected static ?array $currentHierarchy = null;
+
+    /**
+     * @var string|null Current component ID
+     */
+    protected static ?string $currentComponentId = null;
+
+    /**
      * Constructor to initialize the component with the given properties.
-     * 
+     *
      * @param array<string, mixed> $props Optional properties to customize the component.
      */
     public function __construct(array $props = [])
     {
         $this->props = $props;
         $this->children = $props['children'] ?? '';
+    }
+
+    /**
+     * Set the component hierarchy and current component ID (called by TemplateCompiler during rendering)
+     *
+     * @param array $hierarchy The component hierarchy
+     * @param string $currentId The current component ID
+     */
+    public static function setRenderingContext(array $hierarchy, string $currentId): void
+    {
+        self::$currentHierarchy = $hierarchy;
+        self::$currentComponentId = $currentId;
+    }
+
+    /**
+     * Get the parent component ID from the current hierarchy.
+     *
+     * @return string|null The parent component ID, or null if no parent exists
+     */
+    protected function getParentComponent(): ?string
+    {
+        // Use the same logic as getComponentHierarchy to get full hierarchy
+        $fullHierarchy = $this->getComponentHierarchy();
+
+        // Return the parent component (second to last in full hierarchy)
+        if (count($fullHierarchy) >= 2) {
+            return $fullHierarchy[count($fullHierarchy) - 2];
+        }
+
+        return null; // No parent
+    }
+
+    /**
+     * Get the current component ID.
+     *
+     * @return string|null The current component ID, or null if not in component context
+     */
+    protected function getCurrentComponent(): ?string
+    {
+        return self::$currentComponentId;
+    }
+
+    /**
+     * Get the full component hierarchy as an array.
+     * Useful for building complete hierarchy paths for JavaScript.
+     *
+     * @return array Array of component IDs from root to current
+     */
+    protected function getComponentHierarchy(): array
+    {
+        $hierarchy = self::$currentHierarchy ?? ['app'];
+
+        // Ensure current component is included
+        if (self::$currentComponentId && !in_array(self::$currentComponentId, $hierarchy)) {
+            $hierarchy[] = self::$currentComponentId;
+        }
+
+        return $hierarchy;
+    }
+
+    /**
+     * Generate JavaScript code to set the correct component hierarchy for dispatchEvent.
+     *
+     * @return string JavaScript code to set the hierarchy
+     */
+    protected function getHierarchyScript(): string
+    {
+        $hierarchy = $this->getComponentHierarchy();
+        $hierarchyJson = json_encode($hierarchy);
+
+        return "pphp._currentProcessingHierarchy = {$hierarchyJson};";
     }
 
     /**

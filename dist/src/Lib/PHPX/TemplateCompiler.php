@@ -425,6 +425,8 @@ class TemplateCompiler
         self::$componentInstanceCounts[$baseId] = $idx + 1;
         $sectionId = $idx === 0 ? $baseId : "{$baseId}{$idx}";
 
+        PHPX::setRenderingContext(self::$sectionStack, $sectionId);
+
         $html = $instance->render();
         $html = self::preprocessFragmentSyntax($html);
 
