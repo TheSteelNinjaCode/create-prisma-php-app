@@ -411,7 +411,6 @@ class TemplateCompiler
         array $incomingProps
     ): string {
         $mapping  = self::selectComponentMapping($componentName);
-        $instance = self::initializeComponentInstance($mapping, $incomingProps);
 
         $baseId = 's' . base_convert(sprintf('%u', crc32($mapping['className'])), 10, 36);
         $idx = self::$componentInstanceCounts[$baseId] ?? 0;
@@ -420,6 +419,10 @@ class TemplateCompiler
 
         $originalStack = self::$sectionStack;
         self::$sectionStack[] = $sectionId;
+
+        PHPX::setRenderingContext($originalStack, $sectionId);
+
+        $instance = self::initializeComponentInstance($mapping, $incomingProps);
 
         $childHtml = '';
         foreach ($node->childNodes as $c) {

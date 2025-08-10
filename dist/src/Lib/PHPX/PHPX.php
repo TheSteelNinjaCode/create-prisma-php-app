@@ -48,6 +48,73 @@ class PHPX implements IPHPX
     }
 
     /**
+     * Convert a property name to a JavaScript variable path.
+     *
+     * This method generates a JavaScript variable path for the given property name,
+     * based on the current component hierarchy. It is used to access properties in
+     * the JavaScript context of the component.
+     *
+     * @param string $name The property name to convert.
+     * @return string The JavaScript variable path for the property.
+     */
+    protected function propsAsVar(string $name): string
+    {
+        if (empty($name)) {
+            return '';
+        }
+
+        $hierarchy = $this->getComponentHierarchy();
+
+        if (count($hierarchy) > 1 && end($hierarchy) === self::$currentComponentId) {
+            array_pop($hierarchy);
+        }
+
+        return "pphp.props." . implode('.', $hierarchy) . ".{$name}";
+    }
+
+    /**
+     * Emit a client-side dispatch call.
+     *
+     * @param non-empty-string|null $name  Reactive key (e.g. "myVar", "voucher.total", or "app.s9ggniz.myVar").
+     * @param mixed                 $value Raw JS inserted verbatim (variable, expression, or pre-JSON-encoded value).
+     * @param array{
+     *   scope?: 'current'|'parent'|'root'|string[]
+     * }                              $options Dispatch options (defaults to ['scope' => 'current']).
+     *
+     * @return string JavaScript snippet like: pphp.dispatchEvent("myVar", 123, {"scope":"current"});
+     */
+    protected function dispatchEvent(?string $name, $value, array $options = []): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return '';
+        }
+
+        // normalize options
+        $opts = $options;
+        if (!array_key_exists('scope', $opts)) {
+            $opts['scope'] = 'current';
+        } else {
+            if (is_string($opts['scope'])) {
+                $allowed = ['current', 'parent', 'root'];
+                if (!in_array($opts['scope'], $allowed, true)) {
+                    $opts['scope'] = 'current';
+                }
+            } elseif (is_array($opts['scope'])) {
+                $opts['scope'] = array_values(array_map('strval', $opts['scope']));
+            } else {
+                $opts['scope'] = 'current';
+            }
+        }
+
+        // safely encode name/options; value is inserted verbatim
+        $jsName = json_encode($name, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $jsOpts = json_encode($opts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return "pphp.dispatchEvent({$jsName}, {$value}, {$jsOpts});";
+    }
+
+    /**
      * Set the component hierarchy and current component ID (called by TemplateCompiler during rendering)
      *
      * @param array $hierarchy The component hierarchy
@@ -76,16 +143,6 @@ class PHPX implements IPHPX
     }
 
     /**
-     * Get the current component ID.
-     *
-     * @return string|null The current component ID, or null if not in component context
-     */
-    protected function getCurrentComponent(): ?string
-    {
-        return self::$currentComponentId;
-    }
-
-    /**
      * Get the full component hierarchy as an array.
      * Useful for building complete hierarchy paths for JavaScript.
      *
@@ -93,26 +150,7 @@ class PHPX implements IPHPX
      */
     protected function getComponentHierarchy(): array
     {
-        $hierarchy = self::$currentHierarchy ?? ['app'];
-
-        if (self::$currentComponentId && !in_array(self::$currentComponentId, $hierarchy)) {
-            $hierarchy[] = self::$currentComponentId;
-        }
-
-        return $hierarchy;
-    }
-
-    /**
-     * Generate JavaScript code to set the correct component hierarchy for dispatchEvent.
-     *
-     * @return string JavaScript code to set the hierarchy
-     */
-    protected function getHierarchyScript(): string
-    {
-        $hierarchy = $this->getComponentHierarchy();
-        $hierarchyJson = json_encode($hierarchy);
-
-        return "pphp._currentProcessingHierarchy = {$hierarchyJson};";
+        return self::$currentHierarchy ?? ['app'];
     }
 
     /**
