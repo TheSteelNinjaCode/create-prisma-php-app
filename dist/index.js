@@ -136,12 +136,12 @@ export async function installComposerDependencies(baseDir, dependencies) {
 const npmPinnedVersions = {
   "@tailwindcss/postcss": "^4.1.11",
   "@types/browser-sync": "^2.29.0",
-  "@types/node": "^24.0.13",
+  "@types/node": "^24.2.1",
   "@types/prompts": "^2.4.9",
   "browser-sync": "^3.0.4",
-  chalk: "^5.4.1",
+  chalk: "^5.5.0",
   "chokidar-cli": "^3.0.0",
-  cssnano: "^7.0.7",
+  cssnano: "^7.1.0",
   "http-proxy-middleware": "^3.0.5",
   "npm-run-all": "^4.1.5",
   "php-parser": "^3.2.5",
@@ -150,7 +150,7 @@ const npmPinnedVersions = {
   prompts: "^2.4.2",
   tailwindcss: "^4.1.11",
   tsx: "^4.20.3",
-  typescript: "^5.8.3",
+  typescript: "^5.9.2",
 };
 function npmPkg(name) {
   return npmPinnedVersions[name] ? `${name}@${npmPinnedVersions[name]}` : name;
@@ -577,7 +577,6 @@ async function main() {
       projectRootPath: projectPathModified,
       phpEnvironment: "XAMPP",
       phpRootPathExe: "C:\\xampp\\php\\php.exe",
-      phpGenerateClassPath: "src/Lib/Prisma/Classes",
       bsTarget: bsConfig.bsTarget,
       bsPathRewrite: bsConfig.bsPathRewrite,
       backendOnly: answer.backendOnly,
