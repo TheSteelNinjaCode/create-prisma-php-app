@@ -76,14 +76,14 @@ class PHPX implements IPHPX
      * Emit a client-side dispatch call.
      *
      * @param non-empty-string|null $name  Reactive key (e.g. "myVar", "voucher.total", or "app.s9ggniz.myVar").
-     * @param mixed                 $value Raw JS inserted verbatim (variable, expression, or pre-JSON-encoded value).
+     * @param string                $value Raw JS inserted verbatim (variable, expression, or pre-JSON-encoded value).
      * @param array{
      *   scope?: 'current'|'parent'|'root'|string[]
      * }                              $options Dispatch options (defaults to ['scope' => 'current']).
      *
      * @return string JavaScript snippet like: pphp.dispatchEvent("myVar", 123, {"scope":"current"});
      */
-    protected function dispatchEvent(?string $name, $value, array $options = []): string
+    protected function dispatchEvent(?string $name, string $value, array $options = []): string
     {
         $name = trim((string) $name);
         if ($name === '') {
