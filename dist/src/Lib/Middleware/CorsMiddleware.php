@@ -4,19 +4,6 @@ declare(strict_types=1);
 
 namespace Lib\Middleware;
 
-/**
- * CORS middleware driven by .env allow-list.
- *
- * Env keys (CSV or JSON array for origins):
- *   CORS_ALLOWED_ORIGINS=["http://localhost:5173","https://*.example.com"]
- *   CORS_ALLOW_CREDENTIALS=true
- *   CORS_ALLOWED_METHODS=GET,POST,PUT,PATCH,DELETE,OPTIONS
- *   CORS_ALLOWED_HEADERS=Content-Type,Authorization,X-Requested-With
- *   CORS_EXPOSE_HEADERS=
- *   CORS_MAX_AGE=86400
- *
- * Call as early as possible (after Dotenv::load, before session_start).
- */
 final class CorsMiddleware
 {
     /** Entry point */
