@@ -140,7 +140,6 @@ const npmPinnedVersions = {
   "@types/prompts": "^2.4.9",
   "browser-sync": "^3.0.4",
   chalk: "^5.5.0",
-  "chokidar-cli": "^3.0.0",
   cssnano: "^7.1.0",
   "http-proxy-middleware": "^3.0.5",
   "npm-run-all": "^4.1.5",
@@ -165,7 +164,7 @@ const composerPinnedVersions = {
   "brick/math": "^0.13.1",
   "cboden/ratchet": "^0.4.4",
   "tsnc/prisma-php": "^1.0.0",
-  "php-mcp/server": "3.3",
+  "php-mcp/server": "3.3.0",
 };
 function composerPkg(name) {
   return composerPinnedVersions[name]
@@ -344,9 +343,6 @@ async function main() {
     }
     if (answer.mcp) {
       composerDependencies.push("php-mcp/server");
-    }
-    if (answer.websocket || answer.mcp) {
-      npmDependencies.push(npmPkg("chokidar-cli"));
     }
     if (answer.prisma) {
       execSync("npm install -g prisma-client-php", { stdio: "inherit" });
@@ -541,11 +537,6 @@ async function main() {
         if (isComposerPackageInstalled("php-mcp/server")) {
           updateUninstallComposerDependencies.push("php-mcp/server");
         }
-      }
-      // Uninstall chokidar-cli only if NEITHER feature needs it
-      const needsChokidar = !!(updateAnswer.websocket || updateAnswer.mcp);
-      if (!needsChokidar && isNpmPackageInstalled("chokidar-cli")) {
-        updateUninstallNpmDependencies.push("chokidar-cli");
       }
       if (!updateAnswer.prisma) {
         const prismaPackages = [
