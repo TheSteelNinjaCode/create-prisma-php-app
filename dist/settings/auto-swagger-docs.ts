@@ -708,7 +708,7 @@ await generateSwaggerDocs(modelsToGenerate);
 await swaggerConfig();
 
 if (prismaSchemaConfigJson.generatePhpClasses) {
-  spawn("npx", ["php", "generate", "class"], {
+  spawn("npx", ["ppo", "generate"], {
     stdio: "inherit",
     shell: true,
   });
