@@ -1,4 +1,6 @@
 import { join } from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 import {
   createRestartableProcess,
   createSrcWatcher,
@@ -7,46 +9,50 @@ import {
   onExit,
 } from "./utils.js";
 
-// Config
-const phpPath = process.env.PHP_PATH ?? "php";
-const SRC_DIR = join(process.cwd(), "src");
-const serverScriptPath = join(
-  SRC_DIR,
-  "Lib",
-  "Websocket",
-  "websocket-server.php"
-);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-// Restartable WS server
-const ws = createRestartableProcess({
-  name: "WebSocket",
+const phpPath = process.env.PHP_PATH || "php";
+const serverScriptPath = join(
+  __dirname,
+  "..",
+  "src",
+  "Lib",
+  "MCP",
+  "mcp-server.php"
+);
+const watchRoot = join(__dirname, "..", "src");
+
+// Restartable MCP server
+const mcp = createRestartableProcess({
+  name: "MCP",
   cmd: phpPath,
   args: [serverScriptPath],
   windowsKillTree: true,
 });
 
-ws.start();
+mcp.start();
 
 // Debounced restarter
 const restarter = new DebouncedWorker(
   async () => {
-    await ws.restart("file change");
+    await mcp.restart("file change");
   },
-  400,
-  "ws-restart"
+  250,
+  "mcp-restart"
 );
 
-// Watch ./src recursively; restart on code/data file changes
-createSrcWatcher(SRC_DIR, {
+// Watch ./src for relevant changes
+createSrcWatcher(watchRoot, {
   exts: [".php", ".ts", ".js", ".json"],
   onEvent: (ev, _abs, rel) => restarter.schedule(`${ev}: ${rel}`),
   awaitWriteFinish: DEFAULT_AWF,
-  logPrefix: "WS watch",
+  logPrefix: "MCP watch",
   usePolling: true,
   interval: 1000,
 });
 
 // Graceful shutdown
 onExit(async () => {
-  await ws.stop();
+  await mcp.stop();
 });
