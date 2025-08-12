@@ -2,14 +2,22 @@
 
 declare(strict_types=1);
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/settings/paths.php';
 
 use Dotenv\Dotenv;
+use Lib\Middleware\CorsMiddleware;
+
+// Load environment variables
+Dotenv::createImmutable(DOCUMENT_PATH)->load();
+
+// CORS must run before sessions/any output
+CorsMiddleware::handle();
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 use Lib\Request;
 use Lib\PrismaPHPSettings;
 use Lib\StateManager;
@@ -56,9 +64,6 @@ final class Bootstrap extends RuntimeException
 
     public static function run(): void
     {
-        // Load environment variables
-        Dotenv::createImmutable(DOCUMENT_PATH)->load();
-
         // Set timezone
         date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
 
