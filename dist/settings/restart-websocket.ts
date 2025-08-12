@@ -1,53 +1,52 @@
-import { spawn, ChildProcess } from "child_process";
 import { join } from "path";
-import chokidar from "chokidar";
-import { getFileMeta } from "./utils.js";
+import {
+  createRestartableProcess,
+  createSrcWatcher,
+  DebouncedWorker,
+  DEFAULT_AWF,
+  onExit,
+} from "./utils.js";
 
-const { __dirname } = getFileMeta();
-
-const phpPath = "php";
+// Config
+const phpPath = process.env.PHP_PATH ?? "php";
+const SRC_DIR = join(process.cwd(), "src");
 const serverScriptPath = join(
-  __dirname,
-  "..",
-  "src",
+  SRC_DIR,
   "Lib",
   "Websocket",
   "websocket-server.php"
 );
 
-let serverProcess: ChildProcess | null = null;
+// Restartable WS server
+const ws = createRestartableProcess({
+  name: "WebSocket",
+  cmd: phpPath,
+  args: [serverScriptPath],
+  windowsKillTree: true,
+});
 
-const restartServer = (): void => {
-  if (serverProcess) {
-    console.log("Stopping WebSocket server...");
-    serverProcess.kill("SIGINT");
-    serverProcess = null;
-  }
+ws.start();
 
-  console.log("Starting WebSocket server...");
-  serverProcess = spawn(phpPath, [serverScriptPath]);
+// Debounced restarter
+const restarter = new DebouncedWorker(
+  async () => {
+    await ws.restart("file change");
+  },
+  400,
+  "ws-restart"
+);
 
-  serverProcess.stdout?.on("data", (data: Buffer) => {
-    console.log(`WebSocket Server: ${data.toString()}`);
-  });
+// Watch ./src recursively; restart on code/data file changes
+createSrcWatcher(SRC_DIR, {
+  exts: [".php", ".ts", ".js", ".json"],
+  onEvent: (ev, _abs, rel) => restarter.schedule(`${ev}: ${rel}`),
+  awaitWriteFinish: DEFAULT_AWF,
+  logPrefix: "WS watch",
+  usePolling: true,
+  interval: 1000,
+});
 
-  serverProcess.stderr?.on("data", (data: Buffer) => {
-    console.error(`WebSocket Server Error: ${data.toString()}`);
-  });
-
-  serverProcess.on("close", (code: number) => {
-    console.log(`WebSocket server exited with code ${code}`);
-  });
-};
-
-// Initial start
-restartServer();
-
-// Watch for changes
-chokidar
-  .watch(join(__dirname, "..", "src", "Websocket", "**", "*"))
-  .on("change", (path: string) => {
-    const fileChanged = path.split("\\").pop();
-    console.log(`File changed: src/Lib/Websocket/${fileChanged}`);
-    restartServer();
-  });
+// Graceful shutdown
+onExit(async () => {
+  await ws.stop();
+});
