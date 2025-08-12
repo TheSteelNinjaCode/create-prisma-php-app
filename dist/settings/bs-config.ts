@@ -44,9 +44,6 @@ const pipeline = new DebouncedWorker(
       }
       await checkComponentImports(file, fileImports);
     }
-
-    // Reload after tasks complete
-    bs.reload();
   },
   350,
   "bs-pipeline"
