@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import{execSync,spawnSync}from"child_process";import fs from"fs";import{fileURLToPath}from"url";import path from"path";import chalk from"chalk";import prompts from"prompts";import https from"https";import{randomBytes}from"crypto";const __filename=fileURLToPath(import.meta.url),__dirname=path.dirname(__filename);let updateAnswer=null;const nonBackendFiles=["favicon.ico","\\src\\app\\index.php","metadata.php","not-found.php","error.php"],dockerFiles=[".dockerignore","docker-compose.yml","Dockerfile","apache.conf"];function bsConfigUrls(e){const s=e.indexOf("\\htdocs\\");if(-1===s)return{bsTarget:"",bsPathRewrite:{}};const t=e.substring(0,s+"\\htdocs\\".length).replace(/\\/g,"\\\\"),n=e.replace(new RegExp(`^${t}`),"").replace(/\\/g,"/");let c=`http://localhost/${n}`;c=c.endsWith("/")?c.slice(0,-1):c;const o=c.replace(/(?<!:)(\/\/+)/g,"/"),i=n.replace(/\/\/+/g,"/");return{bsTarget:`${o}/`,bsPathRewrite:{"^/":`/${i.startsWith("/")?i.substring(1):i}/`}}}async function updatePackageJson(e,s){const t=path.join(e,"package.json");if(checkExcludeFiles(t))return;const n=JSON.parse(fs.readFileSync(t,"utf8"));n.scripts={...n.scripts,projectName:"tsx settings/project-name.ts"};let c=[];if(s.tailwindcss&&(n.scripts={...n.scripts,tailwind:"postcss src/app/css/tailwind.css -o src/app/css/styles.css --watch","tailwind:build":"postcss src/app/css/tailwind.css -o src/app/css/styles.css"},c.push("tailwind")),s.websocket&&(n.scripts={...n.scripts,websocket:"tsx settings/restart-websocket.ts"},c.push("websocket")),s.mcp&&(n.scripts={...n.scripts,mcp:"tsx settings/restart-mcp.ts"},c.push("mcp")),s.docker&&(n.scripts={...n.scripts,docker:"docker-compose up"},c.push("docker")),s.swaggerDocs){const e=s.prisma?"tsx settings/auto-swagger-docs.ts":"tsx settings/swagger-config.ts";n.scripts={...n.scripts,"create-swagger-docs":e}}let o={...n.scripts};o.browserSync="tsx settings/bs-config.ts",o["browserSync:build"]="tsx settings/build.ts",o.dev=`npm-run-all projectName -p browserSync ${c.join(" ")}`,o.build=`npm-run-all${s.tailwindcss?" tailwind:build":""} browserSync:build`,n.scripts=o,n.type="module",fs.writeFileSync(t,JSON.stringify(n,null,2))}async function updateComposerJson(e){checkExcludeFiles(path.join(e,"composer.json"))}async function updateIndexJsForWebSocket(e,s){if(!s.websocket)return;const t=path.join(e,"src","app","js","index.js");if(checkExcludeFiles(t))return;let n=fs.readFileSync(t,"utf8");n+='\n// WebSocket initialization\nvar ws = new WebSocket("ws://localhost:8080");\n',fs.writeFileSync(t,n,"utf8")}function generateAuthSecret(){return randomBytes(33).toString("base64")}function generateHexEncodedKey(e=16){return randomBytes(e).toString("hex")}function copyRecursiveSync(e,s,t){const n=fs.existsSync(e),c=n&&fs.statSync(e);if(n&&c&&c.isDirectory()){const n=s.toLowerCase();if(!t.websocket&&n.includes("src\\lib\\websocket"))return;if(!t.mcp&&n.includes("src\\lib\\mcp"))return;if(t.backendOnly&&n.includes("src\\app\\js")||t.backendOnly&&n.includes("src\\app\\css")||t.backendOnly&&n.includes("src\\app\\assets"))return;if(!t.swaggerDocs&&n.includes("src\\app\\swagger-docs"))return;const c=s.replace(/\\/g,"/");if(updateAnswer?.excludeFilePath?.includes(c))return;fs.existsSync(s)||fs.mkdirSync(s,{recursive:!0}),fs.readdirSync(e).forEach((n=>{copyRecursiveSync(path.join(e,n),path.join(s,n),t)}))}else{if(checkExcludeFiles(s))return;if(!t.tailwindcss&&(s.includes("tailwind.css")||s.includes("styles.css")))return;if(!t.websocket&&s.includes("restart-websocket.ts"))return;if(!t.mcp&&s.includes("restart-mcp.ts"))return;if(!t.docker&&dockerFiles.some((e=>s.includes(e))))return;if(t.backendOnly&&nonBackendFiles.some((e=>s.includes(e))))return;if(!t.backendOnly&&s.includes("route.php"))return;if(t.backendOnly&&!t.swaggerDocs&&s.includes("layout.php"))return;if(!t.swaggerDocs&&s.includes("swagger-config.ts"))return;if(t.tailwindcss&&s.includes("index.css"))return;if((!t.swaggerDocs||!t.prisma)&&(s.includes("auto-swagger-docs.ts")||s.includes("prisma-schema-config.json")))return;fs.copyFileSync(e,s,0)}}async function executeCopy(e,s,t){s.forEach((({src:s,dest:n})=>{copyRecursiveSync(path.join(__dirname,s),path.join(e,n),t)}))}function modifyPostcssConfig(e){const s=path.join(e,"postcss.config.js");if(checkExcludeFiles(s))return;fs.writeFileSync(s,'export default {\n  plugins: {\n    "@tailwindcss/postcss": {},\n    cssnano: {},\n  },\n};',{flag:"w"})}function modifyLayoutPHP(e,s){const t=path.join(e,"src","app","layout.php");if(!checkExcludeFiles(t))try{let e=fs.readFileSync(t,"utf8"),n="";s.backendOnly||(s.tailwindcss||(n='\n    <link href="<?= Request::baseUrl; ?>/css/index.css" rel="stylesheet" />'),n+='\n    <script src="<?= Request::baseUrl; ?>/js/morphdom-umd.min.js"><\/script>\n    <script src="<?= Request::baseUrl; ?>/js/json5.min.js"><\/script>\n    <script src="<?= Request::baseUrl; ?>/js/index.js"><\/script>');let c="";s.backendOnly||(c=s.tailwindcss?`    <link href="<?= Request::baseUrl; ?>/css/styles.css" rel="stylesheet" /> ${n}`:n),e=e.replace("</head>",`${c}\n</head>`),fs.writeFileSync(t,e,{flag:"w"})}catch(e){}}async function createOrUpdateEnvFile(e,s){const t=path.join(e,".env");checkExcludeFiles(t)||fs.writeFileSync(t,s,{flag:"w"})}function checkExcludeFiles(e){return!!updateAnswer?.isUpdate&&(updateAnswer?.excludeFilePath?.includes(e.replace(/\\/g,"/"))??!1)}async function createDirectoryStructure(e,s){const t=[{src:"/bootstrap.php",dest:"/bootstrap.php"},{src:"/.htaccess",dest:"/.htaccess"},{src:"/tsconfig.json",dest:"/tsconfig.json"},{src:"/app-gitignore",dest:"/.gitignore"}];s.tailwindcss&&t.push({src:"/postcss.config.js",dest:"/postcss.config.js"});const n=[{src:"/settings",dest:"/settings"},{src:"/src",dest:"/src"}];s.docker&&n.push({src:"/.dockerignore",dest:"/.dockerignore"},{src:"/docker-compose.yml",dest:"/docker-compose.yml"},{src:"/Dockerfile",dest:"/Dockerfile"},{src:"/apache.conf",dest:"/apache.conf"}),t.forEach((({src:s,dest:t})=>{const n=path.join(__dirname,s),c=path.join(e,t);if(checkExcludeFiles(c))return;const o=fs.readFileSync(n,"utf8");fs.writeFileSync(c,o,{flag:"w"})})),await executeCopy(e,n,s),await updatePackageJson(e,s),await updateComposerJson(e),s.backendOnly||await updateIndexJsForWebSocket(e,s),s.tailwindcss&&modifyPostcssConfig(e),(s.tailwindcss||!s.backendOnly||s.swaggerDocs)&&modifyLayoutPHP(e,s);const c=generateAuthSecret(),o=generateHexEncodedKey(),i=`# Authentication secret key for JWT or session encryption.\nAUTH_SECRET="${c}"\n# Name of the authentication cookie.\nAUTH_COOKIE_NAME="${generateHexEncodedKey(8)}"\n\n# PHPMailer SMTP configuration (uncomment and set as needed)\n# SMTP_HOST="smtp.gmail.com"           # Your SMTP host\n# SMTP_USERNAME="john.doe@gmail.com"   # Your SMTP username\n# SMTP_PASSWORD="123456"               # Your SMTP password\n# SMTP_PORT="587"                      # 587 for TLS, 465 for SSL, or your SMTP port\n# SMTP_ENCRYPTION="ssl"                # ssl or tls\n# MAIL_FROM="john.doe@gmail.com"       # Sender email address\n# MAIL_FROM_NAME="John Doe"            # Sender name\n\n# Show errors in the browser (development only). Set to false in production.\nSHOW_ERRORS="true"\n\n# Application timezone (default: UTC)\nAPP_TIMEZONE="UTC"\n\n# Application environment (development or production)\nAPP_ENV="development"\n\n# Enable or disable application cache (default: false)\nCACHE_ENABLED="false"\n# Cache time-to-live in seconds (default: 600)\nCACHE_TTL="600"\n\n# Local storage key for browser storage (auto-generated if not set).\n# Spaces will be replaced with underscores and converted to lowercase.\nLOCALSTORE_KEY="${o}"\n\n# Secret key for encrypting function calls.\nFUNCTION_CALL_SECRET="${generateHexEncodedKey(32)}"\n\n# Single or multiple origins (CSV or JSON array)\nCORS_ALLOWED_ORIGINS=[]\n\n# If you need cookies/Authorization across origins, keep this true\nCORS_ALLOW_CREDENTIALS="true"\n\n# Optional tuning\nCORS_ALLOWED_METHODS="GET,POST,PUT,PATCH,DELETE,OPTIONS"\nCORS_ALLOWED_HEADERS="Content-Type,Authorization,X-Requested-With"\nCORS_EXPOSE_HEADERS=""\nCORS_MAX_AGE="86400"`;if(s.prisma){const s=`${'# Environment variables declared in this file are automatically made available to Prisma.\n# See the documentation for more detail: https://pris.ly/d/prisma-schema#accessing-environment-variables-from-the-schema\n\n# Prisma supports the native connection string format for PostgreSQL, MySQL, SQLite, SQL Server, MongoDB and CockroachDB.\n# See the documentation for all the connection string options: https://pris.ly/d/connection-strings\n\nDATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema=public"'}\n\n${i}`;await createOrUpdateEnvFile(e,s)}else await createOrUpdateEnvFile(e,i)}async function getAnswer(e={}){const s=[];e.projectName||s.push({type:"text",name:"projectName",message:"What is your project named?",initial:"my-app"}),e.backendOnly||updateAnswer?.isUpdate||s.push({type:"toggle",name:"backendOnly",message:`Would you like to create a ${chalk.blue("backend-only project")}?`,initial:!1,active:"Yes",inactive:"No"});const t=()=>{process.exit(0)},n=await prompts(s,{onCancel:t}),c=[];n.backendOnly??e.backendOnly??!1?(e.swaggerDocs||c.push({type:"toggle",name:"swaggerDocs",message:`Would you like to use ${chalk.blue("Swagger Docs")}?`,initial:!1,active:"Yes",inactive:"No"}),e.websocket||c.push({type:"toggle",name:"websocket",message:`Would you like to use ${chalk.blue("Websocket")}?`,initial:!1,active:"Yes",inactive:"No"}),e.mcp||c.push({type:"toggle",name:"mcp",message:`Would you like to use ${chalk.blue("MCP (Model Context Protocol)")}?`,initial:!1,active:"Yes",inactive:"No"}),e.prisma||c.push({type:"toggle",name:"prisma",message:`Would you like to use ${chalk.blue("Prisma PHP ORM")}?`,initial:!1,active:"Yes",inactive:"No"}),e.docker||c.push({type:"toggle",name:"docker",message:`Would you like to use ${chalk.blue("Docker")}?`,initial:!1,active:"Yes",inactive:"No"})):(e.swaggerDocs||c.push({type:"toggle",name:"swaggerDocs",message:`Would you like to use ${chalk.blue("Swagger Docs")}?`,initial:!1,active:"Yes",inactive:"No"}),e.tailwindcss||c.push({type:"toggle",name:"tailwindcss",message:`Would you like to use ${chalk.blue("Tailwind CSS")}?`,initial:!1,active:"Yes",inactive:"No"}),e.websocket||c.push({type:"toggle",name:"websocket",message:`Would you like to use ${chalk.blue("Websocket")}?`,initial:!1,active:"Yes",inactive:"No"}),e.mcp||c.push({type:"toggle",name:"mcp",message:`Would you like to use ${chalk.blue("MCP (Model Context Protocol)")}?`,initial:!1,active:"Yes",inactive:"No"}),e.prisma||c.push({type:"toggle",name:"prisma",message:`Would you like to use ${chalk.blue("Prisma PHP ORM")}?`,initial:!1,active:"Yes",inactive:"No"}),e.docker||c.push({type:"toggle",name:"docker",message:`Would you like to use ${chalk.blue("Docker")}?`,initial:!1,active:"Yes",inactive:"No"}));const o=await prompts(c,{onCancel:t});return{projectName:n.projectName?String(n.projectName).trim().replace(/ /g,"-"):e.projectName??"my-app",backendOnly:n.backendOnly??e.backendOnly??!1,swaggerDocs:o.swaggerDocs??e.swaggerDocs??!1,tailwindcss:o.tailwindcss??e.tailwindcss??!1,websocket:o.websocket??e.websocket??!1,mcp:o.mcp??e.mcp??!1,prisma:o.prisma??e.prisma??!1,docker:o.docker??e.docker??!1}}async function uninstallNpmDependencies(e,s,t=!1){s.forEach((e=>{}));const n=`npm uninstall ${t?"--save-dev":"--save"} ${s.join(" ")}`;execSync(n,{stdio:"inherit",cwd:e})}async function uninstallComposerDependencies(e,s){s.forEach((e=>{}));const t=`C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar remove ${s.join(" ")}`;execSync(t,{stdio:"inherit",cwd:e})}function fetchPackageVersion(e){return new Promise(((s,t)=>{https.get(`https://registry.npmjs.org/${e}`,(e=>{let n="";e.on("data",(e=>n+=e)),e.on("end",(()=>{try{const e=JSON.parse(n);s(e["dist-tags"].latest)}catch(e){t(new Error("Failed to parse JSON response"))}}))})).on("error",(e=>t(e)))}))}const readJsonFile=e=>{const s=fs.readFileSync(e,"utf8");return JSON.parse(s)};function compareVersions(e,s){const t=e.split(".").map(Number),n=s.split(".").map(Number);for(let e=0;e<t.length;e++){if(t[e]>n[e])return 1;if(t[e]<n[e])return-1}return 0}function getInstalledPackageVersion(e){try{const s=execSync(`npm list -g ${e} --depth=0`).toString().match(new RegExp(`${e}@(\\d+\\.\\d+\\.\\d+)`));return s?s[1]:null}catch(e){return null}}
+import{execSync,spawnSync}from"child_process";import fs from"fs";import{fileURLToPath}from"url";import path from"path";import chalk from"chalk";import prompts from"prompts";import https from"https";import{randomBytes}from"crypto";const __filename=fileURLToPath(import.meta.url),__dirname=path.dirname(__filename);let updateAnswer=null;const nonBackendFiles=["favicon.ico","\\src\\app\\index.php","metadata.php","not-found.php","error.php"],dockerFiles=[".dockerignore","docker-compose.yml","Dockerfile","apache.conf"],STARTER_KITS={basic:{id:"basic",name:"Basic PHP Application",description:"Simple PHP backend with minimal dependencies",features:{backendOnly:!0,tailwindcss:!1,websocket:!1,prisma:!1,docker:!1,swaggerDocs:!1,mcp:!1},requiredFiles:["bootstrap.php",".htaccess","src/app/layout.php","src/app/index.php"]},fullstack:{id:"fullstack",name:"Full-Stack Application",description:"Complete web application with frontend and backend",features:{backendOnly:!1,tailwindcss:!0,websocket:!1,prisma:!0,docker:!1,swaggerDocs:!0,mcp:!1},requiredFiles:["bootstrap.php",".htaccess","postcss.config.js","src/app/layout.php","src/app/index.php","src/app/js/index.js","src/app/css/tailwind.css"]},api:{id:"api",name:"REST API",description:"Backend API with database and documentation",features:{backendOnly:!0,tailwindcss:!1,websocket:!1,prisma:!0,docker:!0,swaggerDocs:!0,mcp:!1},requiredFiles:["bootstrap.php",".htaccess","docker-compose.yml","Dockerfile"]},realtime:{id:"realtime",name:"Real-time Application",description:"Application with WebSocket support and MCP",features:{backendOnly:!1,tailwindcss:!0,websocket:!0,prisma:!0,docker:!1,swaggerDocs:!0,mcp:!0},requiredFiles:["bootstrap.php",".htaccess","postcss.config.js","src/lib/websocket","src/lib/mcp"]},ecommerce:{id:"ecommerce",name:"E-commerce Starter",description:"Full e-commerce application with cart, payments, and admin",features:{backendOnly:!1,tailwindcss:!0,websocket:!1,prisma:!0,docker:!0,swaggerDocs:!0,mcp:!1},requiredFiles:[],source:{type:"git",url:"https://github.com/your-org/prisma-php-ecommerce-starter",branch:"main"}},blog:{id:"blog",name:"Blog CMS",description:"Blog content management system",features:{backendOnly:!1,tailwindcss:!0,websocket:!1,prisma:!0,docker:!1,swaggerDocs:!1,mcp:!1},requiredFiles:[],source:{type:"git",url:"https://github.com/your-org/prisma-php-blog-starter"}}};function bsConfigUrls(e){const s=e.indexOf("\\htdocs\\");if(-1===s)return{bsTarget:"",bsPathRewrite:{}};const t=e.substring(0,s+"\\htdocs\\".length).replace(/\\/g,"\\\\"),c=e.replace(new RegExp(`^${t}`),"").replace(/\\/g,"/");let n=`http://localhost/${c}`;n=n.endsWith("/")?n.slice(0,-1):n;const i=n.replace(/(?<!:)(\/\/+)/g,"/"),o=c.replace(/\/\/+/g,"/");return{bsTarget:`${i}/`,bsPathRewrite:{"^/":`/${o.startsWith("/")?o.substring(1):o}/`}}}async function updatePackageJson(e,s){const t=path.join(e,"package.json");if(checkExcludeFiles(t))return;const c=JSON.parse(fs.readFileSync(t,"utf8"));c.scripts={...c.scripts,projectName:"tsx settings/project-name.ts"};let n=[];if(s.tailwindcss&&(c.scripts={...c.scripts,tailwind:"postcss src/app/css/tailwind.css -o src/app/css/styles.css --watch","tailwind:build":"postcss src/app/css/tailwind.css -o src/app/css/styles.css"},n.push("tailwind")),s.websocket&&(c.scripts={...c.scripts,websocket:"tsx settings/restart-websocket.ts"},n.push("websocket")),s.mcp&&(c.scripts={...c.scripts,mcp:"tsx settings/restart-mcp.ts"},n.push("mcp")),s.docker&&(c.scripts={...c.scripts,docker:"docker-compose up"},n.push("docker")),s.swaggerDocs){const e=s.prisma?"tsx settings/auto-swagger-docs.ts":"tsx settings/swagger-config.ts";c.scripts={...c.scripts,"create-swagger-docs":e}}let i={...c.scripts};i.browserSync="tsx settings/bs-config.ts",i["browserSync:build"]="tsx settings/build.ts",i.dev=`npm-run-all projectName -p browserSync ${n.join(" ")}`,i.build=`npm-run-all${s.tailwindcss?" tailwind:build":""} browserSync:build`,c.scripts=i,c.type="module",fs.writeFileSync(t,JSON.stringify(c,null,2))}async function updateComposerJson(e){checkExcludeFiles(path.join(e,"composer.json"))}async function updateIndexJsForWebSocket(e,s){if(!s.websocket)return;const t=path.join(e,"src","app","js","index.js");if(checkExcludeFiles(t))return;let c=fs.readFileSync(t,"utf8");c+='\n// WebSocket initialization\nvar ws = new WebSocket("ws://localhost:8080");\n',fs.writeFileSync(t,c,"utf8")}function generateAuthSecret(){return randomBytes(33).toString("base64")}function generateHexEncodedKey(e=16){return randomBytes(e).toString("hex")}function copyRecursiveSync(e,s,t){const c=fs.existsSync(e),n=c&&fs.statSync(e);if(c&&n&&n.isDirectory()){const c=s.toLowerCase();if(!t.websocket&&c.includes("src\\lib\\websocket"))return;if(!t.mcp&&c.includes("src\\lib\\mcp"))return;if(t.backendOnly&&c.includes("src\\app\\js")||t.backendOnly&&c.includes("src\\app\\css")||t.backendOnly&&c.includes("src\\app\\assets"))return;if(!t.swaggerDocs&&c.includes("src\\app\\swagger-docs"))return;const n=s.replace(/\\/g,"/");if(updateAnswer?.excludeFilePath?.includes(n))return;fs.existsSync(s)||fs.mkdirSync(s,{recursive:!0}),fs.readdirSync(e).forEach((c=>{copyRecursiveSync(path.join(e,c),path.join(s,c),t)}))}else{if(checkExcludeFiles(s))return;if(!t.tailwindcss&&(s.includes("tailwind.css")||s.includes("styles.css")))return;if(!t.websocket&&s.includes("restart-websocket.ts"))return;if(!t.mcp&&s.includes("restart-mcp.ts"))return;if(!t.docker&&dockerFiles.some((e=>s.includes(e))))return;if(t.backendOnly&&nonBackendFiles.some((e=>s.includes(e))))return;if(!t.backendOnly&&s.includes("route.php"))return;if(t.backendOnly&&!t.swaggerDocs&&s.includes("layout.php"))return;if(!t.swaggerDocs&&s.includes("swagger-config.ts"))return;if(t.tailwindcss&&s.includes("index.css"))return;if((!t.swaggerDocs||!t.prisma)&&(s.includes("auto-swagger-docs.ts")||s.includes("prisma-schema-config.json")))return;fs.copyFileSync(e,s,0)}}async function executeCopy(e,s,t){s.forEach((({src:s,dest:c})=>{copyRecursiveSync(path.join(__dirname,s),path.join(e,c),t)}))}function modifyPostcssConfig(e){const s=path.join(e,"postcss.config.js");if(checkExcludeFiles(s))return;fs.writeFileSync(s,'export default {\n  plugins: {\n    "@tailwindcss/postcss": {},\n    cssnano: {},\n  },\n};',{flag:"w"})}function modifyLayoutPHP(e,s){const t=path.join(e,"src","app","layout.php");if(!checkExcludeFiles(t))try{let e=fs.readFileSync(t,"utf8"),c="";s.backendOnly||(s.tailwindcss||(c='\n    <link href="<?= Request::baseUrl; ?>/css/index.css" rel="stylesheet" />'),c+='\n    <script src="<?= Request::baseUrl; ?>/js/morphdom-umd.min.js"><\/script>\n    <script src="<?= Request::baseUrl; ?>/js/json5.min.js"><\/script>\n    <script src="<?= Request::baseUrl; ?>/js/index.js"><\/script>');let n="";s.backendOnly||(n=s.tailwindcss?`    <link href="<?= Request::baseUrl; ?>/css/styles.css" rel="stylesheet" /> ${c}`:c),e=e.replace("</head>",`${n}\n</head>`),fs.writeFileSync(t,e,{flag:"w"})}catch(e){}}async function createOrUpdateEnvFile(e,s){const t=path.join(e,".env");checkExcludeFiles(t)||fs.writeFileSync(t,s,{flag:"w"})}function checkExcludeFiles(e){return!!updateAnswer?.isUpdate&&(updateAnswer?.excludeFilePath?.includes(e.replace(/\\/g,"/"))??!1)}async function createDirectoryStructure(e,s){const t=[{src:"/bootstrap.php",dest:"/bootstrap.php"},{src:"/.htaccess",dest:"/.htaccess"},{src:"/tsconfig.json",dest:"/tsconfig.json"},{src:"/app-gitignore",dest:"/.gitignore"}];s.tailwindcss&&t.push({src:"/postcss.config.js",dest:"/postcss.config.js"});const c=[{src:"/settings",dest:"/settings"},{src:"/src",dest:"/src"}];s.docker&&c.push({src:"/.dockerignore",dest:"/.dockerignore"},{src:"/docker-compose.yml",dest:"/docker-compose.yml"},{src:"/Dockerfile",dest:"/Dockerfile"},{src:"/apache.conf",dest:"/apache.conf"}),t.forEach((({src:s,dest:t})=>{const c=path.join(__dirname,s),n=path.join(e,t);if(checkExcludeFiles(n))return;const i=fs.readFileSync(c,"utf8");fs.writeFileSync(n,i,{flag:"w"})})),await executeCopy(e,c,s),await updatePackageJson(e,s),await updateComposerJson(e),s.backendOnly||await updateIndexJsForWebSocket(e,s),s.tailwindcss&&modifyPostcssConfig(e),(s.tailwindcss||!s.backendOnly||s.swaggerDocs)&&modifyLayoutPHP(e,s);const n=generateAuthSecret(),i=generateHexEncodedKey(),o=`# Authentication secret key for JWT or session encryption.\nAUTH_SECRET="${n}"\n# Name of the authentication cookie.\nAUTH_COOKIE_NAME="${generateHexEncodedKey(8)}"\n\n# PHPMailer SMTP configuration (uncomment and set as needed)\n# SMTP_HOST="smtp.gmail.com"           # Your SMTP host\n# SMTP_USERNAME="john.doe@gmail.com"   # Your SMTP username\n# SMTP_PASSWORD="123456"               # Your SMTP password\n# SMTP_PORT="587"                      # 587 for TLS, 465 for SSL, or your SMTP port\n# SMTP_ENCRYPTION="ssl"                # ssl or tls\n# MAIL_FROM="john.doe@gmail.com"       # Sender email address\n# MAIL_FROM_NAME="John Doe"            # Sender name\n\n# Show errors in the browser (development only). Set to false in production.\nSHOW_ERRORS="true"\n\n# Application timezone (default: UTC)\nAPP_TIMEZONE="UTC"\n\n# Application environment (development or production)\nAPP_ENV="development"\n\n# Enable or disable application cache (default: false)\nCACHE_ENABLED="false"\n# Cache time-to-live in seconds (default: 600)\nCACHE_TTL="600"\n\n# Local storage key for browser storage (auto-generated if not set).\n# Spaces will be replaced with underscores and converted to lowercase.\nLOCALSTORE_KEY="${i}"\n\n# Secret key for encrypting function calls.\nFUNCTION_CALL_SECRET="${generateHexEncodedKey(32)}"\n\n# Single or multiple origins (CSV or JSON array)\nCORS_ALLOWED_ORIGINS=[]\n\n# If you need cookies/Authorization across origins, keep this true\nCORS_ALLOW_CREDENTIALS="true"\n\n# Optional tuning\nCORS_ALLOWED_METHODS="GET,POST,PUT,PATCH,DELETE,OPTIONS"\nCORS_ALLOWED_HEADERS="Content-Type,Authorization,X-Requested-With"\nCORS_EXPOSE_HEADERS=""\nCORS_MAX_AGE="86400"`;if(s.prisma){const s=`${'# Environment variables declared in this file are automatically made available to Prisma.\n# See the documentation for more detail: https://pris.ly/d/prisma-schema#accessing-environment-variables-from-the-schema\n\n# Prisma supports the native connection string format for PostgreSQL, MySQL, SQLite, SQL Server, MongoDB and CockroachDB.\n# See the documentation for all the connection string options: https://pris.ly/d/connection-strings\n\nDATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema=public"'}\n\n${o}`;await createOrUpdateEnvFile(e,s)}else await createOrUpdateEnvFile(e,o)}async function getAnswer(e={}){if(e.starterKit){const s=e.starterKit;let t=null;if(STARTER_KITS[s]&&(t=STARTER_KITS[s]),t){const c={projectName:e.projectName??"my-app",starterKit:s,starterKitSource:e.starterKitSource,backendOnly:t.features.backendOnly??!1,tailwindcss:t.features.tailwindcss??!1,websocket:t.features.websocket??!1,prisma:t.features.prisma??!1,docker:t.features.docker??!1,swaggerDocs:t.features.swaggerDocs??!1,mcp:t.features.mcp??!1},n=process.argv.slice(2);return n.includes("--backend-only")&&(c.backendOnly=!0),n.includes("--swagger-docs")&&(c.swaggerDocs=!0),n.includes("--tailwindcss")&&(c.tailwindcss=!0),n.includes("--websocket")&&(c.websocket=!0),n.includes("--mcp")&&(c.mcp=!0),n.includes("--prisma")&&(c.prisma=!0),n.includes("--docker")&&(c.docker=!0),c}if(e.starterKitSource){const t={projectName:e.projectName??"my-app",starterKit:s,starterKitSource:e.starterKitSource,backendOnly:!1,tailwindcss:!0,websocket:!1,prisma:!0,docker:!1,swaggerDocs:!0,mcp:!1},c=process.argv.slice(2);return c.includes("--backend-only")&&(t.backendOnly=!0),c.includes("--swagger-docs")&&(t.swaggerDocs=!0),c.includes("--tailwindcss")&&(t.tailwindcss=!0),c.includes("--websocket")&&(t.websocket=!0),c.includes("--mcp")&&(t.mcp=!0),c.includes("--prisma")&&(t.prisma=!0),c.includes("--docker")&&(t.docker=!0),t}}const s=[];e.projectName||s.push({type:"text",name:"projectName",message:"What is your project named?",initial:"my-app"}),e.backendOnly||updateAnswer?.isUpdate||s.push({type:"toggle",name:"backendOnly",message:`Would you like to create a ${chalk.blue("backend-only project")}?`,initial:!1,active:"Yes",inactive:"No"});const t=()=>{process.exit(0)},c=await prompts(s,{onCancel:t}),n=[];c.backendOnly??e.backendOnly??!1?(e.swaggerDocs||n.push({type:"toggle",name:"swaggerDocs",message:`Would you like to use ${chalk.blue("Swagger Docs")}?`,initial:!1,active:"Yes",inactive:"No"}),e.websocket||n.push({type:"toggle",name:"websocket",message:`Would you like to use ${chalk.blue("Websocket")}?`,initial:!1,active:"Yes",inactive:"No"}),e.mcp||n.push({type:"toggle",name:"mcp",message:`Would you like to use ${chalk.blue("MCP (Model Context Protocol)")}?`,initial:!1,active:"Yes",inactive:"No"}),e.prisma||n.push({type:"toggle",name:"prisma",message:`Would you like to use ${chalk.blue("Prisma PHP ORM")}?`,initial:!1,active:"Yes",inactive:"No"}),e.docker||n.push({type:"toggle",name:"docker",message:`Would you like to use ${chalk.blue("Docker")}?`,initial:!1,active:"Yes",inactive:"No"})):(e.swaggerDocs||n.push({type:"toggle",name:"swaggerDocs",message:`Would you like to use ${chalk.blue("Swagger Docs")}?`,initial:!1,active:"Yes",inactive:"No"}),e.tailwindcss||n.push({type:"toggle",name:"tailwindcss",message:`Would you like to use ${chalk.blue("Tailwind CSS")}?`,initial:!1,active:"Yes",inactive:"No"}),e.websocket||n.push({type:"toggle",name:"websocket",message:`Would you like to use ${chalk.blue("Websocket")}?`,initial:!1,active:"Yes",inactive:"No"}),e.mcp||n.push({type:"toggle",name:"mcp",message:`Would you like to use ${chalk.blue("MCP (Model Context Protocol)")}?`,initial:!1,active:"Yes",inactive:"No"}),e.prisma||n.push({type:"toggle",name:"prisma",message:`Would you like to use ${chalk.blue("Prisma PHP ORM")}?`,initial:!1,active:"Yes",inactive:"No"}),e.docker||n.push({type:"toggle",name:"docker",message:`Would you like to use ${chalk.blue("Docker")}?`,initial:!1,active:"Yes",inactive:"No"}));const i=await prompts(n,{onCancel:t});return{projectName:c.projectName?String(c.projectName).trim().replace(/ /g,"-"):e.projectName??"my-app",backendOnly:c.backendOnly??e.backendOnly??!1,swaggerDocs:i.swaggerDocs??e.swaggerDocs??!1,tailwindcss:i.tailwindcss??e.tailwindcss??!1,websocket:i.websocket??e.websocket??!1,mcp:i.mcp??e.mcp??!1,prisma:i.prisma??e.prisma??!1,docker:i.docker??e.docker??!1}}async function uninstallNpmDependencies(e,s,t=!1){s.forEach((e=>{}));const c=`npm uninstall ${t?"--save-dev":"--save"} ${s.join(" ")}`;execSync(c,{stdio:"inherit",cwd:e})}async function uninstallComposerDependencies(e,s){s.forEach((e=>{}));const t=`C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar remove ${s.join(" ")}`;execSync(t,{stdio:"inherit",cwd:e})}function fetchPackageVersion(e){return new Promise(((s,t)=>{https.get(`https://registry.npmjs.org/${e}`,(e=>{let c="";e.on("data",(e=>c+=e)),e.on("end",(()=>{try{const e=JSON.parse(c);s(e["dist-tags"].latest)}catch(e){t(new Error("Failed to parse JSON response"))}}))})).on("error",(e=>t(e)))}))}const readJsonFile=e=>{const s=fs.readFileSync(e,"utf8");return JSON.parse(s)};function compareVersions(e,s){const t=e.split(".").map(Number),c=s.split(".").map(Number);for(let e=0;e<t.length;e++){if(t[e]>c[e])return 1;if(t[e]<c[e])return-1}return 0}function getInstalledPackageVersion(e){try{const s=execSync(`npm list -g ${e} --depth=0`).toString().match(new RegExp(`${e}@(\\d+\\.\\d+\\.\\d+)`));return s?s[1]:null}catch(e){return null}}
 /**
  * Install dependencies in the specified directory.
  * @param {string} baseDir - The base directory where to install the dependencies.
@@ -171,16 +171,155 @@ function composerPkg(name) {
     ? `${name}:${composerPinnedVersions[name]}`
     : name;
 }
+async function setupStarterKit(baseDir, answer) {
+  if (!answer.starterKit) return;
+  let starterKit = null;
+  // Check if it's a built-in starter kit
+  if (STARTER_KITS[answer.starterKit]) {
+    starterKit = STARTER_KITS[answer.starterKit];
+  }
+  // Handle custom starter kit URL
+  else if (answer.starterKitSource) {
+    starterKit = {
+      id: answer.starterKit,
+      name: `Custom Starter Kit (${answer.starterKit})`,
+      description: "Custom starter kit from external source",
+      features: {}, // Will be determined from the downloaded kit
+      requiredFiles: [],
+      source: {
+        type: "git", // Assume git for now, could be enhanced
+        url: answer.starterKitSource,
+      },
+    };
+  }
+  if (!starterKit) {
+    console.warn(
+      chalk.yellow(`Starter kit '${answer.starterKit}' not found. Skipping...`)
+    );
+    return;
+  }
+  console.log(chalk.green(`Setting up ${starterKit.name}...`));
+  // If it's a custom starter kit with source, clone it directly to the target directory
+  if (starterKit.source) {
+    try {
+      // Clone directly to the target directory
+      const cloneCommand = starterKit.source.branch
+        ? `git clone -b ${starterKit.source.branch} --depth 1 ${starterKit.source.url} ${baseDir}`
+        : `git clone --depth 1 ${starterKit.source.url} ${baseDir}`;
+      execSync(cloneCommand, { stdio: "inherit" });
+      // Remove .git directory
+      const gitDir = path.join(baseDir, ".git");
+      if (fs.existsSync(gitDir)) {
+        fs.rmSync(gitDir, { recursive: true, force: true });
+      }
+      console.log(chalk.blue("Starter kit cloned successfully!"));
+      // Update the project name in the existing prisma-php.json
+      const configPath = path.join(baseDir, "prisma-php.json");
+      if (fs.existsSync(configPath)) {
+        try {
+          const existingConfig = JSON.parse(
+            fs.readFileSync(configPath, "utf8")
+          );
+          // Only update project-specific fields, preserve everything else
+          const projectPathModified = baseDir.replace(/\\/g, "\\");
+          const bsConfig = bsConfigUrls(projectPathModified);
+          existingConfig.projectName = answer.projectName;
+          existingConfig.projectRootPath = projectPathModified;
+          existingConfig.bsTarget = bsConfig.bsTarget;
+          existingConfig.bsPathRewrite = bsConfig.bsPathRewrite;
+          // Update version to latest
+          const latestVersion = await fetchPackageVersion(
+            "create-prisma-php-app"
+          );
+          existingConfig.version = latestVersion;
+          fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2));
+          console.log(
+            chalk.green("Updated prisma-php.json with new project details")
+          );
+        } catch (error) {
+          console.warn(
+            chalk.yellow(
+              "Failed to update prisma-php.json, will create new one"
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error(chalk.red(`Failed to setup starter kit: ${error}`));
+      throw error;
+    }
+  }
+  // Run custom setup if defined
+  if (starterKit.customSetup) {
+    await starterKit.customSetup(baseDir, answer);
+  }
+  console.log(chalk.green(`✓ ${starterKit.name} setup complete!`));
+}
+function showStarterKits() {
+  console.log(chalk.blue("\n🚀 Available Starter Kits:\n"));
+  Object.values(STARTER_KITS).forEach((kit) => {
+    const isCustom = kit.source ? " (Custom)" : " (Built-in)";
+    console.log(chalk.green(`  ${kit.id}${chalk.gray(isCustom)}`));
+    console.log(`    ${kit.name}`);
+    console.log(chalk.gray(`    ${kit.description}`));
+    if (kit.source) {
+      console.log(chalk.cyan(`    Source: ${kit.source.url}`));
+    }
+    const features = Object.entries(kit.features)
+      .filter(([, value]) => value === true)
+      .map(([key]) => key)
+      .join(", ");
+    if (features) {
+      console.log(chalk.magenta(`    Features: ${features}`));
+    }
+    console.log();
+  });
+  console.log(chalk.yellow("Usage:"));
+  console.log(`  npx create-prisma-php-app my-project --starter-kit=basic`);
+  console.log(
+    `  npx create-prisma-php-app my-project --starter-kit=custom --starter-kit-source=https://github.com/user/repo`
+  );
+  console.log();
+}
 async function main() {
   try {
     const args = process.argv.slice(2);
     let projectName = args[0];
+    // Parse starter kit arguments
+    const starterKitArg = args.find((arg) => arg.startsWith("--starter-kit="));
+    const starterKitFromArgs = starterKitArg?.split("=")[1];
+    // Parse custom starter kit source
+    const starterKitSourceArg = args.find((arg) =>
+      arg.startsWith("--starter-kit-source=")
+    );
+    const starterKitSource = starterKitSourceArg?.split("=")[1];
+    // Show help
+    if (args.includes("--list-starter-kits")) {
+      showStarterKits();
+      return;
+    }
     let answer = null;
+    let isStarterKitProject = false;
     if (projectName) {
-      // Check if it's an update FIRST
       const currentDir = process.cwd();
       const configPath = path.join(currentDir, "prisma-php.json");
-      if (fs.existsSync(configPath)) {
+      // Check if it's a starter kit project
+      if (starterKitFromArgs && starterKitSource) {
+        isStarterKitProject = true;
+        const predefinedAnswers = {
+          projectName,
+          starterKit: starterKitFromArgs,
+          starterKitSource: starterKitSource,
+          backendOnly: args.includes("--backend-only"),
+          swaggerDocs: args.includes("--swagger-docs"),
+          tailwindcss: args.includes("--tailwindcss"),
+          websocket: args.includes("--websocket"),
+          mcp: args.includes("--mcp"),
+          prisma: args.includes("--prisma"),
+          docker: args.includes("--docker"),
+        };
+        answer = await getAnswer(predefinedAnswers);
+      } else if (fs.existsSync(configPath)) {
         // It's an update - read existing settings
         const localSettings = readJsonFile(configPath);
         let excludeFiles = [];
@@ -237,23 +376,18 @@ async function main() {
           };
         }
       } else {
-        // It's a new project - use CLI arguments
-        let useBackendOnly = args.includes("--backend-only");
-        let useSwaggerDocs = args.includes("--swagger-docs");
-        let useTailwind = args.includes("--tailwindcss");
-        let useWebsocket = args.includes("--websocket");
-        let useMcp = args.includes("--mcp");
-        let usePrisma = args.includes("--prisma");
-        let useDocker = args.includes("--docker");
+        // New project
         const predefinedAnswers = {
           projectName,
-          backendOnly: useBackendOnly,
-          swaggerDocs: useSwaggerDocs,
-          tailwindcss: useTailwind,
-          websocket: useWebsocket,
-          mcp: useMcp,
-          prisma: usePrisma,
-          docker: useDocker,
+          starterKit: starterKitFromArgs,
+          starterKitSource: starterKitSource,
+          backendOnly: args.includes("--backend-only"),
+          swaggerDocs: args.includes("--swagger-docs"),
+          tailwindcss: args.includes("--tailwindcss"),
+          websocket: args.includes("--websocket"),
+          mcp: args.includes("--mcp"),
+          prisma: args.includes("--prisma"),
+          docker: args.includes("--docker"),
         };
         answer = await getAnswer(predefinedAnswers);
       }
@@ -262,7 +396,7 @@ async function main() {
         return;
       }
     } else {
-      // No project name provided - interactive mode
+      // Interactive mode
       answer = await getAnswer();
     }
     if (answer === null) {
@@ -293,12 +427,93 @@ async function main() {
       execSync("npm install -g create-prisma-php-app", { stdio: "inherit" });
     }
     // Create the project directory
-    if (!projectName) fs.mkdirSync(answer.projectName);
     const currentDir = process.cwd();
-    let projectPath = projectName
-      ? currentDir
-      : path.join(currentDir, answer.projectName);
-    if (!projectName) process.chdir(answer.projectName);
+    let projectPath;
+    if (projectName) {
+      if (isStarterKitProject) {
+        // For starter kit projects, create directory first
+        const projectNamePath = path.join(currentDir, projectName);
+        if (!fs.existsSync(projectNamePath)) {
+          fs.mkdirSync(projectNamePath, { recursive: true });
+        }
+        projectPath = projectNamePath;
+        // Clone the starter kit first
+        await setupStarterKit(projectPath, answer);
+        // Change to project directory
+        process.chdir(projectPath);
+        // Now check if it has prisma-php.json and treat as update
+        const configPath = path.join(projectPath, "prisma-php.json");
+        if (fs.existsSync(configPath)) {
+          // Read the existing config and merge with CLI overrides
+          const existingConfig = JSON.parse(
+            fs.readFileSync(configPath, "utf8")
+          );
+          // Override with CLI arguments if provided
+          if (args.includes("--backend-only"))
+            existingConfig.backendOnly = true;
+          if (args.includes("--swagger-docs"))
+            existingConfig.swaggerDocs = true;
+          if (args.includes("--tailwindcss")) existingConfig.tailwindcss = true;
+          if (args.includes("--websocket")) existingConfig.websocket = true;
+          if (args.includes("--mcp")) existingConfig.mcp = true;
+          if (args.includes("--prisma")) existingConfig.prisma = true;
+          if (args.includes("--docker")) existingConfig.docker = true;
+          // Update answer with existing config
+          answer = {
+            ...answer,
+            backendOnly: existingConfig.backendOnly,
+            swaggerDocs: existingConfig.swaggerDocs,
+            tailwindcss: existingConfig.tailwindcss,
+            websocket: existingConfig.websocket,
+            mcp: existingConfig.mcp,
+            prisma: existingConfig.prisma,
+            docker: existingConfig.docker,
+          };
+          // Set up as an update
+          let excludeFiles = [];
+          existingConfig.excludeFiles?.map((file) => {
+            const filePath = path.join(projectPath, file);
+            if (fs.existsSync(filePath))
+              excludeFiles.push(filePath.replace(/\\/g, "/"));
+          });
+          updateAnswer = {
+            ...answer,
+            isUpdate: true,
+            excludeFiles: existingConfig.excludeFiles ?? [],
+            excludeFilePath: excludeFiles ?? [],
+            filePath: projectPath,
+          };
+        }
+      } else {
+        // Regular project handling (existing logic)
+        const configPath = path.join(currentDir, "prisma-php.json");
+        const projectNamePath = path.join(currentDir, projectName);
+        const projectNameConfigPath = path.join(
+          projectNamePath,
+          "prisma-php.json"
+        );
+        if (fs.existsSync(configPath)) {
+          projectPath = currentDir;
+        } else if (
+          fs.existsSync(projectNamePath) &&
+          fs.existsSync(projectNameConfigPath)
+        ) {
+          projectPath = projectNamePath;
+          process.chdir(projectNamePath);
+        } else {
+          if (!fs.existsSync(projectNamePath)) {
+            fs.mkdirSync(projectNamePath, { recursive: true });
+          }
+          projectPath = projectNamePath;
+          process.chdir(projectNamePath);
+        }
+      }
+    } else {
+      // Interactive mode
+      fs.mkdirSync(answer.projectName, { recursive: true });
+      projectPath = path.join(currentDir, answer.projectName);
+      process.chdir(answer.projectName);
+    }
     let npmDependencies = [
       npmPkg("typescript"),
       npmPkg("@types/node"),
@@ -346,6 +561,10 @@ async function main() {
     }
     if (answer.prisma) {
       execSync("npm install -g prisma-client-php", { stdio: "inherit" });
+    }
+    // Only setup starter kit if it's not already done
+    if (answer.starterKit && !isStarterKitProject) {
+      await setupStarterKit(projectPath, answer);
     }
     await installNpmDependencies(projectPath, npmDependencies, true);
     await installComposerDependencies(projectPath, composerDependencies);
@@ -580,30 +799,37 @@ async function main() {
         await uninstallComposerDependencies(projectPath, composerToUninstall);
       }
     }
-    const projectPathModified = projectPath.replace(/\\/g, "\\");
-    const bsConfig = bsConfigUrls(projectPathModified);
-    const prismaPhpConfig = {
-      projectName: answer.projectName,
-      projectRootPath: projectPathModified,
-      phpEnvironment: "XAMPP",
-      phpRootPathExe: "C:\\xampp\\php\\php.exe",
-      bsTarget: bsConfig.bsTarget,
-      bsPathRewrite: bsConfig.bsPathRewrite,
-      backendOnly: answer.backendOnly,
-      swaggerDocs: answer.swaggerDocs,
-      tailwindcss: answer.tailwindcss,
-      websocket: answer.websocket,
-      mcp: answer.mcp,
-      prisma: answer.prisma,
-      docker: answer.docker,
-      version: latestVersionOfCreatePrismaPhpApp,
-      excludeFiles: updateAnswer?.excludeFiles ?? [],
-    };
-    fs.writeFileSync(
-      path.join(projectPath, "prisma-php.json"),
-      JSON.stringify(prismaPhpConfig, null, 2),
-      { flag: "w" }
-    );
+    // Skip creating prismaPhpConfig if it's a starter kit project that already has one
+    if (
+      !isStarterKitProject ||
+      !fs.existsSync(path.join(projectPath, "prisma-php.json"))
+    ) {
+      // Create prisma-php.json with all the existing logic
+      const projectPathModified = projectPath.replace(/\\/g, "\\");
+      const bsConfig = bsConfigUrls(projectPathModified);
+      const prismaPhpConfig = {
+        projectName: answer.projectName,
+        projectRootPath: projectPathModified,
+        phpEnvironment: "XAMPP",
+        phpRootPathExe: "C:\\xampp\\php\\php.exe",
+        bsTarget: bsConfig.bsTarget,
+        bsPathRewrite: bsConfig.bsPathRewrite,
+        backendOnly: answer.backendOnly,
+        swaggerDocs: answer.swaggerDocs,
+        tailwindcss: answer.tailwindcss,
+        websocket: answer.websocket,
+        mcp: answer.mcp,
+        prisma: answer.prisma,
+        docker: answer.docker,
+        version: latestVersionOfCreatePrismaPhpApp,
+        excludeFiles: updateAnswer?.excludeFiles ?? [],
+      };
+      fs.writeFileSync(
+        path.join(projectPath, "prisma-php.json"),
+        JSON.stringify(prismaPhpConfig, null, 2),
+        { flag: "w" }
+      );
+    }
     if (updateAnswer?.isUpdate) {
       execSync(
         "C:\\xampp\\php\\php.exe C:\\ProgramData\\ComposerSetup\\bin\\composer.phar update",
@@ -624,7 +850,7 @@ async function main() {
       `${chalk.green(
         "Success!"
       )} Prisma PHP project successfully created in ${chalk.green(
-        `${currentDir.replace(/\\/g, "/")}/${answer.projectName}`
+        projectPath.replace(/\\/g, "/")
       )}!`
     );
     console.log("\n=========================");
