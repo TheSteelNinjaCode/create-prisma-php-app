@@ -148,8 +148,8 @@ export const dirsToDelete = [
   join(__dirname, "..", ".pphp"),
 ];
 
-await generateFileListJson();
 await deleteFilesIfExist(filesToDelete);
 await deleteDirectoriesIfExist(dirsToDelete);
+await generateFileListJson();
 await updateAllClassLogs();
 await updateComponentImports();
