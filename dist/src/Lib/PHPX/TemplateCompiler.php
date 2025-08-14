@@ -132,11 +132,23 @@ class TemplateCompiler
 
     private static function escapeAmpersands(string $content): string
     {
-        return preg_replace(
-            '/&(?![a-zA-Z][A-Za-z0-9]*;|#[0-9]+;|#x[0-9A-Fa-f]+;)/',
-            '&amp;',
-            $content
-        );
+        $parts = preg_split('/(<!\[CDATA\[[\s\S]*?\]\]>)/', $content, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $content;
+        }
+
+        foreach ($parts as $i => $part) {
+            if (str_starts_with($part, '<![CDATA[')) {
+                continue;
+            }
+
+            $parts[$i] = preg_replace(
+                '/&(?![a-zA-Z][A-Za-z0-9]*;|#[0-9]+;|#x[0-9A-Fa-f]+;)/',
+                '&amp;',
+                $part
+            );
+        }
+        return implode('', $parts);
     }
 
     private static function escapeAttributeAngles(string $html): string
@@ -182,24 +194,34 @@ class TemplateCompiler
 
     private static function normalizeNamedEntities(string $html): string
     {
-        return preg_replace_callback(
-            '/&([a-zA-Z][a-zA-Z0-9]+);/',
-            static function (array $m): string {
-                $decoded = html_entity_decode($m[0], ENT_HTML5, 'UTF-8');
+        $parts = preg_split('/(<!\[CDATA\[[\s\S]*?\]\]>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $html;
+        }
 
-                if ($decoded === $m[0]) {
-                    return $m[0];
-                }
+        foreach ($parts as $i => $part) {
+            if (str_starts_with($part, '<![CDATA[')) {
+                continue;
+            }
 
-                if (function_exists('mb_ord')) {
-                    return '&#' . mb_ord($decoded, 'UTF-8') . ';';
-                }
+            $parts[$i] = preg_replace_callback(
+                '/&([a-zA-Z][a-zA-Z0-9]+);/',
+                static function (array $m): string {
+                    $decoded = html_entity_decode($m[0], ENT_HTML5, 'UTF-8');
+                    if ($decoded === $m[0]) {
+                        return $m[0];
+                    }
+                    if (function_exists('mb_ord')) {
+                        return '&#' . mb_ord($decoded, 'UTF-8') . ';';
+                    }
+                    $code = unpack('N', mb_convert_encoding($decoded, 'UCS-4BE', 'UTF-8'))[1];
+                    return '&#' . $code . ';';
+                },
+                $part
+            );
+        }
 
-                $code = unpack('N', mb_convert_encoding($decoded, 'UCS-4BE', 'UTF-8'))[1];
-                return '&#' . $code . ';';
-            },
-            $html
-        );
+        return implode('', $parts);
     }
 
     private static function protectInlineScripts(string $html): string
