@@ -20,16 +20,16 @@ if (session_status() === PHP_SESSION_NONE) {
 
 use PPHP\Request;
 use PPHP\PrismaPHPSettings;
-use Lib\StateManager;
+use PPHP\StateManager;
 use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
 use PPHP\MainLayout;
 use PPHP\PHPX\TemplateCompiler;
-use Lib\CacheHandler;
-use Lib\ErrorHandler;
+use PPHP\CacheHandler;
+use PPHP\ErrorHandler;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use Lib\PartialRenderer;
+use PPHP\PartialRenderer;
 
 final class Bootstrap extends RuntimeException
 {

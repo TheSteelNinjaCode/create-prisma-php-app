@@ -6,7 +6,7 @@ namespace Lib\AI;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Lib\Validator;
+use PPHP\Validator;
 use RuntimeException;
 
 class ChatGPTClient

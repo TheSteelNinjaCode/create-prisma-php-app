@@ -8,7 +8,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use DateInterval;
 use DateTime;
-use Lib\Validator;
+use PPHP\Validator;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use PPHP\Request;

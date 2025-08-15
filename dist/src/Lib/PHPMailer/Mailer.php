@@ -6,7 +6,7 @@ namespace Lib\PHPMailer;
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-use Lib\Validator;
+use PPHP\Validator;
 
 class Mailer
 {
