@@ -6,7 +6,7 @@ namespace Lib;
 
 use RuntimeException;
 use InvalidArgumentException;
-use Lib\PHPX\TemplateCompiler;
+use PPHP\PHPX\TemplateCompiler;
 
 class IncludeTracker
 {

@@ -24,7 +24,7 @@ use Lib\StateManager;
 use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
 use Lib\MainLayout;
-use Lib\PHPX\TemplateCompiler;
+use PPHP\PHPX\TemplateCompiler;
 use Lib\CacheHandler;
 use Lib\ErrorHandler;
 use Firebase\JWT\JWT;

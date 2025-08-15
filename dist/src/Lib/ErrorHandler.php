@@ -7,7 +7,7 @@ namespace Lib;
 use Bootstrap;
 use Lib\MainLayout;
 use Throwable;
-use Lib\PHPX\Exceptions\ComponentValidationException;
+use PPHP\PHPX\Exceptions\ComponentValidationException;
 
 class ErrorHandler
 {
