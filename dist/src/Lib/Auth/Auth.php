@@ -11,7 +11,7 @@ use DateTime;
 use Lib\Validator;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Lib\Request;
+use PPHP\Request;
 use Exception;
 use InvalidArgumentException;
 use ArrayObject;

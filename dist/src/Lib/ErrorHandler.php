@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Lib;
 
 use Bootstrap;
-use Lib\MainLayout;
+use PPHP\MainLayout;
 use Throwable;
 use PPHP\PHPX\Exceptions\ComponentValidationException;
 

@@ -18,12 +18,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-use Lib\Request;
-use Lib\PrismaPHPSettings;
+use PPHP\Request;
+use PPHP\PrismaPHPSettings;
 use Lib\StateManager;
 use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
-use Lib\MainLayout;
+use PPHP\MainLayout;
 use PPHP\PHPX\TemplateCompiler;
 use Lib\CacheHandler;
 use Lib\ErrorHandler;

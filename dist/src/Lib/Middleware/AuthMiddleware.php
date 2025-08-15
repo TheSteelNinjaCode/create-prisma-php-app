@@ -6,7 +6,7 @@ namespace Lib\Middleware;
 
 use Lib\Auth\Auth;
 use Lib\Auth\AuthConfig;
-use Lib\Request;
+use PPHP\Request;
 
 final class AuthMiddleware
 {

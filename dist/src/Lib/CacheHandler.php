@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Lib;
 
-use Lib\PrismaPHPSettings;
+use PPHP\PrismaPHPSettings;
 
 class CacheHandler
 {
