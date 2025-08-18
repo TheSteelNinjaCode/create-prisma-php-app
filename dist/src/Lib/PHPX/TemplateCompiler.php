@@ -63,6 +63,8 @@ class TemplateCompiler
     private static array $constructors      = [];
     private static array $publicProperties  = [];
     private static array $allowedProps = [];
+    private const MUSTACHE_OPEN_MASK = '[[PPHP_MUSTACHE_OPEN]]';
+    private const MUSTACHE_CLOSE_MASK = '[[PPHP_MUSTACHE_CLOSE]]';
 
     public static function compile(string $templateContent): string
     {
@@ -83,8 +85,13 @@ class TemplateCompiler
             $output[] = self::processNode($child);
         }
 
+        $html = implode('', $output);
+        if (self::$compileDepth === 1) {
+            $html = self::unmaskEntityMustaches($html);
+        }
+
         self::$compileDepth--;
-        return implode('', $output);
+        return $html;
     }
 
     public static function injectDynamicContent(string $htmlContent): string
@@ -169,10 +176,35 @@ class TemplateCompiler
         );
     }
 
+    private static function maskEntityMustaches(string $html): string
+    {
+        $parts = preg_split('/(<!\[CDATA\[[\s\S]*?\]\]>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) return $html;
+
+        foreach ($parts as $i => $part) {
+            if (str_starts_with($part, '<![CDATA[')) continue;
+
+            $parts[$i] = preg_replace_callback(
+                '/(?:&#(?:123|x7B);)\s*(?:&#(?:123|x7B);)([\s\S]*?)(?:&#(?:125|x7D);)\s*(?:&#(?:125|x7D);)/i',
+                static fn($m) => self::MUSTACHE_OPEN_MASK . $m[1] . self::MUSTACHE_CLOSE_MASK,
+                $part
+            ) ?? $part;
+        }
+        return implode('', $parts);
+    }
+
+    private static function unmaskEntityMustaches(string $html): string
+    {
+        $html = str_replace(self::MUSTACHE_OPEN_MASK, '{{ ', $html);
+        $html = str_replace(self::MUSTACHE_CLOSE_MASK, ' }}', $html);
+        return $html;
+    }
+
     public static function convertToXml(string $templateContent): DOMDocument
     {
         $content = self::protectInlineScripts($templateContent);
         $content = self::normalizeNamedEntities($content);
+        $content = self::maskEntityMustaches($content);
 
         $content = self::escapeAmpersands($content);
         $content = self::escapeAttributeAngles($content);
