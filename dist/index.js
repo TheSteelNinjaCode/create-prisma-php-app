@@ -339,6 +339,7 @@ async function main() {
           prisma: localSettings.prisma,
           docker: localSettings.docker,
           isUpdate: true,
+          componentScanDirs: localSettings.componentScanDirs ?? [],
           excludeFiles: localSettings.excludeFiles ?? [],
           excludeFilePath: excludeFiles ?? [],
           filePath: currentDir,
@@ -370,6 +371,7 @@ async function main() {
             prisma: answer.prisma,
             docker: answer.docker,
             isUpdate: true,
+            componentScanDirs: localSettings.componentScanDirs ?? [],
             excludeFiles: localSettings.excludeFiles ?? [],
             excludeFilePath: excludeFiles ?? [],
             filePath: currentDir,
@@ -479,6 +481,7 @@ async function main() {
           updateAnswer = {
             ...answer,
             isUpdate: true,
+            componentScanDirs: existingConfig.componentScanDirs ?? [],
             excludeFiles: existingConfig.excludeFiles ?? [],
             excludeFilePath: excludeFiles ?? [],
             filePath: projectPath,
@@ -822,6 +825,10 @@ async function main() {
         prisma: answer.prisma,
         docker: answer.docker,
         version: latestVersionOfCreatePrismaPhpApp,
+        componentScanDirs: updateAnswer?.componentScanDirs ?? [
+          "src",
+          "vendor/tsnc/prisma-php/src",
+        ],
         excludeFiles: updateAnswer?.excludeFiles ?? [],
       };
       fs.writeFileSync(
