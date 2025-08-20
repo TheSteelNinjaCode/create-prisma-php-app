@@ -30,6 +30,7 @@ class TemplateCompiler
     private const COMPONENT_TAG_REGEX = '/<\/*[A-Z][\w-]*/u';
     private const SELF_CLOSING_REGEX = '/<([a-z0-9-]+)([^>]*)\/>/i';
     private const SCRIPT_REGEX = '#<script\b([^>]*?)>(.*?)</script>#is';
+    private const HTML_TAG_REGEX = '/(<\/?[a-zA-Z][^>]*>)/s';
     private const HEAD_PATTERNS = [
         'open' => '/(<head\b[^>]*>)/i',
         'close' => '/(<\/head\s*>)/i',
@@ -134,6 +135,35 @@ class TemplateCompiler
         return $htmlContent;
     }
 
+    private static function escapeTextAngles(string $content): string
+    {
+        return self::processCDataAwareParts(
+            $content,
+            static function (string $part): string {
+                if (empty($part)) {
+                    return '';
+                }
+
+                $parts = preg_split(self::HTML_TAG_REGEX, $part, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+                if ($parts === false) {
+                    return str_replace(['<', '>'], ['&lt;', '&gt;'], $part);
+                }
+
+                $result = '';
+                foreach ($parts as $i => $piece) {
+                    if ($i % 2 === 0) {
+                        $result .= str_replace(['<', '>'], ['&lt;', '&gt;'], $piece);
+                    } else {
+                        $result .= $piece;
+                    }
+                }
+
+                return $result;
+            }
+        );
+    }
+
     public static function convertToXml(string $templateContent): DOMDocument
     {
         $content = self::processContentForXml($templateContent);
@@ -146,9 +176,11 @@ class TemplateCompiler
     {
         return self::escapeMustacheAngles(
             self::escapeAttributeAngles(
-                self::escapeAmpersands(
-                    self::normalizeNamedEntities(
-                        self::protectInlineScripts($content)
+                self::escapeTextAngles(
+                    self::escapeAmpersands(
+                        self::normalizeNamedEntities(
+                            self::protectInlineScripts($content)
+                        )
                     )
                 )
             )
