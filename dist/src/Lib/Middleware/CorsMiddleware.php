@@ -6,29 +6,22 @@ namespace Lib\Middleware;
 
 final class CorsMiddleware
 {
-    /** Entry point */
     public static function handle(?array $overrides = null): void
     {
-        // Not a CORS request
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
         if ($origin === '') {
             return;
         }
 
-        // Resolve config (env → overrides)
         $cfg = self::buildConfig($overrides);
 
-        // Not allowed? Do nothing (browser will block)
         if (!self::isAllowedOrigin($origin, $cfg['allowedOrigins'])) {
             return;
         }
 
-        // Compute which value to send for Access-Control-Allow-Origin
-        // If credentials are disabled and '*' is in list, we can send '*'
         $sendWildcard = (!$cfg['allowCredentials'] && self::listHasWildcard($cfg['allowedOrigins']));
         $allowOriginValue = $sendWildcard ? '*' : self::normalize($origin);
 
-        // Vary for caches
         header('Vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
 
         header('Access-Control-Allow-Origin: ' . $allowOriginValue);
@@ -37,7 +30,6 @@ final class CorsMiddleware
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-            // Preflight response
             $requestedHeaders = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'] ?? '';
             $allowedHeaders = $cfg['allowedHeaders'] !== ''
                 ? $cfg['allowedHeaders']
@@ -49,7 +41,6 @@ final class CorsMiddleware
                 header('Access-Control-Max-Age: ' . (string) $cfg['maxAge']);
             }
 
-            // Optional: Private Network Access preflights (Chrome)
             if (!empty($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_PRIVATE_NETWORK'])) {
                 header('Access-Control-Allow-Private-Network: true');
             }
@@ -59,13 +50,11 @@ final class CorsMiddleware
             exit;
         }
 
-        // Simple/actual request
         if ($cfg['exposeHeaders'] !== '') {
             header('Access-Control-Expose-Headers: ' . $cfg['exposeHeaders']);
         }
     }
 
-    /** Read env + normalize + apply overrides */
     private static function buildConfig(?array $overrides): array
     {
         $allowed = self::parseList($_ENV['CORS_ALLOWED_ORIGINS'] ?? '');
@@ -86,12 +75,10 @@ final class CorsMiddleware
             }
         }
 
-        // Normalize patterns
         $cfg['allowedOrigins'] = array_map([self::class, 'normalize'], $cfg['allowedOrigins']);
         return $cfg;
     }
 
-    /** CSV or JSON array → array<string> */
     private static function parseList(string $raw): array
     {
         $raw = trim($raw);
@@ -118,13 +105,10 @@ final class CorsMiddleware
         foreach ($list as $pattern) {
             $p = self::normalize($pattern);
 
-            // literal "*"
             if ($p === '*') return true;
 
-            // allow literal "null" for file:// or sandboxed if explicitly listed
             if ($o === 'null' && strtolower($p) === 'null') return true;
 
-            // wildcard like https://*.example.com
             if (strpos($p, '*') !== false) {
                 $regex = '/^' . str_replace('\*', '[^.]+', preg_quote($p, '/')) . '$/i';
                 if (preg_match($regex, $o)) return true;
