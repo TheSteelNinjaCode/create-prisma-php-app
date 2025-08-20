@@ -16,7 +16,6 @@ use Bootstrap;
 use LibXMLError;
 use ReflectionClass;
 use ReflectionProperty;
-use ReflectionType;
 use ReflectionNamedType;
 use Lib\PHPX\TypeCoercer;
 use Lib\PHPX\Exceptions\ComponentValidationException;
@@ -30,7 +29,6 @@ class TemplateCompiler
     private const COMPONENT_TAG_REGEX = '/<\/*[A-Z][\w-]*/u';
     private const SELF_CLOSING_REGEX = '/<([a-z0-9-]+)([^>]*)\/>/i';
     private const SCRIPT_REGEX = '#<script\b([^>]*?)>(.*?)</script>#is';
-    private const HTML_TAG_REGEX = '/(<\/?[a-zA-Z][^>]*>)/s';
     private const HEAD_PATTERNS = [
         'open' => '/(<head\b[^>]*>)/i',
         'close' => '/(<\/head\s*>)/i',
@@ -135,35 +133,6 @@ class TemplateCompiler
         return $htmlContent;
     }
 
-    private static function escapeTextAngles(string $content): string
-    {
-        return self::processCDataAwareParts(
-            $content,
-            static function (string $part): string {
-                if (empty($part)) {
-                    return '';
-                }
-
-                $parts = preg_split(self::HTML_TAG_REGEX, $part, -1, PREG_SPLIT_DELIM_CAPTURE);
-
-                if ($parts === false) {
-                    return str_replace(['<', '>'], ['&lt;', '&gt;'], $part);
-                }
-
-                $result = '';
-                foreach ($parts as $i => $piece) {
-                    if ($i % 2 === 0) {
-                        $result .= str_replace(['<', '>'], ['&lt;', '&gt;'], $piece);
-                    } else {
-                        $result .= $piece;
-                    }
-                }
-
-                return $result;
-            }
-        );
-    }
-
     public static function convertToXml(string $templateContent): DOMDocument
     {
         $content = self::processContentForXml($templateContent);
@@ -176,7 +145,7 @@ class TemplateCompiler
     {
         return self::escapeMustacheAngles(
             self::escapeAttributeAngles(
-                self::escapeTextAngles(
+                self::escapeLiteralTextContent(
                     self::escapeAmpersands(
                         self::normalizeNamedEntities(
                             self::protectInlineScripts($content)
@@ -232,6 +201,34 @@ class TemplateCompiler
             static fn($m) => $m[1] . $m[2] .
                 str_replace(['<', '>'], ['&lt;', '&gt;'], $m[3]) . $m[2],
             $html
+        );
+    }
+
+    private static function escapeLiteralTextContent(string $content): string
+    {
+        $literalTags = implode('|', array_keys(self::LITERAL_TEXT_TAGS));
+        $pattern = '/(<(?:' . $literalTags . ')\b[^>]*>)(.*?)(<\/(?:' . $literalTags . ')>)/is';
+
+        return preg_replace_callback(
+            $pattern,
+            static function ($matches) {
+                $openTag = $matches[1];
+                $textContent = $matches[2];
+                $closeTag = $matches[3];
+
+                $escapedContent = preg_replace_callback(
+                    '/(\s|^|,)([<>]=?)(\s|$|,)/',
+                    function ($match) {
+                        $operator = $match[2];
+                        $escapedOp = str_replace(['<', '>'], ['&lt;', '&gt;'], $operator);
+                        return $match[1] . $escapedOp . $match[3];
+                    },
+                    $textContent
+                );
+
+                return $openTag . $escapedContent . $closeTag;
+            },
+            $content
         );
     }
 
