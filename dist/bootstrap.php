@@ -747,7 +747,11 @@ final class Bootstrap extends RuntimeException
                 }
                 return $res;
             } catch (Throwable $e) {
-                return ['success' => false, 'error' => "Function error: {$e->getMessage()}"];
+                if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
+                    return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
+                } else {
+                    return ['success' => false, 'error' => "Function error: {$e->getMessage()}"];
+                }
             }
         }
         return ['success' => false, 'error' => 'Invalid callback'];
@@ -784,10 +788,13 @@ final class Bootstrap extends RuntimeException
                 if ($res !== null) {
                     return ['success' => true, 'error' => null, 'response' => $res];
                 }
-
                 return $res;
             } catch (Throwable $e) {
-                return ['success' => false, 'error' => "Instance call error: {$e->getMessage()}"];
+                if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
+                    return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
+                } else {
+                    return ['success' => false, 'error' => "Instance call error: {$e->getMessage()}"];
+                }
             }
         } else {
             if (!class_exists($class) || !is_callable([$class, $method])) {
@@ -800,7 +807,11 @@ final class Bootstrap extends RuntimeException
                 }
                 return $res;
             } catch (Throwable $e) {
-                return ['success' => false, 'error' => "Static call error: {$e->getMessage()}"];
+                if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
+                    return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
+                } else {
+                    return ['success' => false, 'error' => "Static call error: {$e->getMessage()}"];
+                }
             }
         }
 
