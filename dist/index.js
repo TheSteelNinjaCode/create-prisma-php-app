@@ -39,11 +39,25 @@ async function installNpmDependencies(baseDir, dependencies, isDev = false) {
 function getComposerCmd() {
   try {
     execSync("composer --version", { stdio: "ignore" });
+    console.log("✓ Using global composer command");
     return { cmd: "composer", baseArgs: [] };
   } catch {
+    const phpPath = "C:\\xampp\\php\\php.exe";
+    const composerPath = "C:\\ProgramData\\ComposerSetup\\bin\\composer.phar";
+    // Check if PHP exists
+    if (!fs.existsSync(phpPath)) {
+      console.error(`✗ PHP not found at ${phpPath}`);
+      throw new Error(`PHP executable not found at ${phpPath}`);
+    }
+    // Check if Composer phar exists
+    if (!fs.existsSync(composerPath)) {
+      console.error(`✗ Composer not found at ${composerPath}`);
+      throw new Error(`Composer phar not found at ${composerPath}`);
+    }
+    console.log("✓ Using XAMPP PHP with Composer phar");
     return {
-      cmd: "C:\\xampp\\php\\php.exe",
-      baseArgs: ["C:\\ProgramData\\ComposerSetup\\bin\\composer.phar"],
+      cmd: phpPath,
+      baseArgs: [composerPath],
     };
   }
 }
@@ -59,7 +73,14 @@ export async function installComposerDependencies(baseDir, dependencies) {
     )
   );
   /* ------------------------------------------------------------------ */
-  /* 1. Try composer init (quietly fall back if it fails)               */
+  /* 1. Ensure base directory exists                                     */
+  /* ------------------------------------------------------------------ */
+  if (!fs.existsSync(baseDir)) {
+    console.log(`Creating base directory: ${baseDir}`);
+    fs.mkdirSync(baseDir, { recursive: true });
+  }
+  /* ------------------------------------------------------------------ */
+  /* 2. Try composer init (with better error handling)                   */
   /* ------------------------------------------------------------------ */
   if (!existsAlready) {
     const initArgs = [
@@ -75,82 +96,138 @@ export async function installComposerDependencies(baseDir, dependencies) {
       "--version",
       "1.0.0",
     ];
-    const res = spawnSync(cmd, initArgs, { cwd: baseDir });
+    console.log(`Executing: ${cmd} ${initArgs.join(" ")}`);
+    console.log(`Working directory: ${baseDir}`);
+    const res = spawnSync(cmd, initArgs, {
+      cwd: baseDir,
+      stdio: ["ignore", "pipe", "pipe"], // Capture output for debugging
+      encoding: "utf8",
+    });
     if (res.status !== 0) {
-      // Silent fallback: no logs, just write a minimal composer.json
+      console.log(`Composer init failed with status ${res.status}`);
+      if (res.stderr) {
+        console.log(`Composer stderr: ${res.stderr}`);
+      }
+      if (res.stdout) {
+        console.log(`Composer stdout: ${res.stdout}`);
+      }
+      // Create fallback composer.json
+      console.log("Creating fallback composer.json...");
+      const defaultComposerJson = {
+        name: "tsnc/prisma-php-app",
+        type: "project",
+        version: "1.0.0",
+        require: { php: "^8.2" },
+        autoload: { "psr-4": { "": "src/" } },
+      };
       try {
-        const defaultComposerJson = {
-          name: "tsnc/prisma-php-app",
-          type: "project",
-          version: "1.0.0",
-          require: { php: "^8.2" },
-          autoload: { "psr-4": { "": "src/" } },
-        };
         fs.writeFileSync(
           composerJsonPath,
-          JSON.stringify(defaultComposerJson, null, 2)
+          JSON.stringify(defaultComposerJson, null, 2),
+          { encoding: "utf8" }
         );
-        console.log("Created fallback composer.json");
+        console.log(`✓ Created fallback composer.json at ${composerJsonPath}`);
       } catch (writeError) {
-        console.error("Failed to create fallback composer.json:", writeError);
-        throw writeError;
+        console.error(`✗ Failed to create fallback composer.json:`, writeError);
+        console.error(`Attempted to write to: ${composerJsonPath}`);
+        console.error(`Base directory exists: ${fs.existsSync(baseDir)}`);
+        console.error(
+          `Base directory stats:`,
+          fs.existsSync(baseDir) ? fs.statSync(baseDir) : "N/A"
+        );
+        throw new Error(`Cannot create composer.json: ${writeError}`);
       }
+    } else {
+      console.log("✓ Composer init successful");
     }
   }
-  /* 2. Ensure PSR-4 autoload entry ---------------------------------- */
-  // Add safety check before reading
+  /* ------------------------------------------------------------------ */
+  /* 3. Verify composer.json exists before proceeding                   */
+  /* ------------------------------------------------------------------ */
   if (!fs.existsSync(composerJsonPath)) {
-    console.error(`composer.json not found at ${composerJsonPath}`);
-    throw new Error("Failed to create or find composer.json");
+    console.error(`✗ composer.json still not found at ${composerJsonPath}`);
+    console.error(`Directory contents:`, fs.readdirSync(baseDir));
+    throw new Error(
+      "Failed to create composer.json - file does not exist after init/fallback"
+    );
   }
+  /* ------------------------------------------------------------------ */
+  /* 4. Ensure PSR-4 autoload entry                                     */
+  /* ------------------------------------------------------------------ */
   let json;
   try {
-    json = JSON.parse(fs.readFileSync(composerJsonPath, "utf8"));
+    const jsonContent = fs.readFileSync(composerJsonPath, "utf8");
+    console.log("✓ Successfully read composer.json");
+    json = JSON.parse(jsonContent);
   } catch (readError) {
-    console.error("Failed to read composer.json:", readError);
-    throw readError;
+    console.error("✗ Failed to read/parse composer.json:", readError);
+    throw new Error(`Cannot read composer.json: ${readError}`);
   }
   json.autoload ??= {};
   json.autoload["psr-4"] ??= {};
   json.autoload["psr-4"][""] ??= "src/";
   try {
     fs.writeFileSync(composerJsonPath, JSON.stringify(json, null, 2));
+    console.log("✓ Updated composer.json with PSR-4 autoload");
   } catch (writeError) {
-    console.error("Failed to update composer.json:", writeError);
+    console.error("✗ Failed to update composer.json:", writeError);
     throw writeError;
   }
-  /* 3. Install dependencies ----------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /* 5. Install dependencies                                             */
+  /* ------------------------------------------------------------------ */
   if (dependencies.length) {
     console.log("Installing Composer dependencies:");
     dependencies.forEach((d) => console.log(`- ${chalk.blue(d)}`));
-    execSync(
-      `${cmd} ${[
+    try {
+      const requireCmd = `${cmd} ${[
         ...baseArgs,
         "require",
         "--no-interaction",
         ...dependencies,
-      ].join(" ")}`,
-      { stdio: "inherit", cwd: baseDir }
-    );
+      ].join(" ")}`;
+      console.log(`Executing: ${requireCmd}`);
+      execSync(requireCmd, { stdio: "inherit", cwd: baseDir });
+      console.log("✓ Composer dependencies installed");
+    } catch (installError) {
+      console.error("✗ Failed to install composer dependencies:", installError);
+      throw installError;
+    }
   }
-  /* 4. Refresh lock when updating ----------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /* 6. Refresh lock when updating                                      */
+  /* ------------------------------------------------------------------ */
   if (existsAlready) {
-    execSync(
-      `${cmd} ${[
-        ...baseArgs,
-        "update",
-        "--lock",
-        "--no-install",
-        "--no-interaction",
-      ].join(" ")}`,
-      { stdio: "inherit", cwd: baseDir }
-    );
+    try {
+      execSync(
+        `${cmd} ${[
+          ...baseArgs,
+          "update",
+          "--lock",
+          "--no-install",
+          "--no-interaction",
+        ].join(" ")}`,
+        { stdio: "inherit", cwd: baseDir }
+      );
+      console.log("✓ Composer lock updated");
+    } catch (updateError) {
+      console.error("✗ Failed to update composer lock:", updateError);
+      throw updateError;
+    }
   }
-  /* 5. Regenerate autoloader ---------------------------------------- */
-  execSync(`${cmd} ${[...baseArgs, "dump-autoload", "--quiet"].join(" ")}`, {
-    stdio: "inherit",
-    cwd: baseDir,
-  });
+  /* ------------------------------------------------------------------ */
+  /* 7. Regenerate autoloader                                           */
+  /* ------------------------------------------------------------------ */
+  try {
+    execSync(`${cmd} ${[...baseArgs, "dump-autoload", "--quiet"].join(" ")}`, {
+      stdio: "inherit",
+      cwd: baseDir,
+    });
+    console.log("✓ Composer autoloader regenerated");
+  } catch (autoloadError) {
+    console.error("✗ Failed to regenerate autoloader:", autoloadError);
+    throw autoloadError;
+  }
 }
 const npmPinnedVersions = {
   "@tailwindcss/postcss": "^4.1.12",
