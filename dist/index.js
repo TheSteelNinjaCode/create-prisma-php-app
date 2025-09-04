@@ -78,28 +78,47 @@ export async function installComposerDependencies(baseDir, dependencies) {
     const res = spawnSync(cmd, initArgs, { cwd: baseDir });
     if (res.status !== 0) {
       // Silent fallback: no logs, just write a minimal composer.json
-      fs.writeFileSync(
-        composerJsonPath,
-        JSON.stringify(
-          {
-            name: "tsnc/prisma-php-app",
-            type: "project",
-            version: "1.0.0",
-            require: { php: "^8.2" },
-            autoload: { "psr-4": { "": "src/" } },
-          },
-          null,
-          2
-        )
-      );
+      try {
+        const defaultComposerJson = {
+          name: "tsnc/prisma-php-app",
+          type: "project",
+          version: "1.0.0",
+          require: { php: "^8.2" },
+          autoload: { "psr-4": { "": "src/" } },
+        };
+        fs.writeFileSync(
+          composerJsonPath,
+          JSON.stringify(defaultComposerJson, null, 2)
+        );
+        console.log("Created fallback composer.json");
+      } catch (writeError) {
+        console.error("Failed to create fallback composer.json:", writeError);
+        throw writeError;
+      }
     }
   }
   /* 2. Ensure PSR-4 autoload entry ---------------------------------- */
-  const json = JSON.parse(fs.readFileSync(composerJsonPath, "utf8"));
+  // Add safety check before reading
+  if (!fs.existsSync(composerJsonPath)) {
+    console.error(`composer.json not found at ${composerJsonPath}`);
+    throw new Error("Failed to create or find composer.json");
+  }
+  let json;
+  try {
+    json = JSON.parse(fs.readFileSync(composerJsonPath, "utf8"));
+  } catch (readError) {
+    console.error("Failed to read composer.json:", readError);
+    throw readError;
+  }
   json.autoload ??= {};
   json.autoload["psr-4"] ??= {};
   json.autoload["psr-4"][""] ??= "src/";
-  fs.writeFileSync(composerJsonPath, JSON.stringify(json, null, 2));
+  try {
+    fs.writeFileSync(composerJsonPath, JSON.stringify(json, null, 2));
+  } catch (writeError) {
+    console.error("Failed to update composer.json:", writeError);
+    throw writeError;
+  }
   /* 3. Install dependencies ----------------------------------------- */
   if (dependencies.length) {
     console.log("Installing Composer dependencies:");
@@ -134,21 +153,22 @@ export async function installComposerDependencies(baseDir, dependencies) {
   });
 }
 const npmPinnedVersions = {
-  "@tailwindcss/postcss": "^4.1.11",
+  "@tailwindcss/postcss": "^4.1.12",
   "@types/browser-sync": "^2.29.0",
-  "@types/node": "^24.2.1",
+  "@types/node": "^24.3.0",
   "@types/prompts": "^2.4.9",
   "browser-sync": "^3.0.4",
-  chalk: "^5.5.0",
-  cssnano: "^7.1.0",
+  chalk: "^5.6.0",
+  "chokidar-cli": "^3.0.0",
+  cssnano: "^7.1.1",
   "http-proxy-middleware": "^3.0.5",
   "npm-run-all": "^4.1.5",
   "php-parser": "^3.2.5",
   postcss: "^8.5.6",
   "postcss-cli": "^11.0.1",
   prompts: "^2.4.2",
-  tailwindcss: "^4.1.11",
-  tsx: "^4.20.3",
+  tailwindcss: "^4.1.12",
+  tsx: "^4.20.5",
   typescript: "^5.9.2",
 };
 function npmPkg(name) {
