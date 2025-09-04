@@ -80,9 +80,10 @@ export async function installComposerDependencies(baseDir, dependencies) {
     fs.mkdirSync(baseDir, { recursive: true });
   }
   /* ------------------------------------------------------------------ */
-  /* 2. Try composer init (with better error handling)                   */
+  /* 2. Create composer.json directly (more reliable)                    */
   /* ------------------------------------------------------------------ */
   if (!existsAlready) {
+    // Try composer init first, but don't rely on it
     const initArgs = [
       ...baseArgs,
       "init",
@@ -96,78 +97,109 @@ export async function installComposerDependencies(baseDir, dependencies) {
       "--version",
       "1.0.0",
     ];
-    console.log(`Executing: ${cmd} ${initArgs.join(" ")}`);
-    console.log(`Working directory: ${baseDir}`);
+    console.log(`Attempting composer init...`);
     const res = spawnSync(cmd, initArgs, {
       cwd: baseDir,
-      stdio: ["ignore", "pipe", "pipe"], // Capture output for debugging
+      stdio: ["ignore", "pipe", "pipe"],
       encoding: "utf8",
     });
-    if (res.status !== 0) {
-      console.log(`Composer init failed with status ${res.status}`);
-      if (res.stderr) {
-        console.log(`Composer stderr: ${res.stderr}`);
+    // Check if composer.json was actually created
+    const composerJsonCreated = fs.existsSync(composerJsonPath);
+    if (res.status === 0 && composerJsonCreated) {
+      console.log("✓ Composer init successful and composer.json created");
+    } else {
+      if (res.status !== 0) {
+        console.log(`Composer init failed with status ${res.status}`);
+        if (res.stderr) console.log(`Stderr: ${res.stderr}`);
+      } else {
+        console.log(
+          `Composer init reported success but didn't create composer.json`
+        );
       }
-      if (res.stdout) {
-        console.log(`Composer stdout: ${res.stdout}`);
-      }
-      // Create fallback composer.json
-      console.log("Creating fallback composer.json...");
+      // Always create composer.json manually
+      console.log("Creating composer.json manually...");
       const defaultComposerJson = {
         name: "tsnc/prisma-php-app",
         type: "project",
         version: "1.0.0",
-        require: { php: "^8.2" },
-        autoload: { "psr-4": { "": "src/" } },
+        require: {
+          php: "^8.2",
+        },
+        autoload: {
+          "psr-4": {
+            "": "src/",
+          },
+        },
       };
       try {
+        // Ensure we're writing to the correct absolute path
+        const absoluteComposerPath = path.resolve(baseDir, "composer.json");
+        console.log(`Writing composer.json to: ${absoluteComposerPath}`);
         fs.writeFileSync(
-          composerJsonPath,
+          absoluteComposerPath,
           JSON.stringify(defaultComposerJson, null, 2),
           { encoding: "utf8" }
         );
-        console.log(`✓ Created fallback composer.json at ${composerJsonPath}`);
+        // Verify the file was actually created
+        if (fs.existsSync(absoluteComposerPath)) {
+          console.log(`✓ Successfully created composer.json`);
+        } else {
+          throw new Error(
+            "File creation appeared to succeed but file doesn't exist"
+          );
+        }
       } catch (writeError) {
-        console.error(`✗ Failed to create fallback composer.json:`, writeError);
-        console.error(`Attempted to write to: ${composerJsonPath}`);
-        console.error(`Base directory exists: ${fs.existsSync(baseDir)}`);
+        console.error(`✗ Failed to create composer.json:`, writeError);
+        // Additional debugging
+        console.error(`Base directory: ${baseDir}`);
+        console.error(`Absolute base directory: ${path.resolve(baseDir)}`);
+        console.error(`Target file path: ${composerJsonPath}`);
         console.error(
-          `Base directory stats:`,
-          fs.existsSync(baseDir) ? fs.statSync(baseDir) : "N/A"
+          `Absolute target file path: ${path.resolve(composerJsonPath)}`
         );
+        console.error(`Current working directory: ${process.cwd()}`);
+        console.error(`Base directory exists: ${fs.existsSync(baseDir)}`);
+        if (fs.existsSync(baseDir)) {
+          try {
+            const stats = fs.statSync(baseDir);
+            console.error(`Base directory is writable: ${stats.isDirectory()}`);
+          } catch (statError) {
+            console.error(`Cannot stat base directory: ${statError}`);
+          }
+        }
         throw new Error(`Cannot create composer.json: ${writeError}`);
       }
-    } else {
-      console.log("✓ Composer init successful");
     }
   }
   /* ------------------------------------------------------------------ */
-  /* 3. Verify composer.json exists before proceeding                   */
+  /* 3. Final verification that composer.json exists                    */
   /* ------------------------------------------------------------------ */
-  if (!fs.existsSync(composerJsonPath)) {
-    console.error(`✗ composer.json still not found at ${composerJsonPath}`);
+  const finalComposerPath = path.resolve(baseDir, "composer.json");
+  if (!fs.existsSync(finalComposerPath)) {
+    console.error(`✗ composer.json still not found at ${finalComposerPath}`);
     console.error(`Directory contents:`, fs.readdirSync(baseDir));
     throw new Error(
-      "Failed to create composer.json - file does not exist after init/fallback"
+      "Failed to create composer.json - file does not exist after all attempts"
     );
   }
   /* ------------------------------------------------------------------ */
-  /* 4. Ensure PSR-4 autoload entry                                     */
+  /* 4. Read and update composer.json                                   */
   /* ------------------------------------------------------------------ */
   let json;
   try {
-    const jsonContent = fs.readFileSync(composerJsonPath, "utf8");
+    const jsonContent = fs.readFileSync(finalComposerPath, "utf8");
     console.log("✓ Successfully read composer.json");
     json = JSON.parse(jsonContent);
   } catch (readError) {
     console.error("✗ Failed to read/parse composer.json:", readError);
     throw new Error(`Cannot read composer.json: ${readError}`);
   }
+  // Ensure PSR-4 autoload entry
   json.autoload ??= {};
   json.autoload["psr-4"] ??= {};
   json.autoload["psr-4"][""] ??= "src/";
   try {
-    fs.writeFileSync(composerJsonPath, JSON.stringify(json, null, 2));
+    fs.writeFileSync(finalComposerPath, JSON.stringify(json, null, 2));
     console.log("✓ Updated composer.json with PSR-4 autoload");
   } catch (writeError) {
     console.error("✗ Failed to update composer.json:", writeError);
@@ -187,7 +219,13 @@ export async function installComposerDependencies(baseDir, dependencies) {
         ...dependencies,
       ].join(" ")}`;
       console.log(`Executing: ${requireCmd}`);
-      execSync(requireCmd, { stdio: "inherit", cwd: baseDir });
+      console.log(`Working directory: ${baseDir}`);
+      execSync(requireCmd, {
+        stdio: "inherit",
+        cwd: baseDir,
+        // Ensure the working directory is correct
+        env: { ...process.env },
+      });
       console.log("✓ Composer dependencies installed");
     } catch (installError) {
       console.error("✗ Failed to install composer dependencies:", installError);
