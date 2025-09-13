@@ -13,14 +13,28 @@ function removePhpComments(code: string): string {
   return code;
 }
 
+function removePhpStrings(code: string): string {
+  // Remove single quoted strings
+  code = code.replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  // Remove double quoted strings
+  code = code.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  return code;
+}
+
 function findComponentsInFile(code: string): string[] {
-  const cleanedCode = removePhpComments(removeAllHeredocs(code));
-  const componentRegex = /<([A-Z][A-Za-z0-9]*)\b/g;
+  let cleanedCode = removePhpComments(removeAllHeredocs(code));
+  // Remove PHP strings to avoid matching components in string literals
+  cleanedCode = removePhpStrings(cleanedCode);
+
+  // Match components that are clearly in template context (naked, clean)
+  const componentRegex = /<([A-Z][A-Za-z0-9]*)\s*(?:\s+[^>]*)?\/?>(?!['"])/g;
   const components = new Set<string>();
   let match;
+
   while ((match = componentRegex.exec(cleanedCode)) !== null) {
     components.add(match[1]);
   }
+
   return Array.from(components);
 }
 
@@ -34,7 +48,8 @@ export async function checkComponentImports(
 ) {
   const code = await fs.readFile(filePath, "utf-8");
   const usedComponents = findComponentsInFile(code);
-  // Normalize the current file path: replace backslashes, trim, remove trailing slash, and lower-case.
+
+  // Normalize the current file path
   const normalizedFilePath = filePath
     .replace(/\\/g, "/")
     .trim()
@@ -62,12 +77,12 @@ export async function checkComponentImports(
         .trim()
         .replace(/\/+$/, "")
         .toLowerCase();
-      // Either exact match or the current file path ends with the importer.
       return (
         normalizedFilePath === normalizedImporter ||
         normalizedFilePath.endsWith(normalizedImporter)
       );
     });
+
     if (!found) {
       console.warn(
         chalk.yellow("Warning: ") +
