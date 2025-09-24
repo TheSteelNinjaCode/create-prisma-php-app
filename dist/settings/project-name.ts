@@ -145,7 +145,7 @@ export const filesToDelete = [
 
 export const dirsToDelete = [
   join(__dirname, "..", "caches"),
-  join(__dirname, "..", ".pphp"),
+  join(__dirname, "..", ".pp"),
 ];
 
 await deleteFilesIfExist(filesToDelete);

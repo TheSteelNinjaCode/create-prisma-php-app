@@ -29,6 +29,6 @@ composer.lock
 *.swp
 
 # Prisma PHP settings files
-.pphp/
+.pp/
 caches/
 settings/bs-config.json

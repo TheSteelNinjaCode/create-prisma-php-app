@@ -218,8 +218,8 @@ export async function installComposerDependencies(baseDir, dependencies) {
         "--no-interaction",
         ...dependencies,
       ].join(" ")}`;
-      console.log(`Executing: ${requireCmd}`);
-      console.log(`Working directory: ${baseDir}`);
+      // console.log(`Executing: ${requireCmd}`);
+      // console.log(`Working directory: ${baseDir}`);
       execSync(requireCmd, {
         stdio: "inherit",
         cwd: baseDir,
@@ -268,12 +268,12 @@ export async function installComposerDependencies(baseDir, dependencies) {
   }
 }
 const npmPinnedVersions = {
-  "@tailwindcss/postcss": "^4.1.12",
+  "@tailwindcss/postcss": "^4.1.13",
   "@types/browser-sync": "^2.29.0",
-  "@types/node": "^24.3.0",
+  "@types/node": "^24.5.2",
   "@types/prompts": "^2.4.9",
   "browser-sync": "^3.0.4",
-  chalk: "^5.6.0",
+  chalk: "^5.6.2",
   "chokidar-cli": "^3.0.0",
   cssnano: "^7.1.1",
   "http-proxy-middleware": "^3.0.5",
@@ -282,7 +282,7 @@ const npmPinnedVersions = {
   postcss: "^8.5.6",
   "postcss-cli": "^11.0.1",
   prompts: "^2.4.2",
-  tailwindcss: "^4.1.12",
+  tailwindcss: "^4.1.13",
   tsx: "^4.20.5",
   typescript: "^5.9.2",
 };

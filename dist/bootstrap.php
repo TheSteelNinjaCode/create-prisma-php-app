@@ -18,18 +18,18 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-use PPHP\Request;
-use PPHP\PrismaPHPSettings;
-use PPHP\StateManager;
+use PP\Request;
+use PP\PrismaPHPSettings;
+use PP\StateManager;
 use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
-use PPHP\MainLayout;
-use PPHP\PHPX\TemplateCompiler;
-use PPHP\CacheHandler;
-use PPHP\ErrorHandler;
+use PP\MainLayout;
+use PP\PHPX\TemplateCompiler;
+use PP\CacheHandler;
+use PP\ErrorHandler;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use PPHP\PartialRenderer;
+use PP\PartialRenderer;
 
 final class Bootstrap extends RuntimeException
 {
@@ -77,7 +77,7 @@ final class Bootstrap extends RuntimeException
         ErrorHandler::registerHandlers();
 
         // Set a local store key as a cookie (before any output)
-        setcookie("pphp_local_store_key", PrismaPHPSettings::$localStoreKey, [
+        setcookie("pp_local_store_key", PrismaPHPSettings::$localStoreKey, [
             'expires' => time() + 3600, // 1 hour expiration
             'path' => '/', // Cookie path
             'domain' => '', // Specify your domain
@@ -127,7 +127,7 @@ final class Bootstrap extends RuntimeException
         }
 
         self::$isPartialRequest =
-            !empty(Request::$data['pphpSync71163'])
+            !empty(Request::$data['ppSync71163'])
             && !empty(Request::$data['selectors'])
             && self::$secondRequestC69CD;
 
@@ -180,7 +180,7 @@ final class Bootstrap extends RuntimeException
         $jwt = JWT::encode($payload, $hmacSecret, 'HS256');
 
         setcookie(
-            'pphp_function_call_jwt',
+            'pp_function_call_jwt',
             $jwt,
             [
                 'expires'  => time() + 3600,
@@ -655,7 +655,7 @@ final class Bootstrap extends RuntimeException
 
     private static function getAesKeyFromJwt(): string
     {
-        $token     = $_COOKIE['pphp_function_call_jwt'] ?? null;
+        $token     = $_COOKIE['pp_function_call_jwt'] ?? null;
         $jwtSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? null;
 
         if (!$token || !$jwtSecret) {

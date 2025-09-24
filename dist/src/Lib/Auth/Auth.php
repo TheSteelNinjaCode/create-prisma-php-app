@@ -8,10 +8,10 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use DateInterval;
 use DateTime;
-use PPHP\Validator;
+use PP\Validator;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use PPHP\Request;
+use PP\Request;
 use Exception;
 use InvalidArgumentException;
 use ArrayObject;
@@ -25,7 +25,7 @@ class Auth
     public static string $cookieName = '';
 
     private static ?Auth $instance = null;
-    private const PPHPAUTH = 'pphpauth';
+    private const PPAUTH = 'ppauth';
     private string $secretKey;
     private string $defaultTokenValidity = '1h'; // Default to 1 hour
 
@@ -347,7 +347,7 @@ class Auth
      */
     public function authProviders(...$providers)
     {
-        $dynamicRouteParams = Request::$dynamicParams[self::PPHPAUTH] ?? [];
+        $dynamicRouteParams = Request::$dynamicParams[self::PPAUTH] ?? [];
 
         if (Request::$isGet && in_array('signin', $dynamicRouteParams)) {
             foreach ($providers as $provider) {
