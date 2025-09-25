@@ -323,18 +323,153 @@ function generateSwaggerAnnotation(modelName: string, fields: Field[]): string {
  */`;
 }
 
-// Function to generate dynamic ID validation logic for update and find-by-ID routes
-function generateIdValidationLogic(idField: any) {
-  const fieldType = idField.type.toLowerCase();
+function isRequiredOnCreate(field: Field): boolean {
+  // Required if Prisma says required AND no DB default AND not generated/readOnly/updatedAt/id
+  return (
+    field.isRequired &&
+    !field.hasDefaultValue &&
+    !field.isGenerated &&
+    !field.isUpdatedAt &&
+    !field.isId &&
+    !field.isReadOnly
+  );
+}
 
-  if (["cuid", "uuid", "autoincrement"].includes(idField.default?.name)) {
+function phpRuleBodyForType(prismaTypeLower: string): string {
+  switch (prismaTypeLower) {
+    case "boolean":
+      return `
+        $b = Validator::boolean($v);
+        if ($b === null) return false;
+        $out = (bool)$b;
+        return true;`;
+
+    case "int":
+    case "bigint":
+      return `
+        $i = Validator::int($v);
+        if ($i === null) return false;
+        $out = $i;
+        return true;`;
+
+    case "float":
+      return `
+        $f = Validator::float($v);
+        if ($f === null) return false;
+        $out = $f;
+        return true;`;
+
+    case "decimal":
+      return `
+        $d = Validator::decimal($v);
+        if ($d === null) return false;
+        $out = (string)$d; // keep decimals canonical as string
+        return true;`;
+
+    case "datetime":
+      return `
+        $dt = Validator::dateTime($v, 'Y-m-d H:i:s');
+        if ($dt === null) return false;
+        $out = $dt;
+        return true;`;
+
+    case "json":
+      return `
+        if (is_string($v)) {
+          json_decode($v);
+          if (json_last_error() !== JSON_ERROR_NONE) return false;
+          $out = $v;
+          return true;
+        } else {
+          $enc = json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+          if ($enc === false) return false;
+          $out = $enc;
+          return true;
+        }`;
+
+    case "uuid":
+      return `
+        $s = Validator::uuid($v);
+        if ($s === null) return false;
+        $out = $s;
+        return true;`;
+
+    case "cuid":
+      return `
+        $s = Validator::cuid($v);
+        if ($s === null) return false;
+        $out = $s;
+        return true;`;
+
+    case "cuid2":
+      return `
+        $s = Validator::cuid2($v);
+        if ($s === null) return false;
+        $out = $s;
+        return true;`;
+
+    case "string":
+    default:
+      return `
+        $s = Validator::string($v, false); // trim, no HTML escaping for DB
+        if ($s === '') return false;
+        $out = $s;
+        return true;`;
+  }
+}
+
+function generatePhpSchema(fields: Field[], forUpdate: boolean): string {
+  const entries = fields
+    .filter((f) => !shouldSkipField(f))
+    .map((f) => {
+      const t = f.type.toLowerCase();
+      const required = forUpdate ? false : isRequiredOnCreate(f);
+      const body = phpRuleBodyForType(t).trim();
+      return `  '${f.name}' => [
+    'type' => '${t}',
+    'required' => ${required ? "true" : "false"},
+    'validate' => function($v, &$out) {
+      ${body}
+    },
+  ]`;
+    })
+    .join(",\n");
+  return `[\n${entries}\n]`;
+}
+
+function idValidatorSnippet(idField: Field): string {
+  const t = idField.type.toLowerCase();
+  const def = (idField as any).default?.name?.toLowerCase?.() || "";
+
+  // numeric ids (int/bigint or autoincrement())
+  if (t === "int" || t === "bigint" || def === "autoincrement") {
     return `
-if (!Validator::${fieldType}($id)) {
-    Boom::badRequest("Invalid ${idField.name}")->toResponse();
-}`;
+$__id = Validator::int($id);
+if ($__id === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }
+$id = $__id;`;
   }
 
-  return ""; // No specific validation needed otherwise
+  // uuid() default or explicit UUID type
+  if (t === "uuid" || def === "uuid") {
+    return `
+if (Validator::uuid($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
+  }
+
+  // cuid() / cuid2() defaults
+  if (def === "cuid") {
+    return `
+if (Validator::cuid($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
+  }
+  if (def === "cuid2") {
+    return `
+if (Validator::cuid2($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
+  }
+
+  // fallback: non-empty string
+  return `
+$__id = Validator::string($id, false);
+if ($__id === '') { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }
+$id = $__id;`;
 }
 
 // Function to generate endpoints for a model
@@ -372,7 +507,7 @@ function generateEndpoints(modelName: string, fields: any[]): void {
   const idDir = `${baseDir}/[id]`;
   mkdirSync(resolve(__dirname, `../${idDir}`), { recursive: true });
   const idRoutePath = `${idDir}/route.php`;
-  const idValidationLogic = generateIdValidationLogic(idField);
+  const idCheck = idValidatorSnippet(idField);
   const idRouteContent = `<?php
 
 use Lib\\Prisma\\Classes\\Prisma;
@@ -382,7 +517,7 @@ use Lib\\Request;
 
 $prisma = Prisma::getInstance();
 $id = Request::$dynamicParams->id ?? null;
-${idValidationLogic}
+${idCheck}
 
 $${camelCaseModelName} = $prisma->${camelCaseModelName}->findUnique([
     'where' => [
@@ -406,6 +541,8 @@ echo json_encode($${camelCaseModelName});`;
   mkdirSync(resolve(__dirname, `../${createDir}`), { recursive: true });
   const createRoutePath = `${createDir}/route.php`;
 
+  const createSchema = generatePhpSchema(fieldsToCreateAndUpdate, false);
+
   const createRouteContent = `<?php
 
 use Lib\\Prisma\\Classes\\Prisma;
@@ -415,56 +552,39 @@ use Lib\\Request;
 
 $prisma = Prisma::getInstance();
 
-// Define fields with their types, required status, and validation functions
-$fieldsWithTypesAndStatus = [
-${fieldsToCreateAndUpdate
-  .map(
-    (field) =>
-      `    '${field.name}' => [
-        'type' => '${field.type.toLowerCase()}', 
-        'required' => ${field.isRequired ? "true" : "false"}, 
-        'validate' => fn($value) => is_null($value) || $value === '' || Validator::${field.type.toLowerCase()}($value)
-    ]`
-  )
-  .join(",\n")}
-];
+/** Schema: type-aware validate + normalize */
+$schema = ${createSchema};
 
 $data = [];
-foreach ($fieldsWithTypesAndStatus as $field => $details) {
-    $isRequired = $details['required'];
-    $type = $details['type'];
-    $validationFn = $details['validate'];
+foreach ($schema as $field => $rule) {
+    $isRequired = $rule['required'] ?? false;
 
-    // Check if the field is required and missing in the request
-    if ($isRequired && !isset(Request::$params->$field)) {
-        Boom::badRequest("Missing {$field}")->toResponse();
-    }
-
-    // Check if the field is present in the request
-    if (isset(Request::$params->$field)) {
-        $value = Request::$params->$field;
-
-        // Validate the field using the validation function
-        if (!$validationFn($value)) {
-            Boom::badRequest("Invalid {$field}", ["Expected type '{$type}'"])->toResponse();
+    $has = is_object(Request::$params) && property_exists(Request::$params, $field);
+    if (!$has) {
+        if ($isRequired) {
+            Boom::badRequest("Missing {$field}")->toResponse();
+            return;
         }
-
-        // Assign the validated value to the data array
-        $data[$field] = $value;
+        continue;
     }
+
+    $raw = Request::$params->$field;
+    $out = null;
+    if (!($rule['validate'])($raw, $out)) {
+        $type = $rule['type'] ?? 'unknown';
+        Boom::badRequest("Invalid {$field}", ["Expected type '{$type}'"])->toResponse();
+        return;
+    }
+    $data[$field] = $out;
 }
 
-// Create the new record using the Prisma instance
-$new${modelName} = $prisma->${camelCaseModelName}->create([
-    'data' => $data
-]);
+$new${modelName} = $prisma->${camelCaseModelName}->create(['data' => $data]);
 
-// Handle potential internal server error
 if (!$new${modelName}) {
     Boom::internal()->toResponse();
+    return;
 }
 
-// Return the newly created record in JSON format
 echo json_encode($new${modelName});`;
 
   writeFileSync(
@@ -478,6 +598,8 @@ echo json_encode($new${modelName});`;
   mkdirSync(resolve(__dirname, `../${updateDir}`), { recursive: true });
   const updateRoutePath = `${updateDir}/route.php`;
 
+  const updateSchema = generatePhpSchema(fieldsToCreateAndUpdate, true);
+
   const updateRouteContent = `<?php
 
 use Lib\\Prisma\\Classes\\Prisma;
@@ -487,65 +609,44 @@ use Lib\\Request;
 
 $prisma = Prisma::getInstance();
 $id = Request::$dynamicParams->id ?? null;
+${idCheck}
 
-// Perform validation for the ID
-if (!Validator::int($id)) {
-  Boom::badRequest("Invalid id")->toResponse();
-}
-
-// Define fields with their types, required status, and validation functions
-$fieldsWithTypesAndStatus = [
-${fieldsToCreateAndUpdate
-  .map(
-    (field) =>
-      `    '${field.name}' => [
-        'type' => '${field.type.toLowerCase()}', 
-        'required' => ${field.isRequired ? "true" : "false"}, 
-        'validate' => fn($value) => is_null($value) || $value === '' || Validator::${field.type.toLowerCase()}($value)
-    ]`
-  )
-  .join(",\n")}
-];
-
+/** Partial update: nothing is required, but at least one field must be present */
+$schema = ${updateSchema};
 $data = [];
-foreach ($fieldsWithTypesAndStatus as $field => $details) {
-    $isRequired = $details['required'];
-    $type = $details['type'];
-    $validationFn = $details['validate'];
+$any = false;
 
-    // Check if the field is required and missing in the request
-    if ($isRequired && !isset(Request::$params->$field)) {
-        Boom::badRequest("Missing {$field}")->toResponse();
+foreach ($schema as $field => $rule) {
+    $has = is_object(Request::$params) && property_exists(Request::$params, $field);
+    if (!$has) continue;
+
+    $raw = Request::$params->$field;
+    $out = null;
+    if (!($rule['validate'])($raw, $out)) {
+        $type = $rule['type'] ?? 'unknown';
+        Boom::badRequest("Invalid {$field}", ["Expected type '{$type}'"])->toResponse();
+        return;
     }
-
-    // Check if the field is present in the request
-    if (isset(Request::$params->$field)) {
-        $value = Request::$params->$field;
-
-        // Validate the field using the validation function
-        if (!$validationFn($value)) {
-            Boom::badRequest("Invalid {$field}", ["Expected type '{$type}'"])->toResponse();
-        }
-
-        // Assign the validated value to the data array
-        $data[$field] = $value;
-    }
+    $data[$field] = $out;
+    $any = true;
 }
 
-// Update the record
+if (!$any) {
+    Boom::badRequest("No fields to update")->toResponse();
+    return;
+}
+
 $updated${modelName} = $prisma->${camelCaseModelName}->update([
   'where' => ['${idFieldName}' => $id],
-  'data' => $data,
+  'data'  => $data,
 ]);
 
-// Handle potential internal server error
 if (!$updated${modelName}) {
   Boom::notFound()->toResponse();
+  return;
 }
 
-// Return the updated record in JSON format
-echo json_encode($updated${modelName});
-`;
+echo json_encode($updated${modelName});`;
 
   writeFileSync(
     resolve(__dirname, `../${updateRoutePath}`),
@@ -566,7 +667,7 @@ use Lib\\Request;
 
 $prisma = Prisma::getInstance();
 $id = Request::$dynamicParams->id ?? null;
-${idValidationLogic}
+${idCheck}
 
 $deleted${modelName} = $prisma->${camelCaseModelName}->delete([
     'where' => [
@@ -708,7 +809,7 @@ await generateSwaggerDocs(modelsToGenerate);
 await swaggerConfig();
 
 if (prismaSchemaConfigJson.generatePhpClasses) {
-  spawn("npx", ["php", "generate", "class"], {
+  spawn("npx", ["ppo", "generate"], {
     stdio: "inherit",
     shell: true,
   });
