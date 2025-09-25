@@ -16,6 +16,7 @@ use Brick\Math\Exception\MathException;
 use Brick\Math\RoundingMode;
 use InvalidArgumentException;
 use BackedEnum;
+use Throwable;
 
 final class Validator
 {
@@ -255,13 +256,15 @@ final class Validator
      */
     public static function dateTime($value, string $format = 'Y-m-d H:i:s'): ?string
     {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
         try {
-            if ($value instanceof DateTime) {
-                $date = $value;
-            } else {
-                $date = new DateTime($value);
-            }
-        } catch (Exception) {
+            $date = $value instanceof DateTime
+                ? $value
+                : new DateTime((string) $value);
+        } catch (Throwable) {
             return null;
         }
 
@@ -284,15 +287,29 @@ final class Validator
     // Other Validation
 
     /**
-     * Validate a JSON string.
+     * Validate a JSON string or convert an array to a JSON string.
      *
-     * @param mixed $value The value to validate.
-     * @return bool True if valid JSON, false otherwise.
+     * This function checks if the input is a valid JSON string. If it is, it returns the string.
+     * If the input is an array, it converts it to a JSON string with specific options.
+     * If the input is invalid, it returns an error message.
+     *
+     * @param mixed $value The value to validate or convert.
+     * @return string The valid JSON string or an error message if invalid.
      */
-    public static function json($value): bool
+    public static function json(mixed $value): string
     {
-        json_decode($value);
-        return json_last_error() === JSON_ERROR_NONE;
+        if (is_string($value)) {
+            json_decode($value);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return json_last_error_msg();
+            }
+            return $value;
+        }
+
+        return json_encode(
+            $value,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
     }
 
     /**
