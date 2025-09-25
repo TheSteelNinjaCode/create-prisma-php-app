@@ -1,6 +1,5 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { writeFileSync } from "fs";
-import chokidar from "chokidar";
 import browserSync, { BrowserSyncInstance } from "browser-sync";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
@@ -14,75 +13,76 @@ import {
   updateComponentImports,
 } from "./class-imports";
 import { checkComponentImports } from "./component-import-checker";
+import { DebouncedWorker, createSrcWatcher, DEFAULT_AWF } from "./utils.js";
 
 const { __dirname } = getFileMeta();
 
 const bs: BrowserSyncInstance = browserSync.create();
 
-// Watch for file changes (create, delete, save)
-const watcher = chokidar.watch("src/app/**/*", {
-  ignored: /(^|[\/\\])\../, // Ignore dotfiles
-  persistent: true,
+// ---------- Watcher (whole ./src) ----------
+const pipeline = new DebouncedWorker(
+  async () => {
+    await generateFileListJson();
+    await updateAllClassLogs();
+    await updateComponentImports();
+
+    // Scan all PHP files in the whole SRC tree
+    const phpFiles = await getAllPhpFiles(SRC_DIR);
+    for (const file of phpFiles) {
+      const rawFileImports = await analyzeImportsInFile(file);
+
+      // Normalize to array-of-objects shape expected by the checker
+      const fileImports: Record<
+        string,
+        { className: string; filePath: string; importer?: string }[]
+      > = {};
+      for (const key in rawFileImports) {
+        const v = rawFileImports[key];
+        fileImports[key] = Array.isArray(v)
+          ? v
+          : [{ className: key, filePath: v }];
+      }
+      await checkComponentImports(file, fileImports);
+    }
+  },
+  350,
+  "bs-pipeline"
+);
+
+// watch the entire src; we don’t need an extension filter here
+createSrcWatcher(join(SRC_DIR, "**", "*"), {
+  onEvent: (_ev, _abs, rel) => pipeline.schedule(rel),
+  awaitWriteFinish: DEFAULT_AWF,
+  logPrefix: "watch",
   usePolling: true,
   interval: 1000,
 });
 
-// On changes, generate file list and also update the class log
-const handleFileChange = async () => {
-  await generateFileListJson();
-  await updateAllClassLogs();
-  await updateComponentImports();
-
-  // Optionally, run the component check on each PHP file.
-  const phpFiles = await getAllPhpFiles(SRC_DIR + "/app");
-  for (const file of phpFiles) {
-    const rawFileImports = await analyzeImportsInFile(file);
-    // Convert Record<string, string> to Record<string, { className: string; filePath: string; importer?: string }[]>
-    const fileImports: Record<
-      string,
-      | { className: string; filePath: string; importer?: string }[]
-      | { className: string; filePath: string; importer?: string }
-    > = {};
-    for (const key in rawFileImports) {
-      if (typeof rawFileImports[key] === "string") {
-        fileImports[key] = [
-          {
-            className: key,
-            filePath: rawFileImports[key],
-          },
-        ];
-      } else {
-        fileImports[key] = rawFileImports[key];
-      }
-    }
-    await checkComponentImports(file, fileImports);
-  }
-};
-
-// Perform specific actions for file events
-watcher
-  .on("add", handleFileChange)
-  .on("change", handleFileChange)
-  .on("unlink", handleFileChange);
-
-// BrowserSync initialization
+// ---------- BrowserSync ----------
 bs.init(
   {
+    /**
+     * Proxy your PHP app (from prisma-php.json).
+     * Use object form to enable WebSocket proxying.
+     */
     proxy: "http://localhost:3000",
+
     middleware: [
-      (_: any, res: any, next: any) => {
+      (_req, res, next) => {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         res.setHeader("Pragma", "no-cache");
         res.setHeader("Expires", "0");
         next();
       },
+
       createProxyMiddleware({
         target: prismaPhpConfigJson.bsTarget,
         changeOrigin: true,
         pathRewrite: {},
       }),
     ],
-    files: "src/**/*.*",
+
+    files: `${SRC_DIR}/**/*.*`, // still do file-level reloads as a safety net
     notify: false,
     open: false,
     ghostMode: false,
@@ -98,24 +98,19 @@ bs.init(
       return;
     }
 
-    // Retrieve the active URLs from the BrowserSync instance
-    const options = bsInstance.getOption("urls");
-    const localUrl = options.get("local");
-    const externalUrl = options.get("external");
-    const uiUrl = options.get("ui");
-    const uiExternalUrl = options.get("ui-external");
-
-    // Construct the URLs dynamically
-    const urls = {
-      local: localUrl,
-      external: externalUrl,
-      ui: uiUrl,
-      uiExternal: uiExternalUrl,
+    // Write live URLs for other tooling
+    const urls = bsInstance.getOption("urls");
+    const out = {
+      local: urls.get("local"),
+      external: urls.get("external"),
+      ui: urls.get("ui"),
+      uiExternal: urls.get("ui-external"),
     };
 
     writeFileSync(
       join(__dirname, "bs-config.json"),
-      JSON.stringify(urls, null, 2)
+      JSON.stringify(out, null, 2)
     );
+    console.log("\n\x1b[90mPress Ctrl+C to stop.\x1b[0m\n");
   }
 );
