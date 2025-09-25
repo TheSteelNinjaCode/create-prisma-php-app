@@ -5,6 +5,7 @@ import { getFileMeta } from "./utils.js";
 import { promises as fsPromises } from "fs";
 import { updateAllClassLogs } from "./class-log";
 import { updateComponentImports } from "./class-imports";
+import { generateFileListJson } from "./files-list";
 
 const { __dirname } = getFileMeta();
 
@@ -149,5 +150,6 @@ export const dirsToDelete = [
 
 await deleteFilesIfExist(filesToDelete);
 await deleteDirectoriesIfExist(dirsToDelete);
+await generateFileListJson();
 await updateAllClassLogs();
 await updateComponentImports();
