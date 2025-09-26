@@ -8,10 +8,7 @@ require_once __DIR__ . '/settings/paths.php';
 use Dotenv\Dotenv;
 use Lib\Middleware\CorsMiddleware;
 
-// Load environment variables
 Dotenv::createImmutable(DOCUMENT_PATH)->load();
-
-// CORS must run before sessions/any output
 CorsMiddleware::handle();
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -64,34 +61,27 @@ final class Bootstrap extends RuntimeException
 
     public static function run(): void
     {
-        // Set timezone
         date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
 
-        // Initialize essential classes
         PrismaPHPSettings::init();
         Request::init();
         StateManager::init();
         MainLayout::init();
-
-        // Register custom handlers (exception, shutdown, error)
         ErrorHandler::registerHandlers();
 
-        // Set a local store key as a cookie (before any output)
         setcookie("pp_local_store_key", PrismaPHPSettings::$localStoreKey, [
-            'expires' => time() + 3600, // 1 hour expiration
-            'path' => '/', // Cookie path
-            'domain' => '', // Specify your domain
-            'secure' => true, // Set to true if using HTTPS
-            'httponly' => false, // Set to true to prevent JavaScript access
-            'samesite' => 'Lax', // or 'Strict' depending on your requirements
+            'expires' => time() + 3600,
+            'path' => '/',
+            'domain' => '',
+            'secure' => true,
+            'httponly' => false,
+            'samesite' => 'Lax',
         ]);
 
-        // Set a function call key as a cookie
         self::functionCallNameEncrypt();
 
         self::$secondRequestC69CD = Request::$data['secondRequestC69CD'] ?? false;
 
-        // Check if the request is for a local store callback
         if (Request::$isWire && !self::$secondRequestC69CD) {
             self::isLocalStoreCallback();
         }
@@ -186,7 +176,7 @@ final class Bootstrap extends RuntimeException
                 'expires'  => time() + 3600,
                 'path'     => '/',
                 'secure'   => true,
-                'httponly' => false,    // JS must read the token
+                'httponly' => false,
                 'samesite' => 'Strict',
             ]
         );
@@ -214,7 +204,6 @@ final class Bootstrap extends RuntimeException
         $requestUri = $_SERVER['REQUEST_URI'];
         $requestUri = empty($_SERVER['SCRIPT_URL']) ? trim(self::uriExtractor($requestUri)) : trim($requestUri);
 
-        // Without query params
         $scriptUrl = explode('?', $requestUri, 2)[0];
         $pathname = $_SERVER['SCRIPT_URL'] ?? $scriptUrl;
         $pathname = trim($pathname, '/');
@@ -233,7 +222,6 @@ final class Bootstrap extends RuntimeException
          * ================================================
          */
 
-        // e.g., avoid direct access to _private files
         $isDirectAccessToPrivateRoute = preg_match('/_/', $pathname);
         if ($isDirectAccessToPrivateRoute) {
             $sameSiteFetch = false;
@@ -252,7 +240,6 @@ final class Bootstrap extends RuntimeException
             }
         }
 
-        // Find matching route
         if ($pathname) {
             $groupFolder = self::findGroupFolder($pathname);
             if ($groupFolder) {
@@ -272,7 +259,6 @@ final class Bootstrap extends RuntimeException
                 }
             }
 
-            // Check for layout hierarchy
             $currentPath = $baseDir;
             $getGroupFolder = self::getGroupFolder($groupFolder);
             $modifiedPathname = $pathname;
@@ -292,7 +278,6 @@ final class Bootstrap extends RuntimeException
                 }
             }
 
-            // If it was a dynamic route, we also check for any relevant layout
             if (isset($dynamicRoute) && !empty($dynamicRoute)) {
                 $currentDynamicPath = $baseDir;
                 foreach (explode('/', $dynamicRoute) as $segment) {
@@ -311,12 +296,10 @@ final class Bootstrap extends RuntimeException
                 }
             }
 
-            // If still no layout, fallback to the app-level layout.php
             if (empty($layoutsToInclude)) {
                 $layoutsToInclude[] = $baseDir . '/layout.php';
             }
         } else {
-            // If path is empty, we’re basically at "/"
             $includePath = $baseDir . self::getFilePrecedence();
         }
 
@@ -535,7 +518,6 @@ final class Bootstrap extends RuntimeException
 
     private static function checkForDuplicateRoutes(): void
     {
-        // Skip checks in production
         if (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'production') {
             return;
         }
@@ -596,7 +578,6 @@ final class Bootstrap extends RuntimeException
             return false;
         }
 
-        // Check usage of MainLayout::$childLayoutChildren
         $pattern = '/\<\?=\s*MainLayout::\$childLayoutChildren\s*;?\s*\?>|echo\s*MainLayout::\$childLayoutChildren\s*;?/';
         return (bool) preg_match($pattern, $fileContent);
     }
@@ -612,7 +593,6 @@ final class Bootstrap extends RuntimeException
             return false;
         }
 
-        // Check usage of MainLayout::$children
         $pattern = '/\<\?=\s*MainLayout::\$children\s*;?\s*\?>|echo\s*MainLayout::\$children\s*;?/';
         return (bool) preg_match($pattern, $fileContent);
     }
@@ -960,13 +940,9 @@ final class Bootstrap extends RuntimeException
     }
 }
 
-// ============================================================================
-// Main Execution
-// ============================================================================
 Bootstrap::run();
 
 try {
-    // 1) If there's no content to include:
     if (empty(Bootstrap::$contentToInclude)) {
         if (!Request::$isXFileRequest && PrismaPHPSettings::$option->backendOnly) {
             header('Content-Type: application/json');
@@ -978,7 +954,6 @@ try {
             exit;
         }
 
-        // If the file physically exists on disk and we’re dealing with an X-File request
         if (is_file(Bootstrap::$requestFilePath)) {
             if (file_exists(Bootstrap::$requestFilePath) && Request::$isXFileRequest) {
                 if (pathinfo(Bootstrap::$requestFilePath, PATHINFO_EXTENSION) === 'php') {
@@ -996,23 +971,19 @@ try {
         }
     }
 
-    // 2) If the chosen file is route.php -> output JSON
     if (!empty(Bootstrap::$contentToInclude) && Request::$fileToInclude === 'route.php') {
         header('Content-Type: application/json');
         require_once Bootstrap::$contentToInclude;
         exit;
     }
 
-    // 3) If there is some valid content (index.php or something else)
     if (!empty(Bootstrap::$contentToInclude) && !empty(Request::$fileToInclude)) {
-        // We only load the content now if we're NOT dealing with the top-level parent layout
         if (!Bootstrap::$isParentLayout) {
             ob_start();
             require_once Bootstrap::$contentToInclude;
             MainLayout::$childLayoutChildren = ob_get_clean();
         }
 
-        // Then process all the reversed layouts in the chain
         foreach (array_reverse(Bootstrap::$layoutsToInclude) as $layoutPath) {
             if (Bootstrap::$parentLayoutPath === $layoutPath) {
                 continue;
@@ -1027,7 +998,6 @@ try {
             MainLayout::$childLayoutChildren = ob_get_clean();
         }
     } else {
-        // Fallback: we include not-found.php
         ob_start();
         require_once APP_PATH . '/not-found.php';
         MainLayout::$childLayoutChildren = ob_get_clean();
@@ -1036,7 +1006,6 @@ try {
         CacheHandler::$isCacheable = false;
     }
 
-    // If the top-level layout is in use
     if (Bootstrap::$isParentLayout && !empty(Bootstrap::$contentToInclude)) {
         ob_start();
         require_once Bootstrap::$contentToInclude;
@@ -1044,12 +1013,10 @@ try {
     }
 
     if (!Bootstrap::$isContentIncluded && !Bootstrap::$isChildContentIncluded) {
-        // Provide request-data for SSR caching, if needed
         if (!Bootstrap::$secondRequestC69CD) {
             Bootstrap::createUpdateRequestData();
         }
 
-        // For wire calls, re-include the files if needed
         if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
             if (isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
                 foreach (Bootstrap::$requestFilesData[Request::$decodedUri]['includedFiles'] as $file) {
@@ -1062,13 +1029,11 @@ try {
             }
         }
 
-        // If it’s a wire request, handle wire callback
         if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
             ob_end_clean();
             Bootstrap::wireCallback();
         }
 
-        // If there’s caching
         if ((!Request::$isWire && !Bootstrap::$secondRequestC69CD) && isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
             if ($_ENV['CACHE_ENABLED'] === 'true') {
                 CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL']));
