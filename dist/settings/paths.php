@@ -1,26 +1,50 @@
 <?php
 
 /**
- * @var string SETTINGS_PATH - The absolute path to the settings directory ./settings
+ * @const string SETTINGS_PATH
+ * Absolute path to the `./settings` directory (the directory containing this file).
+ * Example: /var/www/project/settings
  */
-define("SETTINGS_PATH", dirname(__FILE__));
+define('SETTINGS_PATH', dirname(__FILE__));
+
 /**
- * @var string PRISMA_LIB_PATH - The absolute path to the Prisma library directory ./src/Lib/Prisma
+ * @const string PRISMA_LIB_PATH
+ * Absolute path to the Prisma library directory: `./src/Lib/Prisma`.
+ * Example: /var/www/project/src/Lib/Prisma
  */
-define("PRISMA_LIB_PATH", dirname(SETTINGS_PATH) . "/src/Lib/Prisma");
+define('PRISMA_LIB_PATH', dirname(SETTINGS_PATH) . '/src/Lib/Prisma');
+
 /**
- * @var string SRC_PATH - The absolute path to the src directory ./src
+ * @const string SRC_PATH
+ * Absolute path to the application source directory: `./src`.
+ * Example: /var/www/project/src
  */
-define("SRC_PATH", dirname(SETTINGS_PATH) . "/src");
+define('SRC_PATH', dirname(SETTINGS_PATH) . '/src');
+
 /**
- * @var string APP_PATH - The absolute path to the app directory ./src/app
+ * @const string APP_PATH
+ * Absolute path to the app entry directory: `./src/app`.
+ * Example: /var/www/project/src/app
  */
-define("APP_PATH", dirname(SETTINGS_PATH) . "/src/app");
+define('APP_PATH', dirname(SETTINGS_PATH) . '/src/app');
+
 /**
- * @var string LIB_PATH - The absolute path to the layout directory ./src/Lib
+ * @const string LIB_PATH
+ * Absolute path to the shared library directory: `./src/Lib`.
+ * Example: /var/www/project/src/Lib
  */
-define("LIB_PATH", dirname(SETTINGS_PATH) . "/src/Lib");
+define('LIB_PATH', dirname(SETTINGS_PATH) . '/src/Lib');
+
 /**
- * @var string DOCUMENT_PATH - The absolute path to the layout directory ./
+ * @const string DOCUMENT_PATH
+ * Absolute path to the project root directory: `./`.
+ * Example: /var/www/project
  */
-define("DOCUMENT_PATH", dirname(SETTINGS_PATH));
+define('DOCUMENT_PATH', dirname(SETTINGS_PATH));
+
+/**
+ * @const string PUBLIC_PATH
+ * Absolute path to the public web root directory: `./public`.
+ * Example: /var/www/project/public
+ */
+define('PUBLIC_PATH', dirname(SETTINGS_PATH) . '/public');

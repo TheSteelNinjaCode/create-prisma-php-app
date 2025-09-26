@@ -4,12 +4,10 @@ import chokidar, { FSWatcher } from "chokidar";
 import { spawn, ChildProcess, execFile } from "child_process";
 import { relative } from "path";
 
-/**
- * Retrieves the file metadata including the filename and directory name.
- *
- * @param importMetaUrl - The URL of the module's import.meta.url.
- * @returns An object containing the filename (`__filename`) and directory name (`__dirname`).
- */
+export const PUBLIC_DIR = "public";
+export const SRC_DIR = "src";
+export const APP_DIR = "src/app";
+
 export function getFileMeta() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
@@ -19,7 +17,7 @@ export function getFileMeta() {
 export type WatchEvent = "add" | "addDir" | "change" | "unlink" | "unlinkDir";
 
 export const DEFAULT_IGNORES: (string | RegExp)[] = [
-  /(^|[\/\\])\../, // dotfiles
+  /(^|[\/\\])\../,
   "**/node_modules/**",
   "**/vendor/**",
   "**/dist/**",
@@ -32,13 +30,10 @@ export const DEFAULT_IGNORES: (string | RegExp)[] = [
 
 export const DEFAULT_AWF = { stabilityThreshold: 300, pollInterval: 100 };
 
-/**
- * Create a chokidar watcher for a given root. Optionally filter by file extensions.
- */
 export function createSrcWatcher(
   root: string,
   opts: {
-    exts?: string[]; // e.g. ['.php','.ts']
+    exts?: string[];
     onEvent: (event: WatchEvent, absPath: string, relPath: string) => void;
     ignored?: (string | RegExp)[];
     awaitWriteFinish?: { stabilityThreshold: number; pollInterval: number };
@@ -70,7 +65,6 @@ export function createSrcWatcher(
       console.log(`[${logPrefix}] Watching ${root.replace(/\\/g, "/")}/**/*`);
     })
     .on("all", (event: WatchEvent, filePath: string) => {
-      // Optional extension filter
       if (exts && exts.length > 0) {
         const ok = exts.some((ext) => filePath.endsWith(ext));
         if (!ok) return;
@@ -85,9 +79,6 @@ export function createSrcWatcher(
   return watcher;
 }
 
-/**
- * Debounced worker that ensures only one run at a time; extra runs get queued once.
- */
 export class DebouncedWorker {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
@@ -128,9 +119,6 @@ export class DebouncedWorker {
   }
 }
 
-/**
- * Cross-platform restartable process.
- */
 export function createRestartableProcess(spec: {
   name: string;
   cmd: string;
@@ -233,9 +221,6 @@ export function createRestartableProcess(spec: {
   return { start, stop, restart, getChild };
 }
 
-/**
- * Register shutdown cleanup callbacks.
- */
 export function onExit(fn: () => Promise<void> | void) {
   const wrap = (sig: string) => async () => {
     console.log(`[proc] Received ${sig}, shutting down…`);

@@ -11,17 +11,14 @@ const { __dirname } = getFileMeta();
 
 const newProjectName = basename(join(__dirname, ".."));
 
-// Function to update the project name and paths in the JSON config
 function updateProjectNameInConfig(
   filePath: string,
   newProjectName: string
 ): void {
   const filePathDir = dirname(filePath);
 
-  // Update the projectName directly in the imported config
   prismaPhpConfigJson.projectName = newProjectName;
 
-  // Update other paths
   prismaPhpConfigJson.projectRootPath = filePathDir;
 
   const targetPath = getTargetPath(
@@ -32,7 +29,6 @@ function updateProjectNameInConfig(
   prismaPhpConfigJson.bsTarget = `http://localhost${targetPath}`;
   prismaPhpConfigJson.bsPathRewrite["^/"] = targetPath;
 
-  // Save the updated config back to the JSON file
   writeFile(
     filePath,
     JSON.stringify(prismaPhpConfigJson, null, 2),
@@ -49,11 +45,9 @@ function updateProjectNameInConfig(
   );
 }
 
-// Function to determine the target path for browser-sync
 function getTargetPath(fullPath: string, environment: string): string {
   const normalizedPath = normalize(fullPath);
 
-  // Patch: if CI, return root ("/") as default target path
   if (process.env.CI === "true") {
     return "/";
   }
@@ -92,10 +86,8 @@ function getTargetPath(fullPath: string, environment: string): string {
   return finalPath;
 }
 
-// Path to your JSON configuration file (for saving changes)
 const configFilePath = join(__dirname, "..", "prisma-php.json");
 
-// Run the function with your config file path and the new project name
 updateProjectNameInConfig(configFilePath, newProjectName);
 
 export const deleteFilesIfExist = async (
@@ -104,19 +96,15 @@ export const deleteFilesIfExist = async (
   for (const filePath of filePaths) {
     try {
       await fsPromises.unlink(filePath);
-      // console.log(`Deleted ${filePath}`);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        // Ignore error if file doesn't exist
         console.error(`Error deleting ${filePath}:`, error);
       }
     }
 
-    // If the file is 'request-data.json', recreate it as an empty file
     if (filePath.endsWith("request-data.json")) {
       try {
-        await fsPromises.writeFile(filePath, ""); // Create an empty file
-        // console.log(`Created empty ${filePath}`);
+        await fsPromises.writeFile(filePath, "");
       } catch (error) {
         console.error(`Error creating empty ${filePath}:`, error);
       }

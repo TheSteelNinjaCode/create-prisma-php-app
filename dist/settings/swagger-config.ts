@@ -24,11 +24,11 @@ export async function swaggerConfig(): Promise<void> {
       },
       servers: [
         {
-          url: bsConfigJson.local, // For Development
+          url: bsConfigJson.local,
           description: "Development Server",
         },
         {
-          url: "your-production-domain", // For Production
+          url: "your-production-domain",
           description: "Production Server",
         },
       ],
@@ -47,13 +47,11 @@ export async function swaggerConfig(): Promise<void> {
         },
       ],
     },
-    apis: [join(__dirname, "../src/app/swagger-docs/apis/**/*.js")], // Adjust to match JavaScript file paths
+    apis: [join(__dirname, "../src/app/swagger-docs/apis/**/*.js")],
   };
 
-  // Generate the Swagger specification
   const swaggerSpec = JSON.stringify(swaggerJsdoc(options), null, 2);
 
-  // Always generate the swagger.json file
   try {
     writeFileSync(outputPath, swaggerSpec, "utf-8");
     console.log(

@@ -23,7 +23,6 @@ const serverScriptPath = join(
 );
 const watchRoot = join(__dirname, "..", "src");
 
-// Restartable MCP server
 const mcp = createRestartableProcess({
   name: "MCP",
   cmd: phpPath,
@@ -33,7 +32,6 @@ const mcp = createRestartableProcess({
 
 mcp.start();
 
-// Debounced restarter
 const restarter = new DebouncedWorker(
   async () => {
     await mcp.restart("file change");
@@ -42,7 +40,6 @@ const restarter = new DebouncedWorker(
   "mcp-restart"
 );
 
-// Watch ./src for relevant changes
 createSrcWatcher(watchRoot, {
   exts: [".php", ".ts", ".js", ".json"],
   onEvent: (ev, _abs, rel) => restarter.schedule(`${ev}: ${rel}`),
@@ -52,7 +49,6 @@ createSrcWatcher(watchRoot, {
   interval: 1000,
 });
 
-// Graceful shutdown
 onExit(async () => {
   await mcp.stop();
 });

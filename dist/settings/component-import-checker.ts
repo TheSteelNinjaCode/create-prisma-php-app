@@ -14,19 +14,15 @@ function removePhpComments(code: string): string {
 }
 
 function removePhpStrings(code: string): string {
-  // Remove single quoted strings
   code = code.replace(/'(?:[^'\\]|\\.)*'/g, "''");
-  // Remove double quoted strings
   code = code.replace(/"(?:[^"\\]|\\.)*"/g, '""');
   return code;
 }
 
 function findComponentsInFile(code: string): string[] {
   let cleanedCode = removePhpComments(removeAllHeredocs(code));
-  // Remove PHP strings to avoid matching components in string literals
   cleanedCode = removePhpStrings(cleanedCode);
 
-  // Match components that are clearly in template context (naked, clean)
   const componentRegex = /<([A-Z][A-Za-z0-9]*)\s*(?:\s+[^>]*)?\/?>(?!['"])/g;
   const components = new Set<string>();
   let match;
@@ -49,7 +45,6 @@ export async function checkComponentImports(
   const code = await fs.readFile(filePath, "utf-8");
   const usedComponents = findComponentsInFile(code);
 
-  // Normalize the current file path
   const normalizedFilePath = filePath
     .replace(/\\/g, "/")
     .trim()
@@ -58,7 +53,6 @@ export async function checkComponentImports(
 
   usedComponents.forEach((component) => {
     const rawMapping = fileImports[component];
-    // Normalize rawMapping to an array
     let mappings: Array<{
       className: string;
       filePath: string;
@@ -70,7 +64,6 @@ export async function checkComponentImports(
       mappings = [rawMapping];
     }
 
-    // Check if any mapping's importer matches the current file.
     const found = mappings.some((mapping) => {
       const normalizedImporter = (mapping.importer || "")
         .replace(/\\/g, "/")

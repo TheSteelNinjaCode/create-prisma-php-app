@@ -211,9 +211,7 @@ async function getAllPhpFiles(dir: string): Promise<string[]> {
         files.push(fullPath);
       }
     }
-  } catch {
-    // ignore missing/unreadable dirs to keep resilient
-  }
+  } catch {}
   return files;
 }
 
@@ -243,5 +241,4 @@ export async function updateAllClassLogs() {
   }
 
   await saveLogData(logData);
-  // console.log("class-log.json updated from configured componentScanDirs.");
 }

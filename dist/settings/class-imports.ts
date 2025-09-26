@@ -20,7 +20,6 @@ export const SRC_DIR = path.join(PROJECT_ROOT, "src");
 const IMPORTS_FILE = path.join(PROJECT_ROOT, "settings/class-imports.json");
 const CLASS_LOG_FILE = path.join(PROJECT_ROOT, "settings/class-log.json");
 
-
 async function saveImportsData(
   data: Record<
     string,
@@ -68,9 +67,7 @@ export async function analyzeImportsInFile(
   const code = await fs.readFile(filePath, "utf-8");
 
   try {
-    // Parse the PHP file to AST
     const ast = parser.parseCode(code, filePath);
-
     const imports: Record<string, string> = {};
 
     function traverse(node: any, baseNamespace = "") {
@@ -79,7 +76,6 @@ export async function analyzeImportsInFile(
       if (Array.isArray(node)) {
         node.forEach((childNode) => traverse(childNode, baseNamespace));
       } else {
-        // Handle grouped `use` statements
         if (node.kind === "usegroup" && node.name) {
           baseNamespace = node.name.name || node.name;
           for (const useItem of node.items || []) {
@@ -94,7 +90,6 @@ export async function analyzeImportsInFile(
           }
         }
 
-        // Handle non-grouped `use` statements
         if (node.kind === "useitem" && node.name) {
           const fqn = node.name.name || node.name;
           const alias = node.alias
@@ -105,7 +100,6 @@ export async function analyzeImportsInFile(
           }
         }
 
-        // Traverse child nodes
         for (const key in node) {
           traverse(node[key], baseNamespace);
         }
@@ -121,9 +115,7 @@ export async function analyzeImportsInFile(
 }
 
 export async function updateComponentImports() {
-  // Analyze all PHP files for use statements
   const phpFiles = await getAllPhpFiles(SRC_DIR);
-  // Build a mapping: alias -> array of { fqn, importer }
   const allImports: Record<
     string,
     Array<{ fqn: string; importer: string }>
@@ -133,7 +125,6 @@ export async function updateComponentImports() {
     const fileImports = await analyzeImportsInFile(file);
     for (const [alias, fqn] of Object.entries(fileImports)) {
       if (allImports[alias]) {
-        // Check both fqn and importer to avoid duplicates
         if (
           !allImports[alias].some(
             (entry) => entry.fqn === fqn && entry.importer === file
@@ -147,7 +138,6 @@ export async function updateComponentImports() {
     }
   }
 
-  // Load the class log to filter valid imports
   const classLog = await loadClassLogData();
   const filteredImports: Record<
     string,
@@ -172,5 +162,4 @@ export async function updateComponentImports() {
   }
 
   await saveImportsData(filteredImports);
-  // console.log("component_imports.json updated with importer file path included.");
 }

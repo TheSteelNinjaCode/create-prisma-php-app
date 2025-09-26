@@ -7,7 +7,6 @@ import {
   onExit,
 } from "./utils.js";
 
-// Config
 const phpPath = process.env.PHP_PATH ?? "php";
 const SRC_DIR = join(process.cwd(), "src");
 const serverScriptPath = join(
@@ -17,7 +16,6 @@ const serverScriptPath = join(
   "websocket-server.php"
 );
 
-// Restartable WS server
 const ws = createRestartableProcess({
   name: "WebSocket",
   cmd: phpPath,
@@ -27,7 +25,6 @@ const ws = createRestartableProcess({
 
 ws.start();
 
-// Debounced restarter
 const restarter = new DebouncedWorker(
   async () => {
     await ws.restart("file change");
@@ -36,7 +33,6 @@ const restarter = new DebouncedWorker(
   "ws-restart"
 );
 
-// Watch ./src recursively; restart on code/data file changes
 createSrcWatcher(SRC_DIR, {
   exts: [".php", ".ts", ".js", ".json"],
   onEvent: (ev, _abs, rel) => restarter.schedule(`${ev}: ${rel}`),
@@ -46,7 +42,6 @@ createSrcWatcher(SRC_DIR, {
   interval: 1000,
 });
 
-// Graceful shutdown
 onExit(async () => {
   await ws.stop();
 });
