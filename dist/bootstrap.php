@@ -161,11 +161,22 @@ final class Bootstrap extends RuntimeException
             throw new RuntimeException("FUNCTION_CALL_SECRET is not set");
         }
 
-        $aesKey = random_bytes(32);
+        $existing = $_COOKIE['pp_function_call_jwt'] ?? null;
+        if ($existing) {
+            try {
+                $decoded = JWT::decode($existing, new Key($hmacSecret, 'HS256'));
+                if (isset($decoded->exp) && $decoded->exp > time() + 15) {
+                    return;
+                }
+            } catch (Throwable) {
+            }
+        }
 
+        $aesKey  = random_bytes(32);
         $payload = [
             'k'   => base64_encode($aesKey),
             'exp' => time() + 3600,
+            'iat' => time(),
         ];
         $jwt = JWT::encode($payload, $hmacSecret, 'HS256');
 
@@ -173,7 +184,7 @@ final class Bootstrap extends RuntimeException
             'pp_function_call_jwt',
             $jwt,
             [
-                'expires'  => time() + 3600,
+                'expires'  => $payload['exp'],
                 'path'     => '/',
                 'secure'   => true,
                 'httponly' => false,
