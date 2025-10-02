@@ -22,9 +22,6 @@ Thumbs.db # Windows
 # Log files
 *.log
 
-# Dependency directories
-composer.lock
-
 # Backup and temporary files
 *.swp
 
