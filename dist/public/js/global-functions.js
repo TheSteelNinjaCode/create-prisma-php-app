@@ -1,0 +1,1 @@
+function n(r,e,o=window,c=!0){if(Object.defineProperty(o,r,{get(){return e&&(typeof e=="function"||typeof e=="object")&&"getInstance"in e&&typeof e.getInstance=="function"?e.getInstance():e},set(t){console.warn(`[${r}] Cannot override global ${r}; ignoring.`,t)},configurable:!1,enumerable:!0}),c)try{o[r]}catch(t){console.error(`Failed to initialize ${r}:`,t)}}export{n as c};
