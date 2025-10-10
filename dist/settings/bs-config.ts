@@ -1,9 +1,9 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
-import { writeFileSync } from "fs";
+import { writeFileSync, existsSync, mkdirSync } from "fs";
 import browserSync, { BrowserSyncInstance } from "browser-sync";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
-import { join } from "path";
+import { join, dirname } from "path";
 import { getFileMeta, PUBLIC_DIR, SRC_DIR } from "./utils.js";
 import { updateAllClassLogs } from "./class-log.js";
 import {
@@ -39,6 +39,10 @@ const pipeline = new DebouncedWorker(
       }
       await checkComponentImports(file, fileImports);
     }
+
+    if (bs.active) {
+      bs.reload();
+    }
   },
   350,
   "bs-pipeline"
@@ -46,7 +50,10 @@ const pipeline = new DebouncedWorker(
 
 const publicPipeline = new DebouncedWorker(
   async () => {
-    console.log("Public directory changed");
+    console.log("→ Public directory changed, reloading browser...");
+    if (bs.active) {
+      bs.reload();
+    }
   },
   350,
   "bs-public-pipeline"
@@ -68,6 +75,27 @@ createSrcWatcher(join(PUBLIC_DIR, "**", "*"), {
   interval: 1000,
 });
 
+const viteFlagFile = join(__dirname, "..", ".pp", ".vite-build-complete");
+mkdirSync(dirname(viteFlagFile), { recursive: true });
+writeFileSync(viteFlagFile, "");
+
+if (!existsSync(viteFlagFile)) {
+  writeFileSync(viteFlagFile, "0");
+}
+
+createSrcWatcher(viteFlagFile, {
+  onEvent: (ev) => {
+    if (ev === "change" && bs.active) {
+      console.log("→ Vite build complete, reloading browser...");
+      bs.reload();
+    }
+  },
+  awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 },
+  logPrefix: "watch-vite",
+  usePolling: true,
+  interval: 500,
+});
+
 bs.init(
   {
     proxy: "http://localhost:3000",
@@ -85,15 +113,10 @@ bs.init(
       }),
     ],
 
-    files: [`${SRC_DIR}/**/*.*`, `${PUBLIC_DIR}/**/*.*`],
     notify: false,
     open: false,
     ghostMode: false,
     codeSync: true,
-    watchOptions: {
-      usePolling: true,
-      interval: 1000,
-    },
   },
   (err, bsInstance) => {
     if (err) {

@@ -1,6 +1,7 @@
-import { defineConfig } from "vite";
+import { defineConfig, Plugin } from "vite";
 import path from "path";
 import fg from "fast-glob";
+import { writeFileSync } from "fs";
 
 const entries = Object.fromEntries(
   fg.sync("ts/**/*.ts", { ignore: ["**/*.test.ts"] }).map((f) => {
@@ -8,6 +9,17 @@ const entries = Object.fromEntries(
     return [rel, path.resolve(__dirname, f)];
   })
 );
+
+function browserSyncNotify(): Plugin {
+  const flagFile = path.resolve(__dirname, ".pp", ".vite-build-complete");
+
+  return {
+    name: "browsersync-notify",
+    writeBundle() {
+      writeFileSync(flagFile, Date.now().toString());
+    },
+  };
+}
 
 export default defineConfig({
   publicDir: false,
@@ -28,6 +40,7 @@ export default defineConfig({
       },
     },
   },
+  plugins: [browserSyncNotify()],
   esbuild: { legalComments: "none" },
   define: { "process.env.NODE_ENV": '"production"' },
 });
