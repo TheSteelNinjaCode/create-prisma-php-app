@@ -33,6 +33,7 @@ export default defineConfig({
     },
     rollupOptions: {
       input: entries,
+      external: [/^\/js\/.*/],
       output: {
         entryFileNames: "[name].js",
         chunkFileNames: "chunks/[name]-[hash].js",
