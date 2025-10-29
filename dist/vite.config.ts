@@ -21,16 +21,17 @@ function browserSyncNotify(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => ({
   publicDir: false,
   build: {
     outDir: "public/js",
     emptyOutDir: false,
     minify: "esbuild",
     sourcemap: false,
-    watch: {
-      exclude: ["public/**", "node_modules/**"],
-    },
+    watch:
+      command === "build" && mode === "development"
+        ? { exclude: ["public/**", "node_modules/**"] }
+        : undefined,
     rollupOptions: {
       input: entries,
       external: [/^\/js\/.*/],
@@ -41,7 +42,8 @@ export default defineConfig({
       },
     },
   },
-  plugins: [browserSyncNotify()],
+  plugins:
+    command === "build" && mode === "development" ? [browserSyncNotify()] : [],
   esbuild: { legalComments: "none" },
   define: { "process.env.NODE_ENV": '"production"' },
-});
+}));
