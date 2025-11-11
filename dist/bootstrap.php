@@ -424,17 +424,22 @@ final class Bootstrap extends RuntimeException
                     }
                 }
             } elseif (strpos($normalizedRoute, '[...') !== false) {
-                if (count($pathnameSegments) <= $expectedSegmentCount) {
+                $cleanedRoute = preg_replace('/\(.+\)/', '', $normalizedRoute);
+                $cleanedRoute = preg_replace('/\/+/', '/', $cleanedRoute);
+                $staticPart = preg_replace('/\[\.\.\..*?\].*/', '', $cleanedRoute);
+                $staticSegments = array_filter(explode('/', $staticPart));
+                $minRequiredSegments = count($staticSegments);
+
+                if (count($pathnameSegments) < $minRequiredSegments) {
                     continue;
                 }
 
-                $cleanedNormalizedRoute = preg_replace('/\(.+\)/', '', $normalizedRoute);
-                $cleanedNormalizedRoute = preg_replace('/\/+/', '/', $cleanedNormalizedRoute);
-                $dynamicSegmentRoute = preg_replace('/\[\.\.\..*?\].*/', '', $cleanedNormalizedRoute);
+                $cleanedNormalizedRoute = $cleanedRoute;
+                $dynamicSegmentRoute = $staticPart;
 
                 if (strpos("/src/app/$normalizedPathname", $dynamicSegmentRoute) === 0) {
                     $trimmedPathname = str_replace($dynamicSegmentRoute, '', "/src/app/$normalizedPathname");
-                    $pathnameParts = explode('/', trim($trimmedPathname, '/'));
+                    $pathnameParts = $trimmedPathname === '' ? [] : explode('/', trim($trimmedPathname, '/'));
 
                     if (preg_match('/\[\.\.\.(.*?)\]/', $normalizedRoute, $matches)) {
                         $dynamicParam = $matches[1];
@@ -451,18 +456,14 @@ final class Bootstrap extends RuntimeException
 
                     if (strpos($normalizedRoute, 'index.php') !== false) {
                         $segmentMatch = "[...$dynamicParam]";
-                        $index = array_search($segmentMatch, $filteredRouteSegments);
 
-                        if ($index !== false && isset($pathnameSegments[$index])) {
-                            $dynamicRoutePathname = str_replace($segmentMatch, implode('/', $pathnameParts), $cleanedNormalizedRoute);
-                            $dynamicRoutePathnameDirname = rtrim(dirname($dynamicRoutePathname), '/');
+                        $dynamicRoutePathname = str_replace($segmentMatch, implode('/', $pathnameParts), $cleanedNormalizedRoute);
+                        $dynamicRoutePathnameDirname = rtrim(dirname($dynamicRoutePathname), '/');
+                        $expectedPathname = rtrim("/src/app/$normalizedPathname", '/');
 
-                            $expectedPathname = rtrim("/src/app/$normalizedPathname", '/');
-
-                            if ($expectedPathname === $dynamicRoutePathnameDirname) {
-                                $pathnameMatch = $normalizedRoute;
-                                break;
-                            }
+                        if ($expectedPathname === $dynamicRoutePathnameDirname) {
+                            $pathnameMatch = $normalizedRoute;
+                            break;
                         }
                     }
                 }
