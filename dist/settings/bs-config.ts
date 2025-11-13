@@ -3,7 +3,7 @@ import { writeFileSync, existsSync, mkdirSync } from "fs";
 import browserSync, { BrowserSyncInstance } from "browser-sync";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
-import { join, dirname } from "path";
+import { join, dirname, relative } from "path";
 import { getFileMeta, PUBLIC_DIR, SRC_DIR } from "./utils.js";
 import { updateAllClassLogs } from "./class-log.js";
 import {
@@ -15,8 +15,9 @@ import { checkComponentImports } from "./component-import-checker";
 import { DebouncedWorker, createSrcWatcher, DEFAULT_AWF } from "./utils.js";
 
 const { __dirname } = getFileMeta();
-
 const bs: BrowserSyncInstance = browserSync.create();
+
+const PUBLIC_IGNORE_DIRS = [''];
 
 const pipeline = new DebouncedWorker(
   async () => {
@@ -68,7 +69,19 @@ createSrcWatcher(join(SRC_DIR, "**", "*"), {
 });
 
 createSrcWatcher(join(PUBLIC_DIR, "**", "*"), {
-  onEvent: (_ev, _abs, rel) => publicPipeline.schedule(rel),
+  onEvent: (_ev, abs, _) => {
+    const relFromPublic = relative(PUBLIC_DIR, abs);
+    const normalized = relFromPublic.replace(/\\/g, "/");
+
+    const segments = normalized.split("/").filter(Boolean);
+    const firstSegment = segments[0] || "";
+
+    if (PUBLIC_IGNORE_DIRS.includes(firstSegment)) {
+      return;
+    }
+
+    publicPipeline.schedule(relFromPublic);
+  },
   awaitWriteFinish: DEFAULT_AWF,
   logPrefix: "watch-public",
   usePolling: true,

@@ -10,6 +10,11 @@ const entries = Object.fromEntries(
   })
 );
 
+const VITE_WATCH_EXCLUDE = [
+  "public/js/**",
+  "node_modules/**",
+];
+
 function browserSyncNotify(): Plugin {
   const flagFile = path.resolve(__dirname, ".pp", ".vite-build-complete");
 
@@ -30,7 +35,7 @@ export default defineConfig(({ command, mode }) => ({
     sourcemap: false,
     watch:
       command === "build" && mode === "development"
-        ? { exclude: ["public/**", "node_modules/**"] }
+        ? { exclude: VITE_WATCH_EXCLUDE }
         : undefined,
     rollupOptions: {
       input: entries,
