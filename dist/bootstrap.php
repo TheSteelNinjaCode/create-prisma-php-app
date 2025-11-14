@@ -611,7 +611,25 @@ final class Bootstrap extends RuntimeException
 
     private static function convertToArrayObject($data)
     {
-        return is_array($data) ? (object) $data : $data;
+        if (!is_array($data)) {
+            return $data;
+        }
+
+        if (empty($data)) {
+            return $data;
+        }
+
+        $isAssoc = array_keys($data) !== range(0, count($data) - 1);
+
+        if ($isAssoc) {
+            $obj = new stdClass();
+            foreach ($data as $key => $value) {
+                $obj->$key = self::convertToArrayObject($value);
+            }
+            return $obj;
+        } else {
+            return array_map([self::class, 'convertToArrayObject'], $data);
+        }
     }
 
     public static function wireCallback(): void
