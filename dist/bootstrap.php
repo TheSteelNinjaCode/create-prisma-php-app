@@ -103,10 +103,14 @@ final class Bootstrap extends RuntimeException
         self::authenticateUserToken();
 
         self::$requestFilePath = APP_PATH . Request::$pathname;
-        self::$parentLayoutPath = APP_PATH . '/layout.php';
 
-        self::$isParentLayout = !empty(self::$layoutsToInclude)
-            && strpos(self::$layoutsToInclude[0], 'src/app/layout.php') !== false;
+        if (!empty(self::$layoutsToInclude)) {
+            self::$parentLayoutPath = self::$layoutsToInclude[0];
+            self::$isParentLayout = true;
+        } else {
+            self::$parentLayoutPath = APP_PATH . '/layout.php';
+            self::$isParentLayout = false;
+        }
 
         self::$isContentVariableIncluded = self::containsChildren(self::$parentLayoutPath);
         if (!self::$isContentVariableIncluded) {
@@ -259,48 +263,10 @@ final class Bootstrap extends RuntimeException
                 }
             }
 
-            $currentPath = $baseDir;
-            $getGroupFolder = self::getGroupFolder($groupFolder);
-            $modifiedPathname = $pathname;
-            if (!empty($getGroupFolder)) {
-                $modifiedPathname = trim($getGroupFolder, "/src/app/");
-            }
-
-            foreach (explode('/', $modifiedPathname) as $segment) {
-                if (empty($segment)) {
-                    continue;
-                }
-
-                $currentPath .= '/' . $segment;
-                $potentialLayoutPath = $currentPath . '/layout.php';
-                if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
-                    $layoutsToInclude[] = $potentialLayoutPath;
-                }
-            }
-
-            if (isset($dynamicRoute) && !empty($dynamicRoute)) {
-                $currentDynamicPath = $baseDir;
-                foreach (explode('/', $dynamicRoute) as $segment) {
-                    if (empty($segment)) {
-                        continue;
-                    }
-                    if ($segment === 'src' || $segment === 'app') {
-                        continue;
-                    }
-
-                    $currentDynamicPath .= '/' . $segment;
-                    $potentialDynamicRoute = $currentDynamicPath . '/layout.php';
-                    if (self::fileExistsCached($potentialDynamicRoute) && !in_array($potentialDynamicRoute, $layoutsToInclude, true)) {
-                        $layoutsToInclude[] = $potentialDynamicRoute;
-                    }
-                }
-            }
-
-            if (empty($layoutsToInclude)) {
-                $layoutsToInclude[] = $baseDir . '/layout.php';
-            }
+            $layoutsToInclude = self::collectLayouts($pathname, $groupFolder, $dynamicRoute ?? null);
         } else {
             $includePath = $baseDir . self::getFilePrecedence();
+            $layoutsToInclude = self::collectRootLayouts();
         }
 
         return [
@@ -311,8 +277,177 @@ final class Bootstrap extends RuntimeException
         ];
     }
 
+    private static function collectLayouts(string $pathname, ?string $groupFolder, ?string $dynamicRoute): array
+    {
+        $layoutsToInclude = [];
+        $baseDir = APP_PATH;
+
+        $rootLayout = $baseDir . '/layout.php';
+        if (self::fileExistsCached($rootLayout)) {
+            $layoutsToInclude[] = $rootLayout;
+        }
+
+        $groupName = null;
+        $groupParentPath = '';
+        $pathAfterGroup = '';
+
+        if ($groupFolder) {
+            $normalizedGroupFolder = str_replace('\\', '/', $groupFolder);
+
+            if (preg_match('#^\.?/src/app/(.+)/\(([^)]+)\)/(.+)$#', $normalizedGroupFolder, $matches)) {
+                $groupParentPath = $matches[1];
+                $groupName = $matches[2];
+                $pathAfterGroup = dirname($matches[3]);
+                if ($pathAfterGroup === '.') {
+                    $pathAfterGroup = '';
+                }
+            } elseif (preg_match('#^\.?/src/app/\(([^)]+)\)/(.+)$#', $normalizedGroupFolder, $matches)) {
+                $groupName = $matches[1];
+                $pathAfterGroup = dirname($matches[2]);
+                if ($pathAfterGroup === '.') {
+                    $pathAfterGroup = '';
+                }
+            }
+        }
+
+        if ($groupName && $groupParentPath) {
+            $currentPath = $baseDir;
+            foreach (explode('/', $groupParentPath) as $segment) {
+                if (empty($segment)) continue;
+
+                $currentPath .= '/' . $segment;
+                $potentialLayoutPath = $currentPath . '/layout.php';
+
+                if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
+                    $layoutsToInclude[] = $potentialLayoutPath;
+                }
+            }
+
+            $groupLayoutPath = $baseDir . '/' . $groupParentPath . "/($groupName)/layout.php";
+            if (self::fileExistsCached($groupLayoutPath)) {
+                $layoutsToInclude[] = $groupLayoutPath;
+            }
+
+            if (!empty($pathAfterGroup)) {
+                $currentPath = $baseDir . '/' . $groupParentPath . "/($groupName)";
+                foreach (explode('/', $pathAfterGroup) as $segment) {
+                    if (empty($segment)) continue;
+
+                    $currentPath .= '/' . $segment;
+                    $potentialLayoutPath = $currentPath . '/layout.php';
+
+                    if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
+                        $layoutsToInclude[] = $potentialLayoutPath;
+                    }
+                }
+            }
+        } elseif ($groupName && !$groupParentPath) {
+            $groupLayoutPath = $baseDir . "/($groupName)/layout.php";
+            if (self::fileExistsCached($groupLayoutPath)) {
+                $layoutsToInclude[] = $groupLayoutPath;
+            }
+
+            if (!empty($pathAfterGroup)) {
+                $currentPath = $baseDir . "/($groupName)";
+                foreach (explode('/', $pathAfterGroup) as $segment) {
+                    if (empty($segment)) continue;
+
+                    $currentPath .= '/' . $segment;
+                    $potentialLayoutPath = $currentPath . '/layout.php';
+
+                    if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
+                        $layoutsToInclude[] = $potentialLayoutPath;
+                    }
+                }
+            }
+        } else {
+            $currentPath = $baseDir;
+            foreach (explode('/', $pathname) as $segment) {
+                if (empty($segment)) continue;
+
+                $currentPath .= '/' . $segment;
+                $potentialLayoutPath = $currentPath . '/layout.php';
+
+                if ($potentialLayoutPath === $rootLayout) {
+                    continue;
+                }
+
+                if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
+                    $layoutsToInclude[] = $potentialLayoutPath;
+                }
+            }
+        }
+
+        if (isset($dynamicRoute) && !empty($dynamicRoute)) {
+            $currentDynamicPath = $baseDir;
+            foreach (explode('/', $dynamicRoute) as $segment) {
+                if (empty($segment) || $segment === 'src' || $segment === 'app') {
+                    continue;
+                }
+
+                $currentDynamicPath .= '/' . $segment;
+                $potentialDynamicRoute = $currentDynamicPath . '/layout.php';
+                if (self::fileExistsCached($potentialDynamicRoute) && !in_array($potentialDynamicRoute, $layoutsToInclude, true)) {
+                    $layoutsToInclude[] = $potentialDynamicRoute;
+                }
+            }
+        }
+
+        if (empty($layoutsToInclude)) {
+            $layoutsToInclude = self::findFirstGroupLayout();
+        }
+
+        return $layoutsToInclude;
+    }
+
+    private static function collectRootLayouts(): array
+    {
+        $layoutsToInclude = [];
+        $baseDir = APP_PATH;
+        $rootLayout = $baseDir . '/layout.php';
+
+        if (self::fileExistsCached($rootLayout)) {
+            $layoutsToInclude[] = $rootLayout;
+        } else {
+            $layoutsToInclude = self::findFirstGroupLayout();
+
+            if (empty($layoutsToInclude)) {
+                return [];
+            }
+        }
+
+        return $layoutsToInclude;
+    }
+
+    private static function findFirstGroupLayout(): array
+    {
+        $baseDir = APP_PATH;
+        $layoutsToInclude = [];
+
+        if (is_dir($baseDir)) {
+            $items = scandir($baseDir);
+            foreach ($items as $item) {
+                if ($item === '.' || $item === '..') {
+                    continue;
+                }
+
+                if (preg_match('/^\([^)]+\)$/', $item)) {
+                    $groupLayoutPath = $baseDir . '/' . $item . '/layout.php';
+                    if (self::fileExistsCached($groupLayoutPath)) {
+                        $layoutsToInclude[] = $groupLayoutPath;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $layoutsToInclude;
+    }
+
     private static function getFilePrecedence(): ?string
     {
+        $baseDir = APP_PATH;
+
         foreach (PrismaPHPSettings::$routeFiles as $route) {
             if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
                 continue;
@@ -324,6 +459,27 @@ final class Bootstrap extends RuntimeException
                 return '/index.php';
             }
         }
+
+        if (is_dir($baseDir)) {
+            $items = scandir($baseDir);
+            foreach ($items as $item) {
+                if ($item === '.' || $item === '..') {
+                    continue;
+                }
+
+                if (preg_match('/^\([^)]+\)$/', $item)) {
+                    $groupDir = $baseDir . '/' . $item;
+
+                    if (file_exists($groupDir . '/route.php')) {
+                        return '/' . $item . '/route.php';
+                    }
+                    if (file_exists($groupDir . '/index.php')) {
+                        return '/' . $item . '/index.php';
+                    }
+                }
+            }
+        }
+
         return null;
     }
 
@@ -473,6 +629,7 @@ final class Bootstrap extends RuntimeException
             if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
                 continue;
             }
+
             $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
             $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
 
@@ -484,22 +641,26 @@ final class Bootstrap extends RuntimeException
             }
         }
 
+        if (!$bestMatch) {
+            foreach (PrismaPHPSettings::$routeFiles as $route) {
+                if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
+                    continue;
+                }
+
+                $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
+
+                if (preg_match('/\/\(([^)]+)\)\//', $normalizedRoute, $matches)) {
+                    $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
+
+                    if ($cleanedRoute === $routeFile || $cleanedRoute === $indexFile) {
+                        $bestMatch = $normalizedRoute;
+                        break;
+                    }
+                }
+            }
+        }
+
         return $bestMatch;
-    }
-
-    private static function getGroupFolder($pathname): string
-    {
-        $lastSlashPos = strrpos($pathname, '/');
-        if ($lastSlashPos === false) {
-            return "";
-        }
-
-        $pathWithoutFile = substr($pathname, 0, $lastSlashPos);
-        if (preg_match('/\(([^)]+)\)[^()]*$/', $pathWithoutFile, $matches)) {
-            return $pathWithoutFile;
-        }
-
-        return "";
     }
 
     private static function singleDynamicRoute($pathnameSegments, $routeSegments)
@@ -566,21 +727,6 @@ final class Bootstrap extends RuntimeException
 
             ErrorHandler::modifyOutputLayoutForError($errorMessageString);
         }
-    }
-
-    public static function containsChildLayoutChildren($filePath): bool
-    {
-        if (!self::fileExistsCached($filePath)) {
-            return false;
-        }
-
-        $fileContent = @file_get_contents($filePath);
-        if ($fileContent === false) {
-            return false;
-        }
-
-        $pattern = '/\<\?=\s*MainLayout::\$childLayoutChildren\s*;?\s*\?>|echo\s*MainLayout::\$childLayoutChildren\s*;?/';
-        return (bool) preg_match($pattern, $fileContent);
     }
 
     private static function containsChildren($filePath): bool
@@ -997,38 +1143,30 @@ try {
     }
 
     if (!empty(Bootstrap::$contentToInclude) && !empty(Request::$fileToInclude)) {
-        if (!Bootstrap::$isParentLayout) {
-            ob_start();
-            require_once Bootstrap::$contentToInclude;
-            MainLayout::$childLayoutChildren = ob_get_clean();
-        }
+        ob_start();
+        require_once Bootstrap::$contentToInclude;
+        MainLayout::$children = ob_get_clean();
 
-        foreach (array_reverse(Bootstrap::$layoutsToInclude) as $layoutPath) {
-            if (Bootstrap::$parentLayoutPath === $layoutPath) {
-                continue;
+        if (count(Bootstrap::$layoutsToInclude) > 1) {
+            $nestedLayouts = array_slice(Bootstrap::$layoutsToInclude, 1);
+
+            foreach (array_reverse($nestedLayouts) as $layoutPath) {
+                if (!Bootstrap::containsChildren($layoutPath)) {
+                    Bootstrap::$isChildContentIncluded = true;
+                }
+
+                ob_start();
+                require_once $layoutPath;
+                MainLayout::$children = ob_get_clean();
             }
-
-            if (!Bootstrap::containsChildLayoutChildren($layoutPath)) {
-                Bootstrap::$isChildContentIncluded = true;
-            }
-
-            ob_start();
-            require_once $layoutPath;
-            MainLayout::$childLayoutChildren = ob_get_clean();
         }
     } else {
         ob_start();
         require_once APP_PATH . '/not-found.php';
-        MainLayout::$childLayoutChildren = ob_get_clean();
+        MainLayout::$children = ob_get_clean();
 
         http_response_code(404);
         CacheHandler::$isCacheable = false;
-    }
-
-    if (Bootstrap::$isParentLayout && !empty(Bootstrap::$contentToInclude)) {
-        ob_start();
-        require_once Bootstrap::$contentToInclude;
-        MainLayout::$childLayoutChildren = ob_get_clean();
     }
 
     if (!Bootstrap::$isContentIncluded && !Bootstrap::$isChildContentIncluded) {
@@ -1042,7 +1180,7 @@ try {
                     if (file_exists($file)) {
                         ob_start();
                         require_once $file;
-                        MainLayout::$childLayoutChildren .= ob_get_clean();
+                        MainLayout::$children .= ob_get_clean();
                     }
                 }
             }
@@ -1059,10 +1197,15 @@ try {
             }
         }
 
-        MainLayout::$children = MainLayout::$childLayoutChildren . Bootstrap::getLoadingsFiles();
+        MainLayout::$children .= Bootstrap::getLoadingsFiles();
 
         ob_start();
-        require_once APP_PATH . '/layout.php';
+        if (file_exists(Bootstrap::$parentLayoutPath)) {
+            require_once Bootstrap::$parentLayoutPath;
+        } else {
+            echo MainLayout::$children;
+        }
+
         MainLayout::$html = ob_get_clean();
         MainLayout::$html = TemplateCompiler::compile(MainLayout::$html);
         MainLayout::$html = TemplateCompiler::injectDynamicContent(MainLayout::$html);
@@ -1080,13 +1223,8 @@ try {
             ? Bootstrap::$parentLayoutPath
             : (Bootstrap::$layoutsToInclude[0] ?? '');
 
-        $message = "The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;\n<strong>$layoutPath</strong>";
-        $htmlMessage = "<div class='error'>The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;<br><strong>$layoutPath</strong></div>";
-
-        if (Bootstrap::$isContentIncluded) {
-            $message = "The parent layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; Or &lt;?= MainLayout::\$children ?&gt;<br><strong>$layoutPath</strong>";
-            $htmlMessage = "<div class='error'>The parent layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; Or &lt;?= MainLayout::\$children ?&gt;<br><strong>$layoutPath</strong></div>";
-        }
+        $message = "The layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; or &lt;?= MainLayout::\$children ?&gt;\n<strong>$layoutPath</strong>";
+        $htmlMessage = "<div class='error'>The layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; or &lt;?= MainLayout::\$children ?&gt;<br><strong>$layoutPath</strong></div>";
 
         $errorDetails = Bootstrap::isAjaxOrXFileRequestOrRouteFile() ? $message : $htmlMessage;
 

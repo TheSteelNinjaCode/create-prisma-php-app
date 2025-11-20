@@ -15,7 +15,7 @@ MainLayout::$description = !empty(MainLayout::$description) ? MainLayout::$descr
     <!-- Dynamic Header Scripts -->
 </head>
 
-<body pp-spa="true">
+<body pp-spa="true" style="opacity:0;pointer-events:none;user-select:none;transition:opacity .18s ease-out;">
     <?= MainLayout::$children; ?>
     <!-- Dynamic Footer Scripts -->
 </body>
