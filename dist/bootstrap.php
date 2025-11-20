@@ -729,7 +729,7 @@ final class Bootstrap extends RuntimeException
         }
     }
 
-    private static function containsChildren($filePath): bool
+    public static function containsChildren($filePath): bool
     {
         if (!self::fileExistsCached($filePath)) {
             return false;
