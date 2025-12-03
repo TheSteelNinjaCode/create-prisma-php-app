@@ -2,6 +2,7 @@ import { defineConfig, Plugin } from "vite";
 import path from "path";
 import fg from "fast-glob";
 import { writeFileSync } from "fs";
+import { generateGlobalTypes } from "./settings/vite-plugins/generate-global-types.js";
 
 const entries = Object.fromEntries(
   fg.sync("ts/**/*.ts", { ignore: ["**/*.test.ts"] }).map((f) => {
@@ -13,6 +14,8 @@ const entries = Object.fromEntries(
 const VITE_WATCH_EXCLUDE = [
   "public/js/**",
   "node_modules/**",
+  "vendor/**",
+  ".pp/**",
 ];
 
 function browserSyncNotify(): Plugin {
@@ -47,8 +50,12 @@ export default defineConfig(({ command, mode }) => ({
       },
     },
   },
-  plugins:
-    command === "build" && mode === "development" ? [browserSyncNotify()] : [],
+  plugins: [
+    generateGlobalTypes(),
+    ...(command === "build" && mode === "development"
+      ? [browserSyncNotify()]
+      : []),
+  ],
   esbuild: { legalComments: "none" },
   define: { "process.env.NODE_ENV": '"production"' },
 }));
