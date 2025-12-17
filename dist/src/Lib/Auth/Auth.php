@@ -53,33 +53,20 @@ class Auth
     }
 
     /**
-     * Authenticates a user and generates a JWT (JSON Web Token) based on the specified user data
-     * and token validity duration. The method first checks if the secret key is set, calculates
-     * the token's expiration time, sets the necessary payload, and encodes it into a JWT.
-     * If possible (HTTP headers not yet sent), it also sets cookies with the JWT for client-side storage.
+     * Authenticates a user and generates a JWT.
+     * Optionally redirects the user to a default or custom URL.
      *
-     * @param mixed $data User data which can be a simple string or an instance of AuthRole.
-     *                    If an instance of AuthRole is provided, its `value` property will be used as the role in the token.
-     * @param string|null $tokenValidity Optional parameter specifying the duration the token is valid for (e.g., '10m', '1h').
-     *                                   If null, the default validity period set in the class property is used, which is 1 hour.
-     *                                   The format should be a number followed by a time unit ('s' for seconds, 'm' for minutes,
-     *                                   'h' for hours, 'd' for days), and this is parsed to calculate the exact expiration time.
+     * @param mixed $data User data (string or AuthRole).
+     * @param string|null $tokenValidity Duration token is valid for (e.g., '1h'). Default is '1h'.
+     * @param bool|string $redirect 
+     * - If `false` (default): No redirect occurs; returns the JWT.
+     * - If `true`: Redirects to `AuthConfig::DEFAULT_SIGNIN_REDIRECT`.
+     * - If `string`: Redirects to the specified URL (e.g., '/dashboard').
      *
      * @return string Returns the encoded JWT as a string.
-     *
-     * @throws InvalidArgumentException Thrown if the secret key is not set or if the duration format is invalid.
-     *
-     * Example:
-     *   $auth = Auth::getInstance();
-     *   $auth->setSecretKey('your_secret_key');
-     *   try {
-     *       $jwt = $auth->signIn('Admin', '1h');
-     *       echo "JWT: " . $jwt;
-     *   } catch (InvalidArgumentException $e) {
-     *       echo "Error: " . $e->getMessage();
-     *   }
+     * @throws InvalidArgumentException
      */
-    public function signIn($data, ?string $tokenValidity = null): string
+    public function signIn($data, ?string $tokenValidity = null, bool|string $redirect = false): string
     {
         if (!$this->secretKey) {
             throw new InvalidArgumentException("Secret key is required for authentication.");
@@ -104,6 +91,12 @@ class Auth
 
         if (!headers_sent()) {
             $this->setCookies($jwt, $expirationTime);
+        }
+
+        if ($redirect === true) {
+            Request::redirect(AuthConfig::DEFAULT_SIGNIN_REDIRECT);
+        } elseif (is_string($redirect) && !empty($redirect)) {
+            Request::redirect($redirect);
         }
 
         return $jwt;
