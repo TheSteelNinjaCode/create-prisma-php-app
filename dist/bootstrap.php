@@ -1192,8 +1192,11 @@ try {
         }
 
         if ((!Request::$isWire && !Bootstrap::$secondRequestC69CD) && isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
-            if ($_ENV['CACHE_ENABLED'] === 'true') {
-                CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL']));
+            $shouldCache = CacheHandler::$isCacheable === true
+                || (CacheHandler::$isCacheable === null && $_ENV['CACHE_ENABLED'] === 'true');
+
+            if ($shouldCache) {
+                CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL'] ?? 600));
             }
         }
 
@@ -1212,7 +1215,10 @@ try {
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
 
         if (
-            http_response_code() === 200 && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true' && (!Request::$isWire && !Bootstrap::$secondRequestC69CD)
+            http_response_code() === 200
+            && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName'])
+            && $shouldCache
+            && (!Request::$isWire && !Bootstrap::$secondRequestC69CD)
         ) {
             CacheHandler::saveCache(Request::$decodedUri, MainLayout::$html);
         }
