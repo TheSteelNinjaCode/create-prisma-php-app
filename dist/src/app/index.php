@@ -8,7 +8,7 @@
         <ol class="list-inside list-decimal text-sm/6 text-center sm:text-left">
             <li class="mb-2 tracking-[-.01em]">
                 Get started by editing
-                <code class="bg-text-foreground/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
+                <code class="bg-text-foreground/[.05] dark:bg-white/6 px-1 py-0.5 rounded font-semibold">
                     src/app/index.php
                 </code>
                 .
@@ -46,7 +46,7 @@
         </div>
     </main>
 
-    <footer class="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
+    <footer class="row-start-3 flex gap-6 flex-wrap items-center justify-center">
         <a
             class="flex items-center gap-2 hover:underline hover:underline-offset-4"
             href="https://prismaphp.tsnc.tech/docs?doc=learning-path"
