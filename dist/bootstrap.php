@@ -137,27 +137,27 @@ final class Bootstrap extends RuntimeException
 
     private static function setCsrfCookie(): void
     {
-        if (!isset($_COOKIE['pp_csrf'])) {
+        if (!isset($_COOKIE['prisma_php_csrf'])) {
             $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? 'pp_default_insecure_secret';
             $nonce = bin2hex(random_bytes(16));
             $signature = hash_hmac('sha256', $nonce, $secret);
             $token = $nonce . '.' . $signature;
 
-            setcookie('pp_csrf', $token, [
+            setcookie('prisma_php_csrf', $token, [
                 'expires'  => time() + 3600,
                 'path'     => '/',
                 'secure'   => true,
                 'httponly' => false,
                 'samesite' => 'Lax',
             ]);
-            $_COOKIE['pp_csrf'] = $token;
+            $_COOKIE['prisma_php_csrf'] = $token;
         }
     }
 
     private static function validateCsrfToken(): void
     {
         $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-        $cookieToken = $_COOKIE['pp_csrf'] ?? '';
+        $cookieToken = $_COOKIE['prisma_php_csrf'] ?? '';
         $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
 
         if (empty($headerToken) || empty($cookieToken)) {

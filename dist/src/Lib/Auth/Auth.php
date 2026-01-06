@@ -242,7 +242,7 @@ class Auth
         $token = $nonce . '.' . $signature;
 
         if (!headers_sent()) {
-            setcookie('pp_csrf', $token, [
+            setcookie('prisma_php_csrf', $token, [
                 'expires'  => time() + 3600, // 1 hour validity
                 'path'     => '/',
                 'secure'   => true,
@@ -251,7 +251,7 @@ class Auth
             ]);
         }
 
-        $_COOKIE['pp_csrf'] = $token;
+        $_COOKIE['prisma_php_csrf'] = $token;
     }
 
     /**
