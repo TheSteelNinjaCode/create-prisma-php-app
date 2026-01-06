@@ -24,8 +24,7 @@ use PP\MainLayout;
 use PP\PHPX\TemplateCompiler;
 use PP\CacheHandler;
 use PP\ErrorHandler;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+use PP\Attributes\Exposed;
 
 final class Bootstrap extends RuntimeException
 {
@@ -75,7 +74,7 @@ final class Bootstrap extends RuntimeException
             'samesite' => 'Lax',
         ]);
 
-        self::functionCallNameEncrypt();
+        self::setCsrfCookie();
 
         self::$secondRequestC69CD = Request::$data['secondRequestC69CD'] ?? false;
 
@@ -124,66 +123,62 @@ final class Bootstrap extends RuntimeException
 
     private static function isLocalStoreCallback(): void
     {
-        $data = self::getRequestData();
-
-        if (empty($data['callback'])) {
-            self::jsonExit(['success' => false, 'error' => 'Callback not provided', 'response' => null]);
+        if (empty($_SERVER['HTTP_X_PP_FUNCTION'])) {
+            return;
         }
 
-        try {
-            $aesKey = self::getAesKeyFromJwt();
-        } catch (RuntimeException $e) {
-            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
-        }
-
-        try {
-            $callbackName = self::decryptCallback($data['callback'], $aesKey);
-        } catch (RuntimeException $e) {
-            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
-        }
+        $callbackName = $_SERVER['HTTP_X_PP_FUNCTION'];
 
         if ($callbackName === PrismaPHPSettings::$localStoreKey) {
+            self::validateCsrfToken();
             self::jsonExit(['success' => true, 'response' => 'localStorage updated']);
         }
     }
 
-    private static function functionCallNameEncrypt(): void
+    private static function setCsrfCookie(): void
     {
-        $hmacSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
-        if ($hmacSecret === '') {
-            throw new RuntimeException("FUNCTION_CALL_SECRET is not set");
-        }
+        if (!isset($_COOKIE['pp_csrf'])) {
+            $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? 'pp_default_insecure_secret';
+            $nonce = bin2hex(random_bytes(16));
+            $signature = hash_hmac('sha256', $nonce, $secret);
+            $token = $nonce . '.' . $signature;
 
-        $existing = $_COOKIE['pp_function_call_jwt'] ?? null;
-        if ($existing) {
-            try {
-                $decoded = JWT::decode($existing, new Key($hmacSecret, 'HS256'));
-                if (isset($decoded->exp) && $decoded->exp > time() + 15) {
-                    return;
-                }
-            } catch (Throwable) {
-            }
-        }
-
-        $aesKey  = random_bytes(32);
-        $payload = [
-            'k'   => base64_encode($aesKey),
-            'exp' => time() + 3600,
-            'iat' => time(),
-        ];
-        $jwt = JWT::encode($payload, $hmacSecret, 'HS256');
-
-        setcookie(
-            'pp_function_call_jwt',
-            $jwt,
-            [
-                'expires'  => $payload['exp'],
+            setcookie('pp_csrf', $token, [
+                'expires'  => time() + 3600,
                 'path'     => '/',
                 'secure'   => true,
                 'httponly' => false,
-                'samesite' => 'Strict',
-            ]
-        );
+                'samesite' => 'Lax',
+            ]);
+            $_COOKIE['pp_csrf'] = $token;
+        }
+    }
+
+    private static function validateCsrfToken(): void
+    {
+        $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        $cookieToken = $_COOKIE['pp_csrf'] ?? '';
+        $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
+
+        if (empty($headerToken) || empty($cookieToken)) {
+            self::jsonExit(['success' => false, 'error' => 'CSRF token missing']);
+        }
+
+        if (!hash_equals($cookieToken, $headerToken)) {
+            self::jsonExit(['success' => false, 'error' => 'CSRF token mismatch']);
+        }
+
+        $parts = explode('.', $cookieToken);
+        if (count($parts) !== 2) {
+            self::jsonExit(['success' => false, 'error' => 'Invalid CSRF token format']);
+        }
+
+        [$nonce, $signature] = $parts;
+        $expectedSignature = hash_hmac('sha256', $nonce, $secret);
+
+        if (!hash_equals($expectedSignature, $signature)) {
+            self::jsonExit(['success' => false, 'error' => 'Invalid CSRF token signature']);
+        }
     }
 
     private static function fileExistsCached(string $path): bool
@@ -769,26 +764,22 @@ final class Bootstrap extends RuntimeException
 
     public static function wireCallback(): void
     {
+        $callbackName = $_SERVER['HTTP_X_PP_FUNCTION'] ?? null;
+
+        if (empty($callbackName)) {
+            self::jsonExit(['success' => false, 'error' => 'Callback header not provided', 'response' => null]);
+        }
+
+        self::validateCsrfToken();
+
+        if (!preg_match('/^[a-zA-Z0-9_:\->]+$/', $callbackName)) {
+            self::jsonExit(['success' => false, 'error' => 'Invalid callback format']);
+        }
+
         $data = self::getRequestData();
-
-        if (empty($data['callback'])) {
-            self::jsonExit(['success' => false, 'error' => 'Callback not provided', 'response' => null]);
-        }
-
-        try {
-            $aesKey = self::getAesKeyFromJwt();
-        } catch (RuntimeException $e) {
-            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
-        }
-
-        try {
-            $callbackName = self::decryptCallback($data['callback'], $aesKey);
-        } catch (RuntimeException $e) {
-            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
-        }
-
         $args = self::convertToArrayObject($data);
-        $out  = str_contains($callbackName, '->') || str_contains($callbackName, '::')
+
+        $out = str_contains($callbackName, '->') || str_contains($callbackName, '::')
             ? self::dispatchMethod($callbackName, $args)
             : self::dispatchFunction($callbackName, $args);
 
@@ -798,61 +789,10 @@ final class Bootstrap extends RuntimeException
         exit;
     }
 
-    private static function getAesKeyFromJwt(): string
-    {
-        $token     = $_COOKIE['pp_function_call_jwt'] ?? null;
-        $jwtSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? null;
-
-        if (!$token || !$jwtSecret) {
-            throw new RuntimeException('Missing session key or secret');
-        }
-
-        try {
-            $decoded = JWT::decode($token, new Key($jwtSecret, 'HS256'));
-        } catch (Throwable) {
-            throw new RuntimeException('Invalid session key');
-        }
-
-        $aesKey = base64_decode($decoded->k, true);
-        if ($aesKey === false || strlen($aesKey) !== 32) {
-            throw new RuntimeException('Bad key length');
-        }
-
-        return $aesKey;
-    }
-
     private static function jsonExit(array $payload): void
     {
         echo json_encode($payload, JSON_UNESCAPED_UNICODE);
         exit;
-    }
-
-    private static function decryptCallback(string $encrypted, string $aesKey): string
-    {
-        $parts = explode(':', $encrypted, 2);
-        if (count($parts) !== 2) {
-            throw new RuntimeException('Malformed callback payload');
-        }
-        [$ivB64, $ctB64] = $parts;
-
-        $iv = base64_decode($ivB64, true);
-        $ct = base64_decode($ctB64, true);
-
-        if ($iv === false || strlen($iv) !== 16 || $ct === false) {
-            throw new RuntimeException('Invalid callback payload');
-        }
-
-        $plain = openssl_decrypt($ct, 'AES-256-CBC', $aesKey, OPENSSL_RAW_DATA, $iv);
-        if ($plain === false) {
-            throw new RuntimeException('Decryption failed');
-        }
-
-        $callback = preg_replace('/[^a-zA-Z0-9_:\->]/', '', $plain);
-        if ($callback === '' || $callback[0] === '_') {
-            throw new RuntimeException('Invalid callback');
-        }
-
-        return $callback;
     }
 
     private static function getRequestData(): array
@@ -882,8 +822,34 @@ final class Bootstrap extends RuntimeException
         return (json_last_error() === JSON_ERROR_NONE) ? $json : $_POST;
     }
 
+    private static function isFunctionAllowed(string $fn): bool
+    {
+        try {
+            $ref = new ReflectionFunction($fn);
+            $attrs = $ref->getAttributes(Exposed::class);
+            return !empty($attrs);
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private static function isMethodAllowed(string $class, string $method): bool
+    {
+        try {
+            $ref = new ReflectionMethod($class, $method);
+            $attrs = $ref->getAttributes(Exposed::class);
+            return !empty($attrs);
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     private static function dispatchFunction(string $fn, mixed $args)
     {
+        if (!self::isFunctionAllowed($fn)) {
+            return ['success' => false, 'error' => 'Function not callable from client'];
+        }
+
         if (function_exists($fn) && is_callable($fn)) {
             try {
                 $res = call_user_func($fn, $args);
@@ -904,6 +870,17 @@ final class Bootstrap extends RuntimeException
 
     private static function dispatchMethod(string $call, mixed $args)
     {
+        if (!self::isMethodAllowed(
+            strpos($call, '->') !== false
+                ? explode('->', $call, 2)[0]
+                : explode('::', $call, 2)[0],
+            strpos($call, '->') !== false
+                ? explode('->', $call, 2)[1]
+                : explode('::', $call, 2)[1]
+        )) {
+            return ['success' => false, 'error' => 'Method not callable from client'];
+        }
+
         if (strpos($call, '->') !== false) {
             list($requested, $method) = explode('->', $call, 2);
             $isStatic = false;

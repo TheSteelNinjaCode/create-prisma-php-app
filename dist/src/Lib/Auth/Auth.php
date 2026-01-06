@@ -29,21 +29,12 @@ class Auth
     private string $secretKey;
     private string $defaultTokenValidity = '1h'; // Default to 1 hour
 
-    /**
-     * Private constructor to prevent direct instantiation.
-     * Use Auth::getInstance() to get the singleton instance.
-     */
     private function __construct()
     {
         $this->secretKey = $_ENV['AUTH_SECRET'] ?? 'CD24eEv4qbsC5LOzqeaWbcr58mBMSvA4Mkii8GjRiHkt';
         self::$cookieName = self::getCookieName();
     }
 
-    /**
-     * Returns the singleton instance of the Auth class.
-     * 
-     * @return Auth The singleton instance.
-     */
     public static function getInstance(): Auth
     {
         if (self::$instance === null) {
@@ -83,14 +74,14 @@ class Auth
             'exp' => $expirationTime,
         ];
 
-        // Set the payload in the session
         $_SESSION[self::PAYLOAD_SESSION_KEY] = $payload;
 
-        // Encode the JWT
         $jwt = JWT::encode($payload, $this->secretKey, 'HS256');
 
         if (!headers_sent()) {
             $this->setCookies($jwt, $expirationTime);
+
+            $this->rotateCsrfToken();
         }
 
         if ($redirect === true) {
@@ -177,19 +168,12 @@ class Auth
     public function verifyToken(?string $jwt): ?object
     {
         try {
-            if (!$jwt) {
-                return null;
-            }
+            if (!$jwt) return null;
 
             $token = JWT::decode($jwt, new Key($this->secretKey, 'HS256'));
 
-            if (empty($token->{Auth::PAYLOAD_NAME})) {
-                return null;
-            }
-
-            if (isset($token->exp) && time() >= $token->exp) {
-                return null;
-            }
+            if (empty($token->{Auth::PAYLOAD_NAME})) return null;
+            if (isset($token->exp) && time() >= $token->exp) return null;
 
             return $token;
         } catch (Exception) {
@@ -221,7 +205,6 @@ class Auth
         }
 
         $expirationTime = $this->calculateExpirationTime($tokenValidity ?? $this->defaultTokenValidity);
-
         $decodedToken->exp = $expirationTime;
         $newJwt = JWT::encode((array)$decodedToken, $this->secretKey, 'HS256');
 
@@ -237,13 +220,38 @@ class Auth
         if (!headers_sent()) {
             setcookie(self::$cookieName, $jwt, [
                 'expires' => $expirationTime,
-                'path' => '/', // Set the path to '/' to make the cookie available site-wide
-                'domain' => '', // Specify your domain
-                'secure' => true, // Set to true if using HTTPS
-                'httponly' => true, // Prevent JavaScript access to the cookie
-                'samesite' => 'Lax', // or 'Strict' depending on your requirements
+                'path' => '/',
+                'domain' => '',
+                'secure' => true,
+                'httponly' => true,
+                'samesite' => 'Lax',
             ]);
         }
+    }
+
+    public function rotateCsrfToken(): void
+    {
+        $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
+
+        if (empty($secret)) {
+            return;
+        }
+
+        $nonce = bin2hex(random_bytes(16));
+        $signature = hash_hmac('sha256', $nonce, $secret);
+        $token = $nonce . '.' . $signature;
+
+        if (!headers_sent()) {
+            setcookie('pp_csrf', $token, [
+                'expires'  => time() + 3600, // 1 hour validity
+                'path'     => '/',
+                'secure'   => true,
+                'httponly' => false, // Must be FALSE so client JS can read it
+                'samesite' => 'Lax',
+            ]);
+        }
+
+        $_COOKIE['pp_csrf'] = $token;
     }
 
     /**
@@ -268,6 +276,8 @@ class Auth
         if (isset($_SESSION[self::PAYLOAD_SESSION_KEY])) {
             unset($_SESSION[self::PAYLOAD_SESSION_KEY]);
         }
+
+        $this->rotateCsrfToken();
 
         if ($redirect) {
             Request::redirect($redirect);
