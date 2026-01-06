@@ -822,12 +822,51 @@ final class Bootstrap extends RuntimeException
         return (json_last_error() === JSON_ERROR_NONE) ? $json : $_POST;
     }
 
+    private static function validateAccess(Exposed $attribute): bool
+    {
+        if ($attribute->requiresAuth || !empty($attribute->allowedRoles)) {
+            $auth = Auth::getInstance();
+
+            if (!$auth->isAuthenticated()) {
+                return false;
+            }
+
+            if (!empty($attribute->allowedRoles)) {
+                $payload = $auth->getPayload();
+                $currentRole = null;
+
+                if (is_scalar($payload)) {
+                    $currentRole = $payload;
+                } else {
+                    $roleKey = !empty(Auth::ROLE_NAME) ? Auth::ROLE_NAME : 'role';
+
+                    if (is_object($payload)) {
+                        $currentRole = $payload->$roleKey ?? null;
+                    } elseif (is_array($payload)) {
+                        $currentRole = $payload[$roleKey] ?? null;
+                    }
+                }
+
+                if ($currentRole === null || !in_array($currentRole, $attribute->allowedRoles)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     private static function isFunctionAllowed(string $fn): bool
     {
         try {
             $ref = new ReflectionFunction($fn);
             $attrs = $ref->getAttributes(Exposed::class);
-            return !empty($attrs);
+
+            if (empty($attrs)) {
+                return false;
+            }
+
+            return self::validateAccess($attrs[0]->newInstance());
         } catch (Throwable) {
             return false;
         }
@@ -838,7 +877,12 @@ final class Bootstrap extends RuntimeException
         try {
             $ref = new ReflectionMethod($class, $method);
             $attrs = $ref->getAttributes(Exposed::class);
-            return !empty($attrs);
+
+            if (empty($attrs)) {
+                return false;
+            }
+
+            return self::validateAccess($attrs[0]->newInstance());
         } catch (Throwable) {
             return false;
         }
