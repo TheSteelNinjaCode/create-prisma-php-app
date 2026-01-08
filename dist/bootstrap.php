@@ -260,8 +260,9 @@ final class Bootstrap extends RuntimeException
 
             $layoutsToInclude = self::collectLayouts($pathname, $groupFolder, $dynamicRoute ?? null);
         } else {
-            $includePath = $baseDir . self::getFilePrecedence();
-            $layoutsToInclude = self::collectRootLayouts();
+            $contentData = self::getFilePrecedence();
+            $includePath = $baseDir . $contentData['file'];
+            $layoutsToInclude = self::collectRootLayouts($contentData['file']);
         }
 
         return [
@@ -395,7 +396,7 @@ final class Bootstrap extends RuntimeException
         return $layoutsToInclude;
     }
 
-    private static function collectRootLayouts(): array
+    private static function collectRootLayouts(?string $matchedContentFile = null): array
     {
         $layoutsToInclude = [];
         $baseDir = APP_PATH;
@@ -404,7 +405,7 @@ final class Bootstrap extends RuntimeException
         if (self::fileExistsCached($rootLayout)) {
             $layoutsToInclude[] = $rootLayout;
         } else {
-            $layoutsToInclude = self::findFirstGroupLayout();
+            $layoutsToInclude = self::findFirstGroupLayout($matchedContentFile);
 
             if (empty($layoutsToInclude)) {
                 return [];
@@ -414,13 +415,32 @@ final class Bootstrap extends RuntimeException
         return $layoutsToInclude;
     }
 
-    private static function findFirstGroupLayout(): array
+    private static function findFirstGroupLayout(?string $matchedContentFile = null): array
     {
         $baseDir = APP_PATH;
         $layoutsToInclude = [];
 
         if (is_dir($baseDir)) {
             $items = scandir($baseDir);
+
+            if ($matchedContentFile) {
+                foreach ($items as $item) {
+                    if ($item === '.' || $item === '..') {
+                        continue;
+                    }
+
+                    if (preg_match('/^\([^)]+\)$/', $item)) {
+                        if (strpos($matchedContentFile, "/$item/") === 0) {
+                            $groupLayoutPath = $baseDir . '/' . $item . '/layout.php';
+                            if (self::fileExistsCached($groupLayoutPath)) {
+                                $layoutsToInclude[] = $groupLayoutPath;
+                                return $layoutsToInclude;
+                            }
+                        }
+                    }
+                }
+            }
+
             foreach ($items as $item) {
                 if ($item === '.' || $item === '..') {
                     continue;
@@ -439,19 +459,20 @@ final class Bootstrap extends RuntimeException
         return $layoutsToInclude;
     }
 
-    private static function getFilePrecedence(): ?string
+    private static function getFilePrecedence(): array
     {
         $baseDir = APP_PATH;
+        $result = ['file' => null];
 
         foreach (PrismaPHPSettings::$routeFiles as $route) {
             if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
                 continue;
             }
             if (preg_match('/^\.\/src\/app\/route\.php$/', $route)) {
-                return '/route.php';
+                return ['file' => '/route.php'];
             }
             if (preg_match('/^\.\/src\/app\/index\.php$/', $route)) {
-                return '/index.php';
+                return ['file' => '/index.php'];
             }
         }
 
@@ -466,16 +487,16 @@ final class Bootstrap extends RuntimeException
                     $groupDir = $baseDir . '/' . $item;
 
                     if (file_exists($groupDir . '/route.php')) {
-                        return '/' . $item . '/route.php';
+                        return ['file' => '/' . $item . '/route.php'];
                     }
                     if (file_exists($groupDir . '/index.php')) {
-                        return '/' . $item . '/index.php';
+                        return ['file' => '/' . $item . '/index.php'];
                     }
                 }
             }
         }
 
-        return null;
+        return $result;
     }
 
     private static function uriExtractor(string $scriptUrl): string
@@ -1124,6 +1145,22 @@ final class Bootstrap extends RuntimeException
 
         return Request::$isAjax || Request::$isXFileRequest || Request::$fileToInclude === 'route.php';
     }
+
+    public static function applyRootLayoutId(string $html): string
+    {
+        $rootLayoutPath = self::$layoutsToInclude[0] ?? self::$parentLayoutPath;
+        $rootLayoutId = !empty($rootLayoutPath) ? md5($rootLayoutPath) : 'default-root';
+
+        header('X-PP-Root-Layout: ' . $rootLayoutId);
+
+        $rootLayoutMeta = '<meta name="pp-root-layout" content="' . $rootLayoutId . '">';
+
+        if (strpos($html, '<head>') !== false) {
+            return preg_replace('/<head>/', "<head>\n    $rootLayoutMeta", $html, 1);
+        }
+
+        return $rootLayoutMeta . $html;
+    }
 }
 
 Bootstrap::run();
@@ -1233,6 +1270,8 @@ try {
         MainLayout::$html = ob_get_clean();
         MainLayout::$html = TemplateCompiler::compile(MainLayout::$html);
         MainLayout::$html = TemplateCompiler::injectDynamicContent(MainLayout::$html);
+        MainLayout::$html = Bootstrap::applyRootLayoutId(MainLayout::$html);
+
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
 
         if (
