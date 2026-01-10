@@ -1,9 +1,5 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
-<<<<<<< HEAD
-import { writeFileSync } from "fs";
-=======
 import { writeFileSync, existsSync, mkdirSync } from "fs";
->>>>>>> v4-dev
 import browserSync, { BrowserSyncInstance } from "browser-sync";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
@@ -21,30 +17,17 @@ import { DebouncedWorker, createSrcWatcher, DEFAULT_AWF } from "./utils.js";
 const { __dirname } = getFileMeta();
 const bs: BrowserSyncInstance = browserSync.create();
 
-<<<<<<< HEAD
-// ---------- Watcher (whole ./src) ----------
-=======
 const PUBLIC_IGNORE_DIRS = [''];
 
->>>>>>> v4-dev
 const pipeline = new DebouncedWorker(
   async () => {
     await generateFileListJson();
     await updateAllClassLogs();
     await updateComponentImports();
 
-<<<<<<< HEAD
-    // Scan all PHP files in the whole SRC tree
     const phpFiles = await getAllPhpFiles(SRC_DIR);
     for (const file of phpFiles) {
       const rawFileImports = await analyzeImportsInFile(file);
-
-      // Normalize to array-of-objects shape expected by the checker
-=======
-    const phpFiles = await getAllPhpFiles(SRC_DIR);
-    for (const file of phpFiles) {
-      const rawFileImports = await analyzeImportsInFile(file);
->>>>>>> v4-dev
       const fileImports: Record<
         string,
         { className: string; filePath: string; importer?: string }[]
@@ -57,25 +40,15 @@ const pipeline = new DebouncedWorker(
       }
       await checkComponentImports(file, fileImports);
     }
-<<<<<<< HEAD
-=======
 
     if (bs.active) {
       bs.reload();
     }
->>>>>>> v4-dev
   },
   350,
   "bs-pipeline"
 );
 
-<<<<<<< HEAD
-// watch the entire src; we don’t need an extension filter here
-createSrcWatcher(join(SRC_DIR, "**", "*"), {
-  onEvent: (_ev, _abs, rel) => pipeline.schedule(rel),
-  awaitWriteFinish: DEFAULT_AWF,
-  logPrefix: "watch",
-=======
 const publicPipeline = new DebouncedWorker(
   async () => {
     console.log("→ Public directory changed, reloading browser...");
@@ -91,14 +64,10 @@ createSrcWatcher(join(SRC_DIR, "**", "*"), {
   onEvent: (_ev, _abs, rel) => pipeline.schedule(rel),
   awaitWriteFinish: DEFAULT_AWF,
   logPrefix: "watch-src",
->>>>>>> v4-dev
   usePolling: true,
   interval: 1000,
 });
 
-<<<<<<< HEAD
-// ---------- BrowserSync ----------
-=======
 createSrcWatcher(join(PUBLIC_DIR, "**", "*"), {
   onEvent: (_ev, abs, _) => {
     const relFromPublic = relative(PUBLIC_DIR, abs);
@@ -140,15 +109,9 @@ createSrcWatcher(viteFlagFile, {
   interval: 500,
 });
 
->>>>>>> v4-dev
 bs.init(
   {
-    /**
-     * Proxy your PHP app (from prisma-php.json).
-     * Use object form to enable WebSocket proxying.
-     */
     proxy: "http://localhost:3000",
-
     middleware: [
       (_req, res, next) => {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -156,7 +119,6 @@ bs.init(
         res.setHeader("Expires", "0");
         next();
       },
-
       createProxyMiddleware({
         target: prismaPhpConfigJson.bsTarget,
         changeOrigin: true,
@@ -164,10 +126,6 @@ bs.init(
       }),
     ],
 
-<<<<<<< HEAD
-    files: `${SRC_DIR}/**/*.*`, // still do file-level reloads as a safety net
-=======
->>>>>>> v4-dev
     notify: false,
     open: false,
     ghostMode: false,
@@ -179,10 +137,6 @@ bs.init(
       return;
     }
 
-<<<<<<< HEAD
-    // Write live URLs for other tooling
-=======
->>>>>>> v4-dev
     const urls = bsInstance.getOption("urls");
     const out = {
       local: urls.get("local"),
