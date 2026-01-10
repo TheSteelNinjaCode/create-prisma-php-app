@@ -41,10 +41,7 @@ final class CorsMiddleware
                 header('Access-Control-Max-Age: ' . (string) $cfg['maxAge']);
             }
 
-<<<<<<< HEAD
-=======
             // Optional: Private Network Access preflights (Chrome)
->>>>>>> v4-dev
             if (!empty($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_PRIVATE_NETWORK'])) {
                 header('Access-Control-Allow-Private-Network: true');
             }
