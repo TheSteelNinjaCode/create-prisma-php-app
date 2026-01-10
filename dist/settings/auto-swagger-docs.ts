@@ -307,10 +307,6 @@ function generateSwaggerAnnotation(modelName: string, fields: Field[]): string {
 }
 
 function isRequiredOnCreate(field: Field): boolean {
-<<<<<<< HEAD
-  // Required if Prisma says required AND no DB default AND not generated/readOnly/updatedAt/id
-=======
->>>>>>> v4-dev
   return (
     field.isRequired &&
     !field.hasDefaultValue &&
@@ -349,11 +345,7 @@ function phpRuleBodyForType(prismaTypeLower: string): string {
       return `
         $d = Validator::decimal($v);
         if ($d === null) return false;
-<<<<<<< HEAD
-        $out = (string)$d; // keep decimals canonical as string
-=======
         $out = (string)$d;
->>>>>>> v4-dev
         return true;`;
 
     case "datetime":
@@ -401,11 +393,7 @@ function phpRuleBodyForType(prismaTypeLower: string): string {
     case "string":
     default:
       return `
-<<<<<<< HEAD
-        $s = Validator::string($v, false); // trim, no HTML escaping for DB
-=======
         $s = Validator::string($v, false);
->>>>>>> v4-dev
         if ($s === '') return false;
         $out = $s;
         return true;`;
@@ -435,10 +423,6 @@ function idValidatorSnippet(idField: Field): string {
   const t = idField.type.toLowerCase();
   const def = (idField as any).default?.name?.toLowerCase?.() || "";
 
-<<<<<<< HEAD
-  // numeric ids (int/bigint or autoincrement())
-=======
->>>>>>> v4-dev
   if (t === "int" || t === "bigint" || def === "autoincrement") {
     return `
 $__id = Validator::int($id);
@@ -446,19 +430,11 @@ if ($__id === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse();
 $id = $__id;`;
   }
 
-<<<<<<< HEAD
-  // uuid() default or explicit UUID type
-=======
->>>>>>> v4-dev
   if (t === "uuid" || def === "uuid") {
     return `
 if (Validator::uuid($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
   }
 
-<<<<<<< HEAD
-  // cuid() / cuid2() defaults
-=======
->>>>>>> v4-dev
   if (def === "cuid") {
     return `
 if (Validator::cuid($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
@@ -468,10 +444,6 @@ if (Validator::cuid($id) === null) { Boom::badRequest("Invalid ${idField.name}")
 if (Validator::cuid2($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
   }
 
-<<<<<<< HEAD
-  // fallback: non-empty string
-=======
->>>>>>> v4-dev
   return `
 $__id = Validator::string($id, false);
 if ($__id === '') { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }
