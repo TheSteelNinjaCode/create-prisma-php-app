@@ -13,10 +13,7 @@ use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
 use Lib\Websocket\ConnectionManager;
-<<<<<<< HEAD
-=======
 use React\EventLoop\LoopInterface;
->>>>>>> v4-dev
 use Throwable;
 
 // ── Load .env (optional) and timezone ─────────────────────────────────────────
@@ -78,11 +75,7 @@ echo "   Started:    {$ts}" . PHP_EOL;
 
 // ── Graceful shutdown & periodic logs (if loop available) ────────────────────
 $loop = property_exists($server, 'loop') ? $server->loop : null;
-<<<<<<< HEAD
-if ($loop instanceof \React\EventLoop\LoopInterface) {
-=======
 if ($loop instanceof LoopInterface) {
->>>>>>> v4-dev
     // Periodic stats every 60s
     $loop->addPeriodicTimer(60, function () use ($ok) {
         $mem = function_exists('memory_get_usage') ? number_format(memory_get_usage(true) / 1048576, 2) . ' MB' : 'n/a';
