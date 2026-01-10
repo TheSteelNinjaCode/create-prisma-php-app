@@ -14,28 +14,15 @@ function removePhpComments(code: string): string {
 }
 
 function removePhpStrings(code: string): string {
-<<<<<<< HEAD
-  // Remove single quoted strings
   code = code.replace(/'(?:[^'\\]|\\.)*'/g, "''");
-  // Remove double quoted strings
-=======
-  code = code.replace(/'(?:[^'\\]|\\.)*'/g, "''");
->>>>>>> v4-dev
   code = code.replace(/"(?:[^"\\]|\\.)*"/g, '""');
   return code;
 }
 
 function findComponentsInFile(code: string): string[] {
   let cleanedCode = removePhpComments(removeAllHeredocs(code));
-<<<<<<< HEAD
-  // Remove PHP strings to avoid matching components in string literals
   cleanedCode = removePhpStrings(cleanedCode);
 
-  // Match components that are clearly in template context (naked, clean)
-=======
-  cleanedCode = removePhpStrings(cleanedCode);
-
->>>>>>> v4-dev
   const componentRegex = /<([A-Z][A-Za-z0-9]*)\s*(?:\s+[^>]*)?\/?>(?!['"])/g;
   const components = new Set<string>();
   let match;
@@ -58,10 +45,6 @@ export async function checkComponentImports(
   const code = await fs.readFile(filePath, "utf-8");
   const usedComponents = findComponentsInFile(code);
 
-<<<<<<< HEAD
-  // Normalize the current file path
-=======
->>>>>>> v4-dev
   const normalizedFilePath = filePath
     .replace(/\\/g, "/")
     .trim()
