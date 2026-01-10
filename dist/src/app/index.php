@@ -1,5 +1,3 @@
-<?php use Lib\Request; ?>
-
 <div class="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
     <main class="flex flex-col gap-5 row-start-2 items-center sm:items-center">
         <h1 class="text-6xl font-bold tracking-tight">
@@ -10,7 +8,11 @@
         <ol class="list-inside list-decimal text-sm/6 text-center sm:text-left">
             <li class="mb-2 tracking-[-.01em]">
                 Get started by editing
+<<<<<<< HEAD
                 <code class="bg-text-foreground/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
+=======
+                <code class="bg-text-foreground/[.05] dark:bg-white/6 px-1 py-0.5 rounded font-semibold">
+>>>>>>> v4-dev
                     src/app/index.php
                 </code>
                 .
@@ -48,7 +50,7 @@
         </div>
     </main>
 
-    <footer class="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
+    <footer class="row-start-3 flex gap-6 flex-wrap items-center justify-center">
         <a
             class="flex items-center gap-2 hover:underline hover:underline-offset-4"
             href="https://prismaphp.tsnc.tech/docs?doc=learning-path"
@@ -56,7 +58,7 @@
             rel="noopener noreferrer">
             <img
                 aria-hidden="true"
-                src="<?= Request::baseUrl ?>/assets/images/file.svg"
+                src="/assets/images/file.svg"
                 alt="File icon"
                 width="16"
                 height="16" /> Learn
@@ -68,7 +70,7 @@
             rel="noopener noreferrer">
             <img
                 aria-hidden="true"
-                src="<?= Request::baseUrl ?>/assets/images/window.svg"
+                src="/assets/images/window.svg"
                 alt="File icon"
                 width="16"
                 height="16" /> Examples
@@ -80,7 +82,7 @@
             rel="noopener noreferrer">
             <img
                 aria-hidden="true"
-                src="<?= Request::baseUrl ?>/assets/images/globe.svg"
+                src="/assets/images/globe.svg"
                 alt="File icon"
                 width="16"
                 height="16" /> prismaphp.tsnc.tech →

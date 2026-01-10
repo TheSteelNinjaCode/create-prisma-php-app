@@ -1,7 +1,7 @@
-<div class="flex flex-col min-h-[100vh] items-center justify-center space-y-4 text-center">
+<div class="flex flex-col min-h-screen items-center justify-center space-y-4 text-center">
     <div class="space-y-2">
         <h1 class="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">404 Not Found</h1>
-        <p class="max-w-[600px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+        <p class="max-w-150 text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
             Sorry, we couldn't find the page you're looking for.
         </p>
     </div>

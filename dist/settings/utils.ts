@@ -3,13 +3,14 @@ import { dirname } from "path";
 import chokidar, { FSWatcher } from "chokidar";
 import { spawn, ChildProcess, execFile } from "child_process";
 import { relative } from "path";
+<<<<<<< HEAD
+=======
 
-/**
- * Retrieves the file metadata including the filename and directory name.
- *
- * @param importMetaUrl - The URL of the module's import.meta.url.
- * @returns An object containing the filename (`__filename`) and directory name (`__dirname`).
- */
+export const PUBLIC_DIR = "public";
+export const SRC_DIR = "src";
+export const APP_DIR = "src/app";
+>>>>>>> v4-dev
+
 export function getFileMeta() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
@@ -19,7 +20,11 @@ export function getFileMeta() {
 export type WatchEvent = "add" | "addDir" | "change" | "unlink" | "unlinkDir";
 
 export const DEFAULT_IGNORES: (string | RegExp)[] = [
+<<<<<<< HEAD
   /(^|[\/\\])\../, // dotfiles
+=======
+  /(^|[\/\\])\../,
+>>>>>>> v4-dev
   "**/node_modules/**",
   "**/vendor/**",
   "**/dist/**",
@@ -32,6 +37,7 @@ export const DEFAULT_IGNORES: (string | RegExp)[] = [
 
 export const DEFAULT_AWF = { stabilityThreshold: 300, pollInterval: 100 };
 
+<<<<<<< HEAD
 /**
  * Create a chokidar watcher for a given root. Optionally filter by file extensions.
  */
@@ -39,6 +45,12 @@ export function createSrcWatcher(
   root: string,
   opts: {
     exts?: string[]; // e.g. ['.php','.ts']
+=======
+export function createSrcWatcher(
+  root: string,
+  opts: {
+    exts?: string[];
+>>>>>>> v4-dev
     onEvent: (event: WatchEvent, absPath: string, relPath: string) => void;
     ignored?: (string | RegExp)[];
     awaitWriteFinish?: { stabilityThreshold: number; pollInterval: number };
@@ -70,7 +82,10 @@ export function createSrcWatcher(
       console.log(`[${logPrefix}] Watching ${root.replace(/\\/g, "/")}/**/*`);
     })
     .on("all", (event: WatchEvent, filePath: string) => {
+<<<<<<< HEAD
       // Optional extension filter
+=======
+>>>>>>> v4-dev
       if (exts && exts.length > 0) {
         const ok = exts.some((ext) => filePath.endsWith(ext));
         if (!ok) return;
@@ -85,9 +100,12 @@ export function createSrcWatcher(
   return watcher;
 }
 
+<<<<<<< HEAD
 /**
  * Debounced worker that ensures only one run at a time; extra runs get queued once.
  */
+=======
+>>>>>>> v4-dev
 export class DebouncedWorker {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
@@ -128,9 +146,12 @@ export class DebouncedWorker {
   }
 }
 
+<<<<<<< HEAD
 /**
  * Cross-platform restartable process.
  */
+=======
+>>>>>>> v4-dev
 export function createRestartableProcess(spec: {
   name: string;
   cmd: string;
@@ -233,9 +254,12 @@ export function createRestartableProcess(spec: {
   return { start, stop, restart, getChild };
 }
 
+<<<<<<< HEAD
 /**
  * Register shutdown cleanup callbacks.
  */
+=======
+>>>>>>> v4-dev
 export function onExit(fn: () => Promise<void> | void) {
   const wrap = (sig: string) => async () => {
     console.log(`[proc] Received ${sig}, shutting down…`);

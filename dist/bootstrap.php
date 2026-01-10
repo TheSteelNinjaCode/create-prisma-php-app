@@ -8,28 +8,23 @@ require_once __DIR__ . '/settings/paths.php';
 use Dotenv\Dotenv;
 use Lib\Middleware\CorsMiddleware;
 
-// Load environment variables
 Dotenv::createImmutable(DOCUMENT_PATH)->load();
-
-// CORS must run before sessions/any output
 CorsMiddleware::handle();
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-use Lib\Request;
-use Lib\PrismaPHPSettings;
-use Lib\StateManager;
+use PP\Request;
+use PP\PrismaPHPSettings;
+use PP\StateManager;
 use Lib\Middleware\AuthMiddleware;
 use Lib\Auth\Auth;
-use Lib\MainLayout;
-use Lib\PHPX\TemplateCompiler;
-use Lib\CacheHandler;
-use Lib\ErrorHandler;
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
-use Lib\PartialRenderer;
+use PP\MainLayout;
+use PP\PHPX\TemplateCompiler;
+use PP\CacheHandler;
+use PP\ErrorHandler;
+use PP\Attributes\Exposed;
 
 final class Bootstrap extends RuntimeException
 {
@@ -43,8 +38,6 @@ final class Bootstrap extends RuntimeException
     public static bool $isContentVariableIncluded = false;
     public static bool $secondRequestC69CD = false;
     public static array $requestFilesData = [];
-    public static array $partialSelectors = [];
-    public static bool  $isPartialRequest = false;
 
     private string $context;
 
@@ -64,34 +57,27 @@ final class Bootstrap extends RuntimeException
 
     public static function run(): void
     {
-        // Set timezone
         date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
 
-        // Initialize essential classes
         PrismaPHPSettings::init();
         Request::init();
         StateManager::init();
         MainLayout::init();
-
-        // Register custom handlers (exception, shutdown, error)
         ErrorHandler::registerHandlers();
 
-        // Set a local store key as a cookie (before any output)
-        setcookie("pphp_local_store_key", PrismaPHPSettings::$localStoreKey, [
-            'expires' => time() + 3600, // 1 hour expiration
-            'path' => '/', // Cookie path
-            'domain' => '', // Specify your domain
-            'secure' => true, // Set to true if using HTTPS
-            'httponly' => false, // Set to true to prevent JavaScript access
-            'samesite' => 'Lax', // or 'Strict' depending on your requirements
+        setcookie("pp_local_store_key", PrismaPHPSettings::$localStoreKey, [
+            'expires' => time() + 3600,
+            'path' => '/',
+            'domain' => '',
+            'secure' => true,
+            'httponly' => false,
+            'samesite' => 'Lax',
         ]);
 
-        // Set a function call key as a cookie
-        self::functionCallNameEncrypt();
+        self::setCsrfCookie();
 
         self::$secondRequestC69CD = Request::$data['secondRequestC69CD'] ?? false;
 
-        // Check if the request is for a local store callback
         if (Request::$isWire && !self::$secondRequestC69CD) {
             self::isLocalStoreCallback();
         }
@@ -116,24 +102,20 @@ final class Bootstrap extends RuntimeException
         self::authenticateUserToken();
 
         self::$requestFilePath = APP_PATH . Request::$pathname;
-        self::$parentLayoutPath = APP_PATH . '/layout.php';
 
-        self::$isParentLayout = !empty(self::$layoutsToInclude)
-            && strpos(self::$layoutsToInclude[0], 'src/app/layout.php') !== false;
+        if (!empty(self::$layoutsToInclude)) {
+            self::$parentLayoutPath = self::$layoutsToInclude[0];
+            self::$isParentLayout = true;
+        } else {
+            self::$parentLayoutPath = APP_PATH . '/layout.php';
+            self::$isParentLayout = false;
+        }
 
         self::$isContentVariableIncluded = self::containsChildren(self::$parentLayoutPath);
         if (!self::$isContentVariableIncluded) {
             self::$isContentIncluded = true;
         }
 
-        self::$isPartialRequest =
-            !empty(Request::$data['pphpSync71163'])
-            && !empty(Request::$data['selectors'])
-            && self::$secondRequestC69CD;
-
-        if (self::$isPartialRequest) {
-            self::$partialSelectors = (array)Request::$data['selectors'];
-        }
         self::$requestFilesData = PrismaPHPSettings::$includeFiles;
 
         ErrorHandler::checkFatalError();
@@ -141,55 +123,62 @@ final class Bootstrap extends RuntimeException
 
     private static function isLocalStoreCallback(): void
     {
-        $data = self::getRequestData();
-
-        if (empty($data['callback'])) {
-            self::jsonExit(['success' => false, 'error' => 'Callback not provided', 'response' => null]);
+        if (empty($_SERVER['HTTP_X_PP_FUNCTION'])) {
+            return;
         }
 
-        try {
-            $aesKey = self::getAesKeyFromJwt();
-        } catch (RuntimeException $e) {
-            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
-        }
-
-        try {
-            $callbackName = self::decryptCallback($data['callback'], $aesKey);
-        } catch (RuntimeException $e) {
-            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
-        }
+        $callbackName = $_SERVER['HTTP_X_PP_FUNCTION'];
 
         if ($callbackName === PrismaPHPSettings::$localStoreKey) {
+            self::validateCsrfToken();
             self::jsonExit(['success' => true, 'response' => 'localStorage updated']);
         }
     }
 
-    private static function functionCallNameEncrypt(): void
+    private static function setCsrfCookie(): void
     {
-        $hmacSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
-        if ($hmacSecret === '') {
-            throw new RuntimeException("FUNCTION_CALL_SECRET is not set");
-        }
+        if (!isset($_COOKIE['prisma_php_csrf'])) {
+            $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? 'pp_default_insecure_secret';
+            $nonce = bin2hex(random_bytes(16));
+            $signature = hash_hmac('sha256', $nonce, $secret);
+            $token = $nonce . '.' . $signature;
 
-        $aesKey = random_bytes(32);
-
-        $payload = [
-            'k'   => base64_encode($aesKey),
-            'exp' => time() + 3600,
-        ];
-        $jwt = JWT::encode($payload, $hmacSecret, 'HS256');
-
-        setcookie(
-            'pphp_function_call_jwt',
-            $jwt,
-            [
+            setcookie('prisma_php_csrf', $token, [
                 'expires'  => time() + 3600,
                 'path'     => '/',
                 'secure'   => true,
-                'httponly' => false,    // JS must read the token
-                'samesite' => 'Strict',
-            ]
-        );
+                'httponly' => false,
+                'samesite' => 'Lax',
+            ]);
+            $_COOKIE['prisma_php_csrf'] = $token;
+        }
+    }
+
+    private static function validateCsrfToken(): void
+    {
+        $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        $cookieToken = $_COOKIE['prisma_php_csrf'] ?? '';
+        $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
+
+        if (empty($headerToken) || empty($cookieToken)) {
+            self::jsonExit(['success' => false, 'error' => 'CSRF token missing']);
+        }
+
+        if (!hash_equals($cookieToken, $headerToken)) {
+            self::jsonExit(['success' => false, 'error' => 'CSRF token mismatch']);
+        }
+
+        $parts = explode('.', $cookieToken);
+        if (count($parts) !== 2) {
+            self::jsonExit(['success' => false, 'error' => 'Invalid CSRF token format']);
+        }
+
+        [$nonce, $signature] = $parts;
+        $expectedSignature = hash_hmac('sha256', $nonce, $secret);
+
+        if (!hash_equals($expectedSignature, $signature)) {
+            self::jsonExit(['success' => false, 'error' => 'Invalid CSRF token signature']);
+        }
     }
 
     private static function fileExistsCached(string $path): bool
@@ -214,7 +203,6 @@ final class Bootstrap extends RuntimeException
         $requestUri = $_SERVER['REQUEST_URI'];
         $requestUri = empty($_SERVER['SCRIPT_URL']) ? trim(self::uriExtractor($requestUri)) : trim($requestUri);
 
-        // Without query params
         $scriptUrl = explode('?', $requestUri, 2)[0];
         $pathname = $_SERVER['SCRIPT_URL'] ?? $scriptUrl;
         $pathname = trim($pathname, '/');
@@ -233,7 +221,6 @@ final class Bootstrap extends RuntimeException
          * ================================================
          */
 
-        // e.g., avoid direct access to _private files
         $isDirectAccessToPrivateRoute = preg_match('/_/', $pathname);
         if ($isDirectAccessToPrivateRoute) {
             $sameSiteFetch = false;
@@ -252,7 +239,6 @@ final class Bootstrap extends RuntimeException
             }
         }
 
-        // Find matching route
         if ($pathname) {
             $groupFolder = self::findGroupFolder($pathname);
             if ($groupFolder) {
@@ -272,52 +258,11 @@ final class Bootstrap extends RuntimeException
                 }
             }
 
-            // Check for layout hierarchy
-            $currentPath = $baseDir;
-            $getGroupFolder = self::getGroupFolder($groupFolder);
-            $modifiedPathname = $pathname;
-            if (!empty($getGroupFolder)) {
-                $modifiedPathname = trim($getGroupFolder, "/src/app/");
-            }
-
-            foreach (explode('/', $modifiedPathname) as $segment) {
-                if (empty($segment)) {
-                    continue;
-                }
-
-                $currentPath .= '/' . $segment;
-                $potentialLayoutPath = $currentPath . '/layout.php';
-                if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
-                    $layoutsToInclude[] = $potentialLayoutPath;
-                }
-            }
-
-            // If it was a dynamic route, we also check for any relevant layout
-            if (isset($dynamicRoute) && !empty($dynamicRoute)) {
-                $currentDynamicPath = $baseDir;
-                foreach (explode('/', $dynamicRoute) as $segment) {
-                    if (empty($segment)) {
-                        continue;
-                    }
-                    if ($segment === 'src' || $segment === 'app') {
-                        continue;
-                    }
-
-                    $currentDynamicPath .= '/' . $segment;
-                    $potentialDynamicRoute = $currentDynamicPath . '/layout.php';
-                    if (self::fileExistsCached($potentialDynamicRoute) && !in_array($potentialDynamicRoute, $layoutsToInclude, true)) {
-                        $layoutsToInclude[] = $potentialDynamicRoute;
-                    }
-                }
-            }
-
-            // If still no layout, fallback to the app-level layout.php
-            if (empty($layoutsToInclude)) {
-                $layoutsToInclude[] = $baseDir . '/layout.php';
-            }
+            $layoutsToInclude = self::collectLayouts($pathname, $groupFolder, $dynamicRoute ?? null);
         } else {
-            // If path is empty, we’re basically at "/"
-            $includePath = $baseDir . self::getFilePrecedence();
+            $contentData = self::getFilePrecedence();
+            $includePath = $baseDir . $contentData['file'];
+            $layoutsToInclude = self::collectRootLayouts($contentData['file']);
         }
 
         return [
@@ -328,20 +273,230 @@ final class Bootstrap extends RuntimeException
         ];
     }
 
-    private static function getFilePrecedence(): ?string
+    private static function collectLayouts(string $pathname, ?string $groupFolder, ?string $dynamicRoute): array
     {
+        $layoutsToInclude = [];
+        $baseDir = APP_PATH;
+
+        $rootLayout = $baseDir . '/layout.php';
+        if (self::fileExistsCached($rootLayout)) {
+            $layoutsToInclude[] = $rootLayout;
+        }
+
+        $groupName = null;
+        $groupParentPath = '';
+        $pathAfterGroup = '';
+
+        if ($groupFolder) {
+            $normalizedGroupFolder = str_replace('\\', '/', $groupFolder);
+
+            if (preg_match('#^\.?/src/app/(.+)/\(([^)]+)\)/(.+)$#', $normalizedGroupFolder, $matches)) {
+                $groupParentPath = $matches[1];
+                $groupName = $matches[2];
+                $pathAfterGroup = dirname($matches[3]);
+                if ($pathAfterGroup === '.') {
+                    $pathAfterGroup = '';
+                }
+            } elseif (preg_match('#^\.?/src/app/\(([^)]+)\)/(.+)$#', $normalizedGroupFolder, $matches)) {
+                $groupName = $matches[1];
+                $pathAfterGroup = dirname($matches[2]);
+                if ($pathAfterGroup === '.') {
+                    $pathAfterGroup = '';
+                }
+            }
+        }
+
+        if ($groupName && $groupParentPath) {
+            $currentPath = $baseDir;
+            foreach (explode('/', $groupParentPath) as $segment) {
+                if (empty($segment)) continue;
+
+                $currentPath .= '/' . $segment;
+                $potentialLayoutPath = $currentPath . '/layout.php';
+
+                if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
+                    $layoutsToInclude[] = $potentialLayoutPath;
+                }
+            }
+
+            $groupLayoutPath = $baseDir . '/' . $groupParentPath . "/($groupName)/layout.php";
+            if (self::fileExistsCached($groupLayoutPath)) {
+                $layoutsToInclude[] = $groupLayoutPath;
+            }
+
+            if (!empty($pathAfterGroup)) {
+                $currentPath = $baseDir . '/' . $groupParentPath . "/($groupName)";
+                foreach (explode('/', $pathAfterGroup) as $segment) {
+                    if (empty($segment)) continue;
+
+                    $currentPath .= '/' . $segment;
+                    $potentialLayoutPath = $currentPath . '/layout.php';
+
+                    if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
+                        $layoutsToInclude[] = $potentialLayoutPath;
+                    }
+                }
+            }
+        } elseif ($groupName && !$groupParentPath) {
+            $groupLayoutPath = $baseDir . "/($groupName)/layout.php";
+            if (self::fileExistsCached($groupLayoutPath)) {
+                $layoutsToInclude[] = $groupLayoutPath;
+            }
+
+            if (!empty($pathAfterGroup)) {
+                $currentPath = $baseDir . "/($groupName)";
+                foreach (explode('/', $pathAfterGroup) as $segment) {
+                    if (empty($segment)) continue;
+
+                    $currentPath .= '/' . $segment;
+                    $potentialLayoutPath = $currentPath . '/layout.php';
+
+                    if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
+                        $layoutsToInclude[] = $potentialLayoutPath;
+                    }
+                }
+            }
+        } else {
+            $currentPath = $baseDir;
+            foreach (explode('/', $pathname) as $segment) {
+                if (empty($segment)) continue;
+
+                $currentPath .= '/' . $segment;
+                $potentialLayoutPath = $currentPath . '/layout.php';
+
+                if ($potentialLayoutPath === $rootLayout) {
+                    continue;
+                }
+
+                if (self::fileExistsCached($potentialLayoutPath) && !in_array($potentialLayoutPath, $layoutsToInclude, true)) {
+                    $layoutsToInclude[] = $potentialLayoutPath;
+                }
+            }
+        }
+
+        if (isset($dynamicRoute) && !empty($dynamicRoute)) {
+            $currentDynamicPath = $baseDir;
+            foreach (explode('/', $dynamicRoute) as $segment) {
+                if (empty($segment) || $segment === 'src' || $segment === 'app') {
+                    continue;
+                }
+
+                $currentDynamicPath .= '/' . $segment;
+                $potentialDynamicRoute = $currentDynamicPath . '/layout.php';
+                if (self::fileExistsCached($potentialDynamicRoute) && !in_array($potentialDynamicRoute, $layoutsToInclude, true)) {
+                    $layoutsToInclude[] = $potentialDynamicRoute;
+                }
+            }
+        }
+
+        if (empty($layoutsToInclude)) {
+            $layoutsToInclude = self::findFirstGroupLayout();
+        }
+
+        return $layoutsToInclude;
+    }
+
+    private static function collectRootLayouts(?string $matchedContentFile = null): array
+    {
+        $layoutsToInclude = [];
+        $baseDir = APP_PATH;
+        $rootLayout = $baseDir . '/layout.php';
+
+        if (self::fileExistsCached($rootLayout)) {
+            $layoutsToInclude[] = $rootLayout;
+        } else {
+            $layoutsToInclude = self::findFirstGroupLayout($matchedContentFile);
+
+            if (empty($layoutsToInclude)) {
+                return [];
+            }
+        }
+
+        return $layoutsToInclude;
+    }
+
+    private static function findFirstGroupLayout(?string $matchedContentFile = null): array
+    {
+        $baseDir = APP_PATH;
+        $layoutsToInclude = [];
+
+        if (is_dir($baseDir)) {
+            $items = scandir($baseDir);
+
+            if ($matchedContentFile) {
+                foreach ($items as $item) {
+                    if ($item === '.' || $item === '..') {
+                        continue;
+                    }
+
+                    if (preg_match('/^\([^)]+\)$/', $item)) {
+                        if (strpos($matchedContentFile, "/$item/") === 0) {
+                            $groupLayoutPath = $baseDir . '/' . $item . '/layout.php';
+                            if (self::fileExistsCached($groupLayoutPath)) {
+                                $layoutsToInclude[] = $groupLayoutPath;
+                                return $layoutsToInclude;
+                            }
+                        }
+                    }
+                }
+            }
+
+            foreach ($items as $item) {
+                if ($item === '.' || $item === '..') {
+                    continue;
+                }
+
+                if (preg_match('/^\([^)]+\)$/', $item)) {
+                    $groupLayoutPath = $baseDir . '/' . $item . '/layout.php';
+                    if (self::fileExistsCached($groupLayoutPath)) {
+                        $layoutsToInclude[] = $groupLayoutPath;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $layoutsToInclude;
+    }
+
+    private static function getFilePrecedence(): array
+    {
+        $baseDir = APP_PATH;
+        $result = ['file' => null];
+
         foreach (PrismaPHPSettings::$routeFiles as $route) {
             if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
                 continue;
             }
             if (preg_match('/^\.\/src\/app\/route\.php$/', $route)) {
-                return '/route.php';
+                return ['file' => '/route.php'];
             }
             if (preg_match('/^\.\/src\/app\/index\.php$/', $route)) {
-                return '/index.php';
+                return ['file' => '/index.php'];
             }
         }
-        return null;
+
+        if (is_dir($baseDir)) {
+            $items = scandir($baseDir);
+            foreach ($items as $item) {
+                if ($item === '.' || $item === '..') {
+                    continue;
+                }
+
+                if (preg_match('/^\([^)]+\)$/', $item)) {
+                    $groupDir = $baseDir . '/' . $item;
+
+                    if (file_exists($groupDir . '/route.php')) {
+                        return ['file' => '/' . $item . '/route.php'];
+                    }
+                    if (file_exists($groupDir . '/index.php')) {
+                        return ['file' => '/' . $item . '/index.php'];
+                    }
+                }
+            }
+        }
+
+        return $result;
     }
 
     private static function uriExtractor(string $scriptUrl): string
@@ -430,17 +585,22 @@ final class Bootstrap extends RuntimeException
                     }
                 }
             } elseif (strpos($normalizedRoute, '[...') !== false) {
-                if (count($pathnameSegments) <= $expectedSegmentCount) {
+                $cleanedRoute = preg_replace('/\(.+\)/', '', $normalizedRoute);
+                $cleanedRoute = preg_replace('/\/+/', '/', $cleanedRoute);
+                $staticPart = preg_replace('/\[\.\.\..*?\].*/', '', $cleanedRoute);
+                $staticSegments = array_filter(explode('/', $staticPart));
+                $minRequiredSegments = count($staticSegments);
+
+                if (count($pathnameSegments) < $minRequiredSegments) {
                     continue;
                 }
 
-                $cleanedNormalizedRoute = preg_replace('/\(.+\)/', '', $normalizedRoute);
-                $cleanedNormalizedRoute = preg_replace('/\/+/', '/', $cleanedNormalizedRoute);
-                $dynamicSegmentRoute = preg_replace('/\[\.\.\..*?\].*/', '', $cleanedNormalizedRoute);
+                $cleanedNormalizedRoute = $cleanedRoute;
+                $dynamicSegmentRoute = $staticPart;
 
                 if (strpos("/src/app/$normalizedPathname", $dynamicSegmentRoute) === 0) {
                     $trimmedPathname = str_replace($dynamicSegmentRoute, '', "/src/app/$normalizedPathname");
-                    $pathnameParts = explode('/', trim($trimmedPathname, '/'));
+                    $pathnameParts = $trimmedPathname === '' ? [] : explode('/', trim($trimmedPathname, '/'));
 
                     if (preg_match('/\[\.\.\.(.*?)\]/', $normalizedRoute, $matches)) {
                         $dynamicParam = $matches[1];
@@ -457,18 +617,14 @@ final class Bootstrap extends RuntimeException
 
                     if (strpos($normalizedRoute, 'index.php') !== false) {
                         $segmentMatch = "[...$dynamicParam]";
-                        $index = array_search($segmentMatch, $filteredRouteSegments);
 
-                        if ($index !== false && isset($pathnameSegments[$index])) {
-                            $dynamicRoutePathname = str_replace($segmentMatch, implode('/', $pathnameParts), $cleanedNormalizedRoute);
-                            $dynamicRoutePathnameDirname = rtrim(dirname($dynamicRoutePathname), '/');
+                        $dynamicRoutePathname = str_replace($segmentMatch, implode('/', $pathnameParts), $cleanedNormalizedRoute);
+                        $dynamicRoutePathnameDirname = rtrim(dirname($dynamicRoutePathname), '/');
+                        $expectedPathname = rtrim("/src/app/$normalizedPathname", '/');
 
-                            $expectedPathname = rtrim("/src/app/$normalizedPathname", '/');
-
-                            if ($expectedPathname === $dynamicRoutePathnameDirname) {
-                                $pathnameMatch = $normalizedRoute;
-                                break;
-                            }
+                        if ($expectedPathname === $dynamicRoutePathnameDirname) {
+                            $pathnameMatch = $normalizedRoute;
+                            break;
                         }
                     }
                 }
@@ -489,6 +645,7 @@ final class Bootstrap extends RuntimeException
             if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
                 continue;
             }
+
             $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
             $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
 
@@ -500,22 +657,26 @@ final class Bootstrap extends RuntimeException
             }
         }
 
+        if (!$bestMatch) {
+            foreach (PrismaPHPSettings::$routeFiles as $route) {
+                if (pathinfo($route, PATHINFO_EXTENSION) !== 'php') {
+                    continue;
+                }
+
+                $normalizedRoute = trim(str_replace('\\', '/', $route), '.');
+
+                if (preg_match('/\/\(([^)]+)\)\//', $normalizedRoute, $matches)) {
+                    $cleanedRoute = preg_replace('/\/\([^)]+\)/', '', $normalizedRoute);
+
+                    if ($cleanedRoute === $routeFile || $cleanedRoute === $indexFile) {
+                        $bestMatch = $normalizedRoute;
+                        break;
+                    }
+                }
+            }
+        }
+
         return $bestMatch;
-    }
-
-    private static function getGroupFolder($pathname): string
-    {
-        $lastSlashPos = strrpos($pathname, '/');
-        if ($lastSlashPos === false) {
-            return "";
-        }
-
-        $pathWithoutFile = substr($pathname, 0, $lastSlashPos);
-        if (preg_match('/\(([^)]+)\)[^()]*$/', $pathWithoutFile, $matches)) {
-            return $pathWithoutFile;
-        }
-
-        return "";
     }
 
     private static function singleDynamicRoute($pathnameSegments, $routeSegments)
@@ -535,7 +696,6 @@ final class Bootstrap extends RuntimeException
 
     private static function checkForDuplicateRoutes(): void
     {
-        // Skip checks in production
         if (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'production') {
             return;
         }
@@ -585,7 +745,7 @@ final class Bootstrap extends RuntimeException
         }
     }
 
-    public static function containsChildLayoutChildren($filePath): bool
+    public static function containsChildren($filePath): bool
     {
         if (!self::fileExistsCached($filePath)) {
             return false;
@@ -596,54 +756,51 @@ final class Bootstrap extends RuntimeException
             return false;
         }
 
-        // Check usage of MainLayout::$childLayoutChildren
-        $pattern = '/\<\?=\s*MainLayout::\$childLayoutChildren\s*;?\s*\?>|echo\s*MainLayout::\$childLayoutChildren\s*;?/';
-        return (bool) preg_match($pattern, $fileContent);
-    }
-
-    private static function containsChildren($filePath): bool
-    {
-        if (!self::fileExistsCached($filePath)) {
-            return false;
-        }
-
-        $fileContent = @file_get_contents($filePath);
-        if ($fileContent === false) {
-            return false;
-        }
-
-        // Check usage of MainLayout::$children
         $pattern = '/\<\?=\s*MainLayout::\$children\s*;?\s*\?>|echo\s*MainLayout::\$children\s*;?/';
         return (bool) preg_match($pattern, $fileContent);
     }
 
     private static function convertToArrayObject($data)
     {
-        return is_array($data) ? (object) $data : $data;
+        if (!is_array($data)) {
+            return $data;
+        }
+
+        if (empty($data)) {
+            return $data;
+        }
+
+        $isAssoc = array_keys($data) !== range(0, count($data) - 1);
+
+        if ($isAssoc) {
+            $obj = new stdClass();
+            foreach ($data as $key => $value) {
+                $obj->$key = self::convertToArrayObject($value);
+            }
+            return $obj;
+        } else {
+            return array_map([self::class, 'convertToArrayObject'], $data);
+        }
     }
 
     public static function wireCallback(): void
     {
+        $callbackName = $_SERVER['HTTP_X_PP_FUNCTION'] ?? null;
+
+        if (empty($callbackName)) {
+            self::jsonExit(['success' => false, 'error' => 'Callback header not provided', 'response' => null]);
+        }
+
+        self::validateCsrfToken();
+
+        if (!preg_match('/^[a-zA-Z0-9_:\->]+$/', $callbackName)) {
+            self::jsonExit(['success' => false, 'error' => 'Invalid callback format']);
+        }
+
         $data = self::getRequestData();
-
-        if (empty($data['callback'])) {
-            self::jsonExit(['success' => false, 'error' => 'Callback not provided', 'response' => null]);
-        }
-
-        try {
-            $aesKey = self::getAesKeyFromJwt();
-        } catch (RuntimeException $e) {
-            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
-        }
-
-        try {
-            $callbackName = self::decryptCallback($data['callback'], $aesKey);
-        } catch (RuntimeException $e) {
-            self::jsonExit(['success' => false, 'error' => $e->getMessage()]);
-        }
-
         $args = self::convertToArrayObject($data);
-        $out  = str_contains($callbackName, '->') || str_contains($callbackName, '::')
+
+        $out = str_contains($callbackName, '->') || str_contains($callbackName, '::')
             ? self::dispatchMethod($callbackName, $args)
             : self::dispatchFunction($callbackName, $args);
 
@@ -653,61 +810,10 @@ final class Bootstrap extends RuntimeException
         exit;
     }
 
-    private static function getAesKeyFromJwt(): string
-    {
-        $token     = $_COOKIE['pphp_function_call_jwt'] ?? null;
-        $jwtSecret = $_ENV['FUNCTION_CALL_SECRET'] ?? null;
-
-        if (!$token || !$jwtSecret) {
-            throw new RuntimeException('Missing session key or secret');
-        }
-
-        try {
-            $decoded = JWT::decode($token, new Key($jwtSecret, 'HS256'));
-        } catch (Throwable) {
-            throw new RuntimeException('Invalid session key');
-        }
-
-        $aesKey = base64_decode($decoded->k, true);
-        if ($aesKey === false || strlen($aesKey) !== 32) {
-            throw new RuntimeException('Bad key length');
-        }
-
-        return $aesKey;
-    }
-
     private static function jsonExit(array $payload): void
     {
         echo json_encode($payload, JSON_UNESCAPED_UNICODE);
         exit;
-    }
-
-    private static function decryptCallback(string $encrypted, string $aesKey): string
-    {
-        $parts = explode(':', $encrypted, 2);
-        if (count($parts) !== 2) {
-            throw new RuntimeException('Malformed callback payload');
-        }
-        [$ivB64, $ctB64] = $parts;
-
-        $iv = base64_decode($ivB64, true);
-        $ct = base64_decode($ctB64, true);
-
-        if ($iv === false || strlen($iv) !== 16 || $ct === false) {
-            throw new RuntimeException('Invalid callback payload');
-        }
-
-        $plain = openssl_decrypt($ct, 'AES-256-CBC', $aesKey, OPENSSL_RAW_DATA, $iv);
-        if ($plain === false) {
-            throw new RuntimeException('Decryption failed');
-        }
-
-        $callback = preg_replace('/[^a-zA-Z0-9_:\->]/', '', $plain);
-        if ($callback === '' || $callback[0] === '_') {
-            throw new RuntimeException('Invalid callback');
-        }
-
-        return $callback;
     }
 
     private static function getRequestData(): array
@@ -737,8 +843,78 @@ final class Bootstrap extends RuntimeException
         return (json_last_error() === JSON_ERROR_NONE) ? $json : $_POST;
     }
 
+    private static function validateAccess(Exposed $attribute): bool
+    {
+        if ($attribute->requiresAuth || !empty($attribute->allowedRoles)) {
+            $auth = Auth::getInstance();
+
+            if (!$auth->isAuthenticated()) {
+                return false;
+            }
+
+            if (!empty($attribute->allowedRoles)) {
+                $payload = $auth->getPayload();
+                $currentRole = null;
+
+                if (is_scalar($payload)) {
+                    $currentRole = $payload;
+                } else {
+                    $roleKey = !empty(Auth::ROLE_NAME) ? Auth::ROLE_NAME : 'role';
+
+                    if (is_object($payload)) {
+                        $currentRole = $payload->$roleKey ?? null;
+                    } elseif (is_array($payload)) {
+                        $currentRole = $payload[$roleKey] ?? null;
+                    }
+                }
+
+                if ($currentRole === null || !in_array($currentRole, $attribute->allowedRoles)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static function isFunctionAllowed(string $fn): bool
+    {
+        try {
+            $ref = new ReflectionFunction($fn);
+            $attrs = $ref->getAttributes(Exposed::class);
+
+            if (empty($attrs)) {
+                return false;
+            }
+
+            return self::validateAccess($attrs[0]->newInstance());
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private static function isMethodAllowed(string $class, string $method): bool
+    {
+        try {
+            $ref = new ReflectionMethod($class, $method);
+            $attrs = $ref->getAttributes(Exposed::class);
+
+            if (empty($attrs)) {
+                return false;
+            }
+
+            return self::validateAccess($attrs[0]->newInstance());
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     private static function dispatchFunction(string $fn, mixed $args)
     {
+        if (!self::isFunctionAllowed($fn)) {
+            return ['success' => false, 'error' => 'Function not callable from client'];
+        }
+
         if (function_exists($fn) && is_callable($fn)) {
             try {
                 $res = call_user_func($fn, $args);
@@ -759,6 +935,17 @@ final class Bootstrap extends RuntimeException
 
     private static function dispatchMethod(string $call, mixed $args)
     {
+        if (!self::isMethodAllowed(
+            strpos($call, '->') !== false
+                ? explode('->', $call, 2)[0]
+                : explode('::', $call, 2)[0],
+            strpos($call, '->') !== false
+                ? explode('->', $call, 2)[1]
+                : explode('::', $call, 2)[1]
+        )) {
+            return ['success' => false, 'error' => 'Method not callable from client'];
+        }
+
         if (strpos($call, '->') !== false) {
             list($requested, $method) = explode('->', $call, 2);
             $isStatic = false;
@@ -958,15 +1145,27 @@ final class Bootstrap extends RuntimeException
 
         return Request::$isAjax || Request::$isXFileRequest || Request::$fileToInclude === 'route.php';
     }
+
+    public static function applyRootLayoutId(string $html): string
+    {
+        $rootLayoutPath = self::$layoutsToInclude[0] ?? self::$parentLayoutPath;
+        $rootLayoutId = !empty($rootLayoutPath) ? md5($rootLayoutPath) : 'default-root';
+
+        header('X-PP-Root-Layout: ' . $rootLayoutId);
+
+        $rootLayoutMeta = '<meta name="pp-root-layout" content="' . $rootLayoutId . '">';
+
+        if (strpos($html, '<head>') !== false) {
+            return preg_replace('/<head>/', "<head>\n    $rootLayoutMeta", $html, 1);
+        }
+
+        return $rootLayoutMeta . $html;
+    }
 }
 
-// ============================================================================
-// Main Execution
-// ============================================================================
 Bootstrap::run();
 
 try {
-    // 1) If there's no content to include:
     if (empty(Bootstrap::$contentToInclude)) {
         if (!Request::$isXFileRequest && PrismaPHPSettings::$option->backendOnly) {
             header('Content-Type: application/json');
@@ -978,7 +1177,6 @@ try {
             exit;
         }
 
-        // If the file physically exists on disk and we’re dealing with an X-File request
         if (is_file(Bootstrap::$requestFilePath)) {
             if (file_exists(Bootstrap::$requestFilePath) && Request::$isXFileRequest) {
                 if (pathinfo(Bootstrap::$requestFilePath, PATHINFO_EXTENSION) === 'php') {
@@ -996,116 +1194,93 @@ try {
         }
     }
 
-    // 2) If the chosen file is route.php -> output JSON
     if (!empty(Bootstrap::$contentToInclude) && Request::$fileToInclude === 'route.php') {
         header('Content-Type: application/json');
         require_once Bootstrap::$contentToInclude;
         exit;
     }
 
-    // 3) If there is some valid content (index.php or something else)
     if (!empty(Bootstrap::$contentToInclude) && !empty(Request::$fileToInclude)) {
-        // We only load the content now if we're NOT dealing with the top-level parent layout
-        if (!Bootstrap::$isParentLayout) {
-            ob_start();
-            require_once Bootstrap::$contentToInclude;
-            MainLayout::$childLayoutChildren = ob_get_clean();
-        }
+        ob_start();
+        require_once Bootstrap::$contentToInclude;
+        MainLayout::$children = ob_get_clean();
 
-        // Then process all the reversed layouts in the chain
-        foreach (array_reverse(Bootstrap::$layoutsToInclude) as $layoutPath) {
-            if (Bootstrap::$parentLayoutPath === $layoutPath) {
-                continue;
+        if (count(Bootstrap::$layoutsToInclude) > 1) {
+            $nestedLayouts = array_slice(Bootstrap::$layoutsToInclude, 1);
+
+            foreach (array_reverse($nestedLayouts) as $layoutPath) {
+                if (!Bootstrap::containsChildren($layoutPath)) {
+                    Bootstrap::$isChildContentIncluded = true;
+                }
+
+                ob_start();
+                require_once $layoutPath;
+                MainLayout::$children = ob_get_clean();
             }
-
-            if (!Bootstrap::containsChildLayoutChildren($layoutPath)) {
-                Bootstrap::$isChildContentIncluded = true;
-            }
-
-            ob_start();
-            require_once $layoutPath;
-            MainLayout::$childLayoutChildren = ob_get_clean();
         }
     } else {
-        // Fallback: we include not-found.php
         ob_start();
         require_once APP_PATH . '/not-found.php';
-        MainLayout::$childLayoutChildren = ob_get_clean();
+        MainLayout::$children = ob_get_clean();
 
         http_response_code(404);
         CacheHandler::$isCacheable = false;
     }
 
-    // If the top-level layout is in use
-    if (Bootstrap::$isParentLayout && !empty(Bootstrap::$contentToInclude)) {
-        ob_start();
-        require_once Bootstrap::$contentToInclude;
-        MainLayout::$childLayoutChildren = ob_get_clean();
-    }
-
     if (!Bootstrap::$isContentIncluded && !Bootstrap::$isChildContentIncluded) {
-        // Provide request-data for SSR caching, if needed
         if (!Bootstrap::$secondRequestC69CD) {
             Bootstrap::createUpdateRequestData();
         }
 
-        // For wire calls, re-include the files if needed
         if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
             if (isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
                 foreach (Bootstrap::$requestFilesData[Request::$decodedUri]['includedFiles'] as $file) {
                     if (file_exists($file)) {
                         ob_start();
                         require_once $file;
-                        MainLayout::$childLayoutChildren .= ob_get_clean();
+                        MainLayout::$children .= ob_get_clean();
                     }
                 }
             }
         }
 
-        // If it’s a wire request, handle wire callback
         if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
             ob_end_clean();
             Bootstrap::wireCallback();
         }
 
-        // If there’s caching
         if ((!Request::$isWire && !Bootstrap::$secondRequestC69CD) && isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
-            if ($_ENV['CACHE_ENABLED'] === 'true') {
-                CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL']));
+            $shouldCache = CacheHandler::$isCacheable === true
+                || (CacheHandler::$isCacheable === null && $_ENV['CACHE_ENABLED'] === 'true');
+
+            if ($shouldCache) {
+                CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL'] ?? 600));
             }
         }
 
-        MainLayout::$children = MainLayout::$childLayoutChildren . Bootstrap::getLoadingsFiles();
+        MainLayout::$children .= Bootstrap::getLoadingsFiles();
 
         ob_start();
-        require_once APP_PATH . '/layout.php';
+        if (file_exists(Bootstrap::$parentLayoutPath)) {
+            require_once Bootstrap::$parentLayoutPath;
+        } else {
+            echo MainLayout::$children;
+        }
+
         MainLayout::$html = ob_get_clean();
         MainLayout::$html = TemplateCompiler::compile(MainLayout::$html);
         MainLayout::$html = TemplateCompiler::injectDynamicContent(MainLayout::$html);
+        MainLayout::$html = Bootstrap::applyRootLayoutId(MainLayout::$html);
+
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
 
         if (
-            http_response_code() === 200 && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName']) && $_ENV['CACHE_ENABLED'] === 'true' && (!Request::$isWire && !Bootstrap::$secondRequestC69CD)
+            http_response_code() === 200
+            && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName'])
+            && $shouldCache
+            && (!Request::$isWire && !Bootstrap::$secondRequestC69CD)
         ) {
             CacheHandler::saveCache(Request::$decodedUri, MainLayout::$html);
-        }
-
-        if (Bootstrap::$isPartialRequest) {
-            $parts = PartialRenderer::extract(
-                MainLayout::$html,
-                Bootstrap::$partialSelectors
-            );
-
-            if (count($parts) === 1) {
-                echo reset($parts);
-            } else {
-                header('Content-Type: application/json');
-                echo json_encode(
-                    ['success' => true, 'fragments' => $parts],
-                    JSON_UNESCAPED_UNICODE
-                );
-            }
-            exit;
         }
 
         echo MainLayout::$html;
@@ -1114,13 +1289,8 @@ try {
             ? Bootstrap::$parentLayoutPath
             : (Bootstrap::$layoutsToInclude[0] ?? '');
 
-        $message = "The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;\n<strong>$layoutPath</strong>";
-        $htmlMessage = "<div class='error'>The layout file does not contain &lt;?php echo MainLayout::\$childLayoutChildren; ?&gt; or &lt;?= MainLayout::\$childLayoutChildren ?&gt;<br><strong>$layoutPath</strong></div>";
-
-        if (Bootstrap::$isContentIncluded) {
-            $message = "The parent layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; Or &lt;?= MainLayout::\$children ?&gt;<br><strong>$layoutPath</strong>";
-            $htmlMessage = "<div class='error'>The parent layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; Or &lt;?= MainLayout::\$children ?&gt;<br><strong>$layoutPath</strong></div>";
-        }
+        $message = "The layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; or &lt;?= MainLayout::\$children ?&gt;\n<strong>$layoutPath</strong>";
+        $htmlMessage = "<div class='error'>The layout file does not contain &lt;?php echo MainLayout::\$children; ?&gt; or &lt;?= MainLayout::\$children ?&gt;<br><strong>$layoutPath</strong></div>";
 
         $errorDetails = Bootstrap::isAjaxOrXFileRequestOrRouteFile() ? $message : $htmlMessage;
 

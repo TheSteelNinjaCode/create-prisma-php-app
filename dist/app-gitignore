@@ -22,13 +22,10 @@ Thumbs.db # Windows
 # Log files
 *.log
 
-# Dependency directories
-composer.lock
-
 # Backup and temporary files
 *.swp
 
 # Prisma PHP settings files
-.pphp/
+.pp/
 caches/
 settings/bs-config.json

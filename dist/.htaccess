@@ -1,5 +1,5 @@
-# Turn on rewrite engine
 RewriteEngine On
+<<<<<<< HEAD
 
 # ------------------------------------------------------------------------------
 # Block sensitive files (Apache 2.2 + 2.4 compatible)
@@ -86,3 +86,6 @@ RewriteRule ^ bootstrap.php [QSA,L]
 RewriteCond %{REQUEST_URI} !\.(css|js|png|jpe?g|gif|svg|webp|woff2?|ttf|eot|ico|pdf|mp4|webm|mp3|ogg)$ [NC]
 RewriteCond %{REQUEST_URI} !^/bootstrap.php
 RewriteRule ^(.*)$ bootstrap.php [QSA,L]
+=======
+RewriteRule ^(.*)$ public/$1 [QSA,L]
+>>>>>>> v4-dev

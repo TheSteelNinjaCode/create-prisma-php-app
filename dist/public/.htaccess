@@ -1,0 +1,72 @@
+RewriteEngine On
+
+# ============================================================================
+# Security Headers
+# ============================================================================
+<IfModule mod_headers.c>
+  # Basic Security Headers
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "DENY"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  
+  # Content Security Policy
+  Header set Content-Security-Policy "\
+    default-src 'self' https:; \
+    script-src  'self' https: 'unsafe-inline' 'unsafe-eval' blob:; \
+    style-src   'self' https: 'unsafe-inline'; \
+    img-src     'self' data: https:; \
+    connect-src 'self' ws: wss:; \
+    form-action 'self'; \
+    object-src  'none';"
+  
+  # HSTS (Important for HTTPS)
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  
+  # Permissions Policy (Good to have)
+  Header set Permissions-Policy "geolocation=(), microphone=(), camera=(), autoplay=()"
+</IfModule>
+
+# ============================================================================
+# Content-Type with Charset (Prevents encoding attacks)
+# ============================================================================
+<IfModule mod_headers.c>
+  # HTML
+  <FilesMatch "\.(html|htm)$">
+    Header set Content-Type "text/html; charset=UTF-8"
+  </FilesMatch>
+  # CSS
+  <FilesMatch "\.(css)$">
+    Header set Content-Type "text/css; charset=UTF-8"
+  </FilesMatch>
+  # JS
+  <FilesMatch "\.(js)$">
+    Header set Content-Type "application/javascript; charset=UTF-8"
+  </FilesMatch>
+</IfModule>
+
+# ============================================================================
+# File Security (Enhanced)
+# ============================================================================
+<FilesMatch "(^\.htaccess|\.git|^\.env|\.log|\.md|\.sql|\.ini|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|\.bak|\.backup|\.swp)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# ============================================================================
+# Application Routing
+# ============================================================================
+# Handle OPTIONS requests
+RewriteCond %{REQUEST_METHOD} =OPTIONS
+RewriteRule ^ index.php [QSA,L]
+
+# Route non-static files to index.php
+RewriteCond %{REQUEST_URI} !\.(css|js|png|jpe?g|gif|svg|webp|woff2?|ttf|eot|ico|pdf|mp4|webm|mp3|ogg)$ [NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]

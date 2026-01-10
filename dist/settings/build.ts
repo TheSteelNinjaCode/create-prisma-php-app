@@ -18,19 +18,16 @@ import { checkComponentImports } from "./component-import-checker";
 (async () => {
   console.log("📦 Generating files for production...");
 
-  // 1) Run all watchers logic ONCE
   await deleteFilesIfExist(filesToDelete);
   await deleteDirectoriesIfExist(dirsToDelete);
   await generateFileListJson();
   await updateAllClassLogs();
   await updateComponentImports();
 
-  // 2) Process all PHP files for component-import checks
   const phpFiles = await getAllPhpFiles(join(SRC_DIR, "app"));
   for (const file of phpFiles) {
     const rawFileImports = await analyzeImportsInFile(file);
 
-    // Normalize imports into array-of-objects format
     const fileImports: Record<
       string,
       { className: string; filePath: string; importer?: string }[]

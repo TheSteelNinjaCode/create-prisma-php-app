@@ -8,10 +8,10 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use DateInterval;
 use DateTime;
-use Lib\Validator;
+use PP\Validator;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Lib\Request;
+use PP\Request;
 use Exception;
 use InvalidArgumentException;
 use ArrayObject;
@@ -25,25 +25,16 @@ class Auth
     public static string $cookieName = '';
 
     private static ?Auth $instance = null;
-    private const PPHPAUTH = 'pphpauth';
+    private const PPAUTH = 'ppauth';
     private string $secretKey;
     private string $defaultTokenValidity = '1h'; // Default to 1 hour
 
-    /**
-     * Private constructor to prevent direct instantiation.
-     * Use Auth::getInstance() to get the singleton instance.
-     */
     private function __construct()
     {
         $this->secretKey = $_ENV['AUTH_SECRET'] ?? 'CD24eEv4qbsC5LOzqeaWbcr58mBMSvA4Mkii8GjRiHkt';
         self::$cookieName = self::getCookieName();
     }
 
-    /**
-     * Returns the singleton instance of the Auth class.
-     * 
-     * @return Auth The singleton instance.
-     */
     public static function getInstance(): Auth
     {
         if (self::$instance === null) {
@@ -53,33 +44,20 @@ class Auth
     }
 
     /**
-     * Authenticates a user and generates a JWT (JSON Web Token) based on the specified user data
-     * and token validity duration. The method first checks if the secret key is set, calculates
-     * the token's expiration time, sets the necessary payload, and encodes it into a JWT.
-     * If possible (HTTP headers not yet sent), it also sets cookies with the JWT for client-side storage.
+     * Authenticates a user and generates a JWT.
+     * Optionally redirects the user to a default or custom URL.
      *
-     * @param mixed $data User data which can be a simple string or an instance of AuthRole.
-     *                    If an instance of AuthRole is provided, its `value` property will be used as the role in the token.
-     * @param string|null $tokenValidity Optional parameter specifying the duration the token is valid for (e.g., '10m', '1h').
-     *                                   If null, the default validity period set in the class property is used, which is 1 hour.
-     *                                   The format should be a number followed by a time unit ('s' for seconds, 'm' for minutes,
-     *                                   'h' for hours, 'd' for days), and this is parsed to calculate the exact expiration time.
+     * @param mixed $data User data (string or AuthRole).
+     * @param string|null $tokenValidity Duration token is valid for (e.g., '1h'). Default is '1h'.
+     * @param bool|string $redirect 
+     * - If `false` (default): No redirect occurs; returns the JWT.
+     * - If `true`: Redirects to `AuthConfig::DEFAULT_SIGNIN_REDIRECT`.
+     * - If `string`: Redirects to the specified URL (e.g., '/dashboard').
      *
      * @return string Returns the encoded JWT as a string.
-     *
-     * @throws InvalidArgumentException Thrown if the secret key is not set or if the duration format is invalid.
-     *
-     * Example:
-     *   $auth = Auth::getInstance();
-     *   $auth->setSecretKey('your_secret_key');
-     *   try {
-     *       $jwt = $auth->signIn('Admin', '1h');
-     *       echo "JWT: " . $jwt;
-     *   } catch (InvalidArgumentException $e) {
-     *       echo "Error: " . $e->getMessage();
-     *   }
+     * @throws InvalidArgumentException
      */
-    public function signIn($data, ?string $tokenValidity = null): string
+    public function signIn($data, ?string $tokenValidity = null, bool|string $redirect = false): string
     {
         if (!$this->secretKey) {
             throw new InvalidArgumentException("Secret key is required for authentication.");
@@ -96,14 +74,20 @@ class Auth
             'exp' => $expirationTime,
         ];
 
-        // Set the payload in the session
         $_SESSION[self::PAYLOAD_SESSION_KEY] = $payload;
 
-        // Encode the JWT
         $jwt = JWT::encode($payload, $this->secretKey, 'HS256');
 
         if (!headers_sent()) {
             $this->setCookies($jwt, $expirationTime);
+
+            $this->rotateCsrfToken();
+        }
+
+        if ($redirect === true) {
+            Request::redirect(AuthConfig::DEFAULT_SIGNIN_REDIRECT);
+        } elseif (is_string($redirect) && !empty($redirect)) {
+            Request::redirect($redirect);
         }
 
         return $jwt;
@@ -184,19 +168,12 @@ class Auth
     public function verifyToken(?string $jwt): ?object
     {
         try {
-            if (!$jwt) {
-                return null;
-            }
+            if (!$jwt) return null;
 
             $token = JWT::decode($jwt, new Key($this->secretKey, 'HS256'));
 
-            if (empty($token->{Auth::PAYLOAD_NAME})) {
-                return null;
-            }
-
-            if (isset($token->exp) && time() >= $token->exp) {
-                return null;
-            }
+            if (empty($token->{Auth::PAYLOAD_NAME})) return null;
+            if (isset($token->exp) && time() >= $token->exp) return null;
 
             return $token;
         } catch (Exception) {
@@ -228,7 +205,6 @@ class Auth
         }
 
         $expirationTime = $this->calculateExpirationTime($tokenValidity ?? $this->defaultTokenValidity);
-
         $decodedToken->exp = $expirationTime;
         $newJwt = JWT::encode((array)$decodedToken, $this->secretKey, 'HS256');
 
@@ -244,13 +220,38 @@ class Auth
         if (!headers_sent()) {
             setcookie(self::$cookieName, $jwt, [
                 'expires' => $expirationTime,
-                'path' => '/', // Set the path to '/' to make the cookie available site-wide
-                'domain' => '', // Specify your domain
-                'secure' => true, // Set to true if using HTTPS
-                'httponly' => true, // Prevent JavaScript access to the cookie
-                'samesite' => 'Lax', // or 'Strict' depending on your requirements
+                'path' => '/',
+                'domain' => '',
+                'secure' => true,
+                'httponly' => true,
+                'samesite' => 'Lax',
             ]);
         }
+    }
+
+    public function rotateCsrfToken(): void
+    {
+        $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
+
+        if (empty($secret)) {
+            return;
+        }
+
+        $nonce = bin2hex(random_bytes(16));
+        $signature = hash_hmac('sha256', $nonce, $secret);
+        $token = $nonce . '.' . $signature;
+
+        if (!headers_sent()) {
+            setcookie('prisma_php_csrf', $token, [
+                'expires'  => time() + 3600, // 1 hour validity
+                'path'     => '/',
+                'secure'   => true,
+                'httponly' => false, // Must be FALSE so client JS can read it
+                'samesite' => 'Lax',
+            ]);
+        }
+
+        $_COOKIE['prisma_php_csrf'] = $token;
     }
 
     /**
@@ -275,6 +276,8 @@ class Auth
         if (isset($_SESSION[self::PAYLOAD_SESSION_KEY])) {
             unset($_SESSION[self::PAYLOAD_SESSION_KEY]);
         }
+
+        $this->rotateCsrfToken();
 
         if ($redirect) {
             Request::redirect($redirect);
@@ -347,7 +350,7 @@ class Auth
      */
     public function authProviders(...$providers)
     {
-        $dynamicRouteParams = Request::$dynamicParams[self::PPHPAUTH] ?? [];
+        $dynamicRouteParams = Request::$dynamicParams[self::PPAUTH] ?? [];
 
         if (Request::$isGet && in_array('signin', $dynamicRouteParams)) {
             foreach ($providers as $provider) {

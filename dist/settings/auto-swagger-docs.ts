@@ -46,19 +46,16 @@ function shouldSkipField(field: Field): boolean {
     return true;
   }
 
-  // Skip fields that are explicitly marked to be skipped by name
   if (config.skipFields && config.skipFields.includes(field.name)) {
     return true;
   }
 
-  // Skip fields based on specific property values defined in skipByPropertyValue
   for (const [property, value] of Object.entries(config.skipByPropertyValue)) {
     if ((field as any)[property] === value) {
       return true;
     }
   }
 
-  // Skip ID fields with auto-creation during creation
   if (config.skipDefaultName.includes(field.default?.name || "")) {
     return true;
   }
@@ -66,66 +63,57 @@ function shouldSkipField(field: Field): boolean {
   return false;
 }
 
-// Function to determine an appropriate example based on the field type for Prisma ORM
 function getExampleValue(field: Field): any {
   const fieldType = field.type.toLowerCase();
 
   if (field.isId) {
-    // Provide examples based on common ID types
     if (field.hasDefaultValue) {
       switch (field.default?.name.toLowerCase()) {
         case "uuid(4)":
-          return `"123e4567-e89b-12d3-a456-426614174000"`; // Example for UUID IDs
+          return `"123e4567-e89b-12d3-a456-426614174000"`;
         case "cuid":
-          return `"cjrscj5d40002s6s0b6nq9jfg"`; // Example for CUID IDs
+          return `"cjrscj5d40002s6s0b6nq9jfg"`;
         case "autoincrement":
-          return 1; // Example for auto-increment IDs
+          return 1;
         default:
-          return `"${field.name}"`; // Default example for unknown ID types
+          return `"${field.name}"`;
       }
     } else {
       switch (fieldType) {
         case "int":
         case "bigint":
-          return 123; // Example for integer and BigInt IDs
+          return 123;
         default:
-          return `"${field.name}"`; // Default example for unknown ID types
+          return `"${field.name}"`;
       }
     }
   }
 
-  // Example values for other field types
   switch (fieldType) {
     case "int":
     case "bigint":
-      return 123; // Example for integer and BigInt types
+      return 123;
     case "float":
     case "decimal":
-      return 123.45; // Example for floating-point types
+      return 123.45;
     case "boolean":
-      return true; // Example for boolean types
+      return true;
     case "string":
-      return `"${field.name}"`; // Example for string types
+      return `"${field.name}"`;
     case "datetime":
-      return `"2024-01-01T00:00:00Z"`; // Example for date/time types
+      return `"2024-01-01T00:00:00Z"`;
     case "json":
-      return `{"key": "value"}`; // Example for JSON type
+      return `{"key": "value"}`;
     case "uuid":
-      return `"123e4567-e89b-12d3-a456-426614174000"`; // Example for UUID type
+      return `"123e4567-e89b-12d3-a456-426614174000"`;
     case "cuid":
-      return `"cjrscj5d40002s6s0b6nq9jfg"`; // Example for CUID type
+      return `"cjrscj5d40002s6s0b6nq9jfg"`;
     default:
-      return `"${field.name}"`; // Default example for unrecognized types
+      return `"${field.name}"`;
   }
 }
 
-/**
- * Convert a Prisma field type to a Swagger-supported type.
- * @param prismaType The type of the field as defined in the Prisma schema
- * @returns A Swagger-compatible type
- */
 function convertPrismaTypeToSwaggerType(prismaType: string): string {
-  // Map Prisma types to Swagger-compatible types
   const typeMapping: Record<string, string> = {
     String: "string",
     Int: "integer",
@@ -133,18 +121,16 @@ function convertPrismaTypeToSwaggerType(prismaType: string): string {
     Float: "number",
     Decimal: "number",
     Boolean: "boolean",
-    DateTime: "string", // For Swagger, we use "string" with format date-time
+    DateTime: "string",
     Json: "object",
     UUID: "string",
     CUID: "string",
-    Bytes: "string", // Can be represented as base64 strings in Swagger
+    Bytes: "string",
   };
 
-  // Default to "string" if the type is not found in the mapping
   return typeMapping[prismaType] || "string";
 }
 
-// Function to generate properties for Swagger annotations
 function generateProperties(fields: Field[]): {
   properties: string;
   allProperties: string;
@@ -158,7 +144,7 @@ function generateProperties(fields: Field[]): {
     }
 
     const example = getExampleValue(field);
-    const fieldType = convertPrismaTypeToSwaggerType(field.type); // Convert Prisma type to Swagger type
+    const fieldType = convertPrismaTypeToSwaggerType(field.type);
     allProperties += `
  *                   ${field.name}:
  *                     type: ${fieldType}
@@ -184,21 +170,18 @@ function toKebabCase(str: string): string {
     .toLowerCase();
 }
 
-// Function to find the ID field from the model
 function getIdField(fields: Field[]): Field | undefined {
   return fields.find((field) => field.isId);
 }
 
-// Function to generate Swagger annotation for a CRUD operation
 function generateSwaggerAnnotation(modelName: string, fields: Field[]): string {
-  // Extract the ID field dynamically
   const idField = getIdField(fields);
   if (!idField) {
     throw new Error(`No ID field found for model: ${modelName}`);
   }
 
   const idFieldName = idField.name;
-  const idFieldType = convertPrismaTypeToSwaggerType(idField.type); // Convert Prisma type to Swagger type
+  const idFieldType = convertPrismaTypeToSwaggerType(idField.type);
   const { properties, allProperties } = generateProperties(fields);
   const kebabCaseModelName = toKebabCase(modelName);
 
@@ -324,7 +307,10 @@ function generateSwaggerAnnotation(modelName: string, fields: Field[]): string {
 }
 
 function isRequiredOnCreate(field: Field): boolean {
+<<<<<<< HEAD
   // Required if Prisma says required AND no DB default AND not generated/readOnly/updatedAt/id
+=======
+>>>>>>> v4-dev
   return (
     field.isRequired &&
     !field.hasDefaultValue &&
@@ -363,7 +349,11 @@ function phpRuleBodyForType(prismaTypeLower: string): string {
       return `
         $d = Validator::decimal($v);
         if ($d === null) return false;
+<<<<<<< HEAD
         $out = (string)$d; // keep decimals canonical as string
+=======
+        $out = (string)$d;
+>>>>>>> v4-dev
         return true;`;
 
     case "datetime":
@@ -411,7 +401,11 @@ function phpRuleBodyForType(prismaTypeLower: string): string {
     case "string":
     default:
       return `
+<<<<<<< HEAD
         $s = Validator::string($v, false); // trim, no HTML escaping for DB
+=======
+        $s = Validator::string($v, false);
+>>>>>>> v4-dev
         if ($s === '') return false;
         $out = $s;
         return true;`;
@@ -441,7 +435,10 @@ function idValidatorSnippet(idField: Field): string {
   const t = idField.type.toLowerCase();
   const def = (idField as any).default?.name?.toLowerCase?.() || "";
 
+<<<<<<< HEAD
   // numeric ids (int/bigint or autoincrement())
+=======
+>>>>>>> v4-dev
   if (t === "int" || t === "bigint" || def === "autoincrement") {
     return `
 $__id = Validator::int($id);
@@ -449,13 +446,19 @@ if ($__id === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse();
 $id = $__id;`;
   }
 
+<<<<<<< HEAD
   // uuid() default or explicit UUID type
+=======
+>>>>>>> v4-dev
   if (t === "uuid" || def === "uuid") {
     return `
 if (Validator::uuid($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
   }
 
+<<<<<<< HEAD
   // cuid() / cuid2() defaults
+=======
+>>>>>>> v4-dev
   if (def === "cuid") {
     return `
 if (Validator::cuid($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
@@ -465,14 +468,16 @@ if (Validator::cuid($id) === null) { Boom::badRequest("Invalid ${idField.name}")
 if (Validator::cuid2($id) === null) { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }`;
   }
 
+<<<<<<< HEAD
   // fallback: non-empty string
+=======
+>>>>>>> v4-dev
   return `
 $__id = Validator::string($id, false);
 if ($__id === '') { Boom::badRequest("Invalid ${idField.name}")->toResponse(); return; }
 $id = $__id;`;
 }
 
-// Function to generate endpoints for a model
 function generateEndpoints(modelName: string, fields: any[]): void {
   const kebabCasedModelName = toKebabCase(modelName);
   const camelCaseModelName =
@@ -487,7 +492,6 @@ function generateEndpoints(modelName: string, fields: any[]): void {
 
   mkdirSync(baseDirPath, { recursive: true });
 
-  // Endpoint: GET /{kebabCasedModelName}
   const listRoutePath = `${baseDir}/route.php`;
   const listRouteContent = `<?php
   
@@ -503,7 +507,6 @@ function generateEndpoints(modelName: string, fields: any[]): void {
     "utf-8"
   );
 
-  // Endpoint: GET /{kebabCasedModelName}/{id}
   const idDir = `${baseDir}/[id]`;
   mkdirSync(resolve(__dirname, `../${idDir}`), { recursive: true });
   const idRoutePath = `${idDir}/route.php`;
@@ -536,7 +539,6 @@ echo json_encode($${camelCaseModelName});`;
     "utf-8"
   );
 
-  // Endpoint: POST /{kebabCasedModelName}/create
   const createDir = `${baseDir}/create`;
   mkdirSync(resolve(__dirname, `../${createDir}`), { recursive: true });
   const createRoutePath = `${createDir}/route.php`;
@@ -593,7 +595,6 @@ echo json_encode($new${modelName});`;
     "utf-8"
   );
 
-  // Endpoint: PUT /{kebabCasedModelName}/update/{id}
   const updateDir = `${baseDir}/update/[id]`;
   mkdirSync(resolve(__dirname, `../${updateDir}`), { recursive: true });
   const updateRoutePath = `${updateDir}/route.php`;
@@ -654,7 +655,6 @@ echo json_encode($updated${modelName});`;
     "utf-8"
   );
 
-  // Endpoint: DELETE /{kebabCasedModelName}/delete/{id}
   const deleteDir = `${baseDir}/delete/[id]`;
   mkdirSync(resolve(__dirname, `../${deleteDir}`), { recursive: true });
   const deleteRoutePath = `${deleteDir}/route.php`;
@@ -697,24 +697,19 @@ async function promptUserForGenerationOptions() {
     },
   ]);
 
-  // If the user wants to generate only Swagger docs
   if (response.generateApisOnly) {
-    // Update the configuration
     prismaSchemaConfigJson.generateSwaggerDocsOnly = true;
 
-    // Save the updated settings back to the JSON file if needed
     writeFileSync(
       resolve(__dirname, "./prisma-schema-config.json"),
       JSON.stringify(prismaSchemaConfigJson, null, 2),
       "utf-8"
     );
 
-    // Generate Swagger docs and exit
     await swaggerConfig();
-    exit(0); // Exit the process here
+    exit(0);
   }
 
-  // If the user did not select generateApisOnly, ask for other options
   const otherResponses = await prompts([
     {
       type: "confirm",
@@ -730,12 +725,10 @@ async function promptUserForGenerationOptions() {
     },
   ]);
 
-  // Update the configuration based on other responses
   prismaSchemaConfigJson.generateSwaggerDocsOnly = false;
   prismaSchemaConfigJson.generateEndpoints = otherResponses.generateEndpoints;
   prismaSchemaConfigJson.generatePhpClasses = otherResponses.generatePhpClasses;
 
-  // Save the updated settings back to the JSON file
   writeFileSync(
     resolve(__dirname, "./prisma-schema-config.json"),
     JSON.stringify(prismaSchemaConfigJson, null, 2),
@@ -743,7 +736,6 @@ async function promptUserForGenerationOptions() {
   );
 }
 
-// Function to read the updated Prisma JSON schema directly
 function readUpdatedSchema() {
   try {
     const schemaContent = readFileSync(prismaSchemaJsonPath, "utf-8");
@@ -755,7 +747,6 @@ function readUpdatedSchema() {
 }
 
 async function generateSwaggerDocs(modelsToGenerate: string[]): Promise<void> {
-  // Read the updated schema directly from the file
   const updatedSchema = readUpdatedSchema();
   if (!updatedSchema) {
     console.error("Failed to read updated JSON schema.");
