@@ -8,11 +8,7 @@
         <ol class="list-inside list-decimal text-sm/6 text-center sm:text-left">
             <li class="mb-2 tracking-[-.01em]">
                 Get started by editing
-<<<<<<< HEAD
-                <code class="bg-text-foreground/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-=======
                 <code class="bg-text-foreground/[.05] dark:bg-white/6 px-1 py-0.5 rounded font-semibold">
->>>>>>> v4-dev
                     src/app/index.php
                 </code>
                 .
