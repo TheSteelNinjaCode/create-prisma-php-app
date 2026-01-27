@@ -15,6 +15,7 @@ use PP\Request;
 use Exception;
 use InvalidArgumentException;
 use ArrayObject;
+use Lib\Prisma\Classes\UserData;
 
 class Auth
 {
@@ -188,9 +189,9 @@ class Auth
      * 
      * @param string $jwt The JWT token to refresh.
      * @param string|null $tokenValidity Optional parameter specifying the duration the token is valid for (e.g., '10m', '1h').
-     *                                   If null, the default validity period set in the class property is used.
-     *                                   The format should be a number followed by a time unit ('s' for seconds, 'm' for minutes,
-     *                                   'h' for hours, 'd' for days), and this is parsed to calculate the exact expiration time.
+     * If null, the default validity period set in the class property is used.
+     * The format should be a number followed by a time unit ('s' for seconds, 'm' for minutes,
+     * 'h' for hours, 'd' for days), and this is parsed to calculate the exact expiration time.
      * 
      * @return string Returns the refreshed JWT as a string.
      * 
@@ -213,6 +214,25 @@ class Auth
         }
 
         return $newJwt;
+    }
+
+    /**
+     * Refreshes the current user's session if the provided User ID matches the currently authenticated user.
+     * This allows silent updates of permissions or profile data without requiring a logout.
+     * @param string $targetUserId The ID of the user being updated.
+     * @param mixed $newUserData The fresh user object (e.g. from Prisma) to replace the session payload.
+     * @return bool Returns true if the session was updated, false if the IDs did not match or no session exists.
+     */
+    public function refreshUserSession(string $targetUserId, mixed $newUserData): bool
+    {
+        $currentUser = $this->getPayload();
+
+        if ($currentUser && isset($currentUser->id) && $currentUser->id === $targetUserId) {
+            $this->signIn($newUserData, null, false);
+            return true;
+        }
+
+        return false;
     }
 
     protected function setCookies(string $jwt, int $expirationTime)
@@ -261,7 +281,7 @@ class Auth
      * @param string|null $redirect Optional parameter specifying the URL to redirect to after logging out.
      * 
      * Example:
-     *  $auth = Auth::getInstance();
+     * $auth = Auth::getInstance();
      * $auth->signOut('/login');
      * 
      * @return void
@@ -288,7 +308,7 @@ class Auth
      * Returns the role of the authenticated user based on the payload stored in the session.
      * If the user is not authenticated, null is returned.
      * 
-     * @return mixed|null Returns the role of the authenticated user or null if the user is not authenticated.
+     * @return UserData|null Returns the role of the authenticated user or null if the user is not authenticated.
      */
     public function getPayload()
     {
@@ -345,8 +365,8 @@ class Auth
      * @param mixed ...$providers An array of provider objects such as GoogleProvider or GithubProvider.
      * 
      * Example:
-     *   $auth = Auth::getInstance();
-     *   $auth->authProviders(new GoogleProvider('client_id', 'client_secret', 'redirect_uri'));
+     * $auth = Auth::getInstance();
+     * $auth->authProviders(new GoogleProvider('client_id', 'client_secret', 'redirect_uri'));
      */
     public function authProviders(...$providers)
     {

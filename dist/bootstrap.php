@@ -25,6 +25,8 @@ use PP\PHPX\TemplateCompiler;
 use PP\CacheHandler;
 use PP\ErrorHandler;
 use PP\Attributes\Exposed;
+use PP\Streaming\SSE;
+use PP\Security\RateLimiter;
 
 final class Bootstrap extends RuntimeException
 {
@@ -804,13 +806,23 @@ final class Bootstrap extends RuntimeException
             ? self::dispatchMethod($callbackName, $args)
             : self::dispatchFunction($callbackName, $args);
 
+        if ($out instanceof SSE) {
+            $out->send();
+            exit;
+        }
+
+        if ($out instanceof Generator) {
+            (new SSE($out))->send();
+            exit;
+        }
+
         if ($out !== null) {
             self::jsonExit($out);
         }
         exit;
     }
 
-    private static function jsonExit(array $payload): void
+    private static function jsonExit(mixed $payload): void
     {
         echo json_encode($payload, JSON_UNESCAPED_UNICODE);
         exit;
@@ -909,20 +921,66 @@ final class Bootstrap extends RuntimeException
         }
     }
 
+    private static function getExposedAttribute(string $classOrFn, ?string $method = null): ?Exposed
+    {
+        try {
+            if ($method) {
+                $ref = new ReflectionMethod($classOrFn, $method);
+            } else {
+                $ref = new ReflectionFunction($classOrFn);
+            }
+
+            $attrs = $ref->getAttributes(Exposed::class);
+            return !empty($attrs) ? $attrs[0]->newInstance() : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private static function enforceRateLimit(Exposed $attribute, string $identifier): void
+    {
+        $limits = $attribute->limits;
+
+        if (empty($limits)) {
+            if ($attribute->requiresAuth) {
+                $limits = $_ENV['RATE_LIMIT_AUTH'] ?? '10/minute';
+            } else {
+                $limits = $_ENV['RATE_LIMIT_RPC'] ?? '60/minute';
+            }
+        }
+
+        if ($limits) {
+            RateLimiter::verify($identifier, $limits);
+        }
+    }
+
     private static function dispatchFunction(string $fn, mixed $args)
     {
-        if (!self::isFunctionAllowed($fn)) {
+        $attribute = self::getExposedAttribute($fn);
+        if (!$attribute) {
             return ['success' => false, 'error' => 'Function not callable from client'];
+        }
+
+        if (!self::validateAccess($attribute)) {
+            return ['success' => false, 'error' => 'Permission denied'];
         }
 
         if (function_exists($fn) && is_callable($fn)) {
             try {
+                self::enforceRateLimit($attribute, "fn:$fn");
+
                 $res = call_user_func($fn, $args);
-                if ($res !== null) {
-                    return ['success' => true, 'error' => null, 'response' => $res];
+
+                if ($res instanceof Generator || $res instanceof SSE) {
+                    return $res;
                 }
+
                 return $res;
             } catch (Throwable $e) {
+                if ($e->getMessage() === 'Rate limit exceeded. Try again later.') {
+                    return ['success' => false, 'error' => $e->getMessage()];
+                }
+
                 if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
                     return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
                 } else {
@@ -962,47 +1020,48 @@ final class Bootstrap extends RuntimeException
             }
         }
 
-        if (!$isStatic) {
-            if (!class_exists($class)) {
-                return ['success' => false, 'error' => "Class '$requested' not found"];
-            }
-            $instance = new $class();
-            if (!is_callable([$instance, $method])) {
-                return ['success' => false, 'error' => "Method '$method' not callable on $class"];
-            }
-            try {
-                $res = call_user_func([$instance, $method], $args);
-                if ($res !== null) {
-                    return ['success' => true, 'error' => null, 'response' => $res];
-                }
-                return $res;
-            } catch (Throwable $e) {
-                if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
-                    return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
-                } else {
-                    return ['success' => false, 'error' => "Instance call error: {$e->getMessage()}"];
-                }
-            }
-        } else {
-            if (!class_exists($class) || !is_callable([$class, $method])) {
-                return ['success' => false, 'error' => "Static method '$requested::$method' invalid"];
-            }
-            try {
-                $res = call_user_func([$class, $method], $args);
-                if ($res !== null) {
-                    return ['success' => true, 'error' => null, 'response' => $res];
-                }
-                return $res;
-            } catch (Throwable $e) {
-                if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
-                    return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
-                } else {
-                    return ['success' => false, 'error' => "Static call error: {$e->getMessage()}"];
-                }
-            }
+        if (!class_exists($class)) {
+            return ['success' => false, 'error' => "Class '$requested' not found"];
+        }
+        $attribute = self::getExposedAttribute($class, $method);
+
+        if (!$attribute) {
+            return ['success' => false, 'error' => 'Method not callable from client'];
         }
 
-        return ['success' => false, 'error' => 'Invalid callback'];
+        if (!self::validateAccess($attribute)) {
+            return ['success' => false, 'error' => 'Permission denied'];
+        }
+
+        try {
+            self::enforceRateLimit($attribute, "method:$class::$method");
+
+            $res = null;
+            if (!$isStatic) {
+                $instance = new $class();
+                if (!is_callable([$instance, $method])) throw new Exception("Method not callable");
+                $res = call_user_func([$instance, $method], $args);
+            } else {
+                if (!is_callable([$class, $method])) throw new Exception("Static method invalid");
+                $res = call_user_func([$class, $method], $args);
+            }
+
+            if ($res instanceof Generator || $res instanceof SSE) {
+                return $res;
+            }
+
+            return $res;
+        } catch (Throwable $e) {
+            if ($e->getMessage() === 'Rate limit exceeded. Try again later.') {
+                return ['success' => false, 'error' => $e->getMessage()];
+            }
+
+            if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
+                return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
+            } else {
+                return ['success' => false, 'error' => "Call error: {$e->getMessage()}"];
+            }
+        }
     }
 
     private static function resolveClassImport(string $simpleClassKey): ?array
