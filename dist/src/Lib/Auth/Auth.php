@@ -15,7 +15,6 @@ use PP\Request;
 use Exception;
 use InvalidArgumentException;
 use ArrayObject;
-use Lib\Prisma\Classes\UserData;
 
 class Auth
 {
@@ -308,7 +307,7 @@ class Auth
      * Returns the role of the authenticated user based on the payload stored in the session.
      * If the user is not authenticated, null is returned.
      * 
-     * @return UserData|null Returns the role of the authenticated user or null if the user is not authenticated.
+     * @return mixed|null Returns the role of the authenticated user or null if the user is not authenticated.
      */
     public function getPayload()
     {
