@@ -958,7 +958,7 @@ final class Bootstrap extends RuntimeException
 
         if (empty($limits)) {
             if ($attribute->requiresAuth) {
-                $limits = $_ENV['RATE_LIMIT_AUTH'] ?? '10/minute';
+                $limits = $_ENV['RATE_LIMIT_AUTH'] ?? '60/minute';
             } else {
                 $limits = $_ENV['RATE_LIMIT_RPC'] ?? '60/minute';
             }

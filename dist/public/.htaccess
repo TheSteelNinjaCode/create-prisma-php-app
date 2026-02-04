@@ -16,7 +16,7 @@ RewriteEngine On
     script-src  'self' https: 'unsafe-inline' 'unsafe-eval' blob:; \
     style-src   'self' https: 'unsafe-inline'; \
     img-src     'self' data: https:; \
-    connect-src 'self' ws: wss:; \
+    connect-src 'self' https: ws: wss:; \
     form-action 'self'; \
     object-src  'none';"
   
