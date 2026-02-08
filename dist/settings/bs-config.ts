@@ -13,11 +13,12 @@ import {
 } from "./class-imports";
 import { checkComponentImports } from "./component-import-checker";
 import { DebouncedWorker, createSrcWatcher, DEFAULT_AWF } from "./utils.js";
+import chalk from "chalk";
 
 const { __dirname } = getFileMeta();
 const bs: BrowserSyncInstance = browserSync.create();
 
-const PUBLIC_IGNORE_DIRS = [''];
+const PUBLIC_IGNORE_DIRS = [""];
 
 const pipeline = new DebouncedWorker(
   async () => {
@@ -46,18 +47,18 @@ const pipeline = new DebouncedWorker(
     }
   },
   350,
-  "bs-pipeline"
+  "bs-pipeline",
 );
 
 const publicPipeline = new DebouncedWorker(
   async () => {
-    console.log("→ Public directory changed, reloading browser...");
+    console.log(chalk.cyan("→ Public directory changed, reloading browser..."));
     if (bs.active) {
       bs.reload();
     }
   },
   350,
-  "bs-public-pipeline"
+  "bs-public-pipeline",
 );
 
 createSrcWatcher(join(SRC_DIR, "**", "*"), {
@@ -90,16 +91,17 @@ createSrcWatcher(join(PUBLIC_DIR, "**", "*"), {
 
 const viteFlagFile = join(__dirname, "..", ".pp", ".vite-build-complete");
 mkdirSync(dirname(viteFlagFile), { recursive: true });
-writeFileSync(viteFlagFile, "");
 
 if (!existsSync(viteFlagFile)) {
   writeFileSync(viteFlagFile, "0");
+} else {
+  writeFileSync(viteFlagFile, "");
 }
 
 createSrcWatcher(viteFlagFile, {
   onEvent: (ev) => {
     if (ev === "change" && bs.active) {
-      console.log("→ Vite build complete, reloading browser...");
+      console.log(chalk.green("→ Vite build complete, reloading browser..."));
       bs.reload();
     }
   },
@@ -125,30 +127,57 @@ bs.init(
         pathRewrite: {},
       }),
     ],
-
     notify: false,
     open: false,
     ghostMode: false,
     codeSync: true,
+    logLevel: "silent",
   },
   (err, bsInstance) => {
     if (err) {
-      console.error("BrowserSync failed to start:", err);
+      console.error(chalk.red("BrowserSync failed to start:"), err);
       return;
     }
 
     const urls = bsInstance.getOption("urls");
+    const localUrl = urls.get("local");
+    const externalUrl = urls.get("external");
+    const uiUrl = urls.get("ui");
+    const uiExtUrl = urls.get("ui-external");
+
+    console.log("");
+    console.log(chalk.green.bold("✔ Ports Configured:"));
+    console.log(
+      `  ${chalk.blue.bold("Frontend (BrowserSync):")} ${chalk.magenta(localUrl)}`,
+    );
+    console.log(
+      `  ${chalk.yellow.bold("Backend (PHP Target):")}   ${chalk.magenta(
+        prismaPhpConfigJson.bsTarget || "http://localhost:80",
+      )}`,
+    );
+    console.log(chalk.gray(" ------------------------------------"));
+
+    if (externalUrl) {
+      console.log(
+        `    ${chalk.bold("External:")} ${chalk.magenta(externalUrl)}`,
+      );
+    }
+
+    if (uiUrl) {
+      console.log(`          ${chalk.bold("UI:")} ${chalk.magenta(uiUrl)}`);
+    }
+
     const out = {
-      local: urls.get("local"),
-      external: urls.get("external"),
-      ui: urls.get("ui"),
-      uiExternal: urls.get("ui-external"),
+      local: localUrl,
+      external: externalUrl,
+      ui: uiUrl,
+      uiExternal: uiExtUrl,
     };
 
     writeFileSync(
       join(__dirname, "bs-config.json"),
-      JSON.stringify(out, null, 2)
+      JSON.stringify(out, null, 2),
     );
-    console.log("\n\x1b[90mPress Ctrl+C to stop.\x1b[0m\n");
-  }
+    console.log(`\n${chalk.gray("Press Ctrl+C to stop.")}\n`);
+  },
 );
