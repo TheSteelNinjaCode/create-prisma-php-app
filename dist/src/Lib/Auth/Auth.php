@@ -175,7 +175,7 @@ class Auth
             if (empty($token->{Auth::PAYLOAD_NAME})) return null;
             if (isset($token->exp) && time() >= $token->exp) return null;
 
-            return $token;
+            return $token->{Auth::PAYLOAD_NAME};
         } catch (Exception) {
             return null;
         }
@@ -198,15 +198,20 @@ class Auth
      */
     public function refreshToken(string $jwt, ?string $tokenValidity = null): string
     {
-        $decodedToken = $this->verifyToken($jwt);
+        $decodedData = $this->verifyToken($jwt);
 
-        if (!$decodedToken) {
+        if (!$decodedData) {
             throw new InvalidArgumentException("Invalid token.");
         }
 
         $expirationTime = $this->calculateExpirationTime($tokenValidity ?? $this->defaultTokenValidity);
-        $decodedToken->exp = $expirationTime;
-        $newJwt = JWT::encode((array)$decodedToken, $this->secretKey, 'HS256');
+
+        $payload = [
+            self::PAYLOAD_NAME => $decodedData,
+            'exp' => $expirationTime,
+        ];
+
+        $newJwt = JWT::encode($payload, $this->secretKey, 'HS256');
 
         if (!headers_sent()) {
             $this->setCookies($newJwt, $expirationTime);

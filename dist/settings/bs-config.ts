@@ -1,4 +1,7 @@
-import { createProxyMiddleware } from "http-proxy-middleware";
+import {
+  createProxyMiddleware,
+  responseInterceptor,
+} from "http-proxy-middleware";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import browserSync, { BrowserSyncInstance } from "browser-sync";
 import prismaPhpConfigJson from "../prisma-php.json";
@@ -121,10 +124,85 @@ bs.init(
         res.setHeader("Expires", "0");
         next();
       },
+
+      (req, _, next) => {
+        const time = new Date().toLocaleTimeString();
+        console.log(
+          `${chalk.gray(time)} ${chalk.cyan("[Proxy]")} ${chalk.bold(req.method)} ${req.url}`,
+        );
+        next();
+      },
+
       createProxyMiddleware({
         target: prismaPhpConfigJson.bsTarget,
         changeOrigin: true,
         pathRewrite: {},
+        selfHandleResponse: true,
+
+        on: {
+          proxyReq: (proxyReq, req, _res) => {
+            proxyReq.setHeader("Accept-Encoding", "");
+
+            const sendsJson =
+              req.headers["content-type"]?.includes("application/json");
+            const asksJson =
+              req.headers["accept"]?.includes("application/json");
+
+            if (!sendsJson && !asksJson) return;
+
+            const originalWrite = proxyReq.write;
+            proxyReq.write = function (data, ...args) {
+              if (data) {
+                try {
+                  const body = data.toString();
+                  const json = JSON.parse(body);
+                  console.log(
+                    chalk.blue("→ API Request:"),
+                    JSON.stringify(json, null, 2),
+                  );
+                } catch {
+                  if (data.toString().trim() !== "") {
+                    console.log(chalk.blue("→ API Request:"), data.toString());
+                  }
+                }
+              }
+              // @ts-ignore
+              return originalWrite.call(proxyReq, data, ...args);
+            };
+          },
+
+          proxyRes: responseInterceptor(
+            async (responseBuffer, proxyRes, _req, _res) => {
+              const contentType = proxyRes.headers["content-type"] || "";
+
+              if (!contentType.includes("application/json")) {
+                return responseBuffer;
+              }
+
+              try {
+                const body = responseBuffer.toString("utf8");
+                console.log(
+                  chalk.green("← API Response:"),
+                  JSON.stringify(JSON.parse(body), null, 2),
+                );
+                console.log(
+                  chalk.gray("----------------------------------------"),
+                );
+              } catch (e) {
+                console.log(
+                  chalk.red("← API Response (Parse Error):"),
+                  responseBuffer.toString(),
+                );
+              }
+
+              return responseBuffer;
+            },
+          ),
+
+          error: (err) => {
+            console.error(chalk.red("Proxy Error:"), err);
+          },
+        },
       }),
     ],
     notify: false,
