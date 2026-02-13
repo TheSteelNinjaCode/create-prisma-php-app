@@ -7,6 +7,7 @@ namespace Lib\Middleware;
 use Lib\Auth\Auth;
 use Lib\Auth\AuthConfig;
 use PP\Request;
+use Throwable;
 
 final class AuthMiddleware
 {
@@ -24,9 +25,18 @@ final class AuthMiddleware
             // Check if the user is authenticated and refresh the token if necessary
             if (AuthConfig::IS_TOKEN_AUTO_REFRESH) {
                 $auth = Auth::getInstance();
-                if (isset($_COOKIE[Auth::$cookieName])) {
-                    $jwt = $_COOKIE[Auth::$cookieName];
-                    $jwt = $auth->refreshToken($jwt);
+
+                $jwt = $_COOKIE[Auth::$cookieName] ?? Request::getBearerToken();
+
+                if ($jwt) {
+                    try {
+                        $newJwt = $auth->refreshToken($jwt);
+                        if (!isset($_COOKIE[Auth::$cookieName])) {
+                            header('Authorization: Bearer ' . $newJwt);
+                            header('X-Refreshed-Token: ' . $newJwt);
+                        }
+                    } catch (Throwable) {
+                    }
                 }
             }
 
@@ -89,29 +99,35 @@ final class AuthMiddleware
     protected static function isAuthorized(): bool
     {
         $auth = Auth::getInstance();
-        if (!isset($_COOKIE[Auth::$cookieName])) {
-            unset($_SESSION[Auth::PAYLOAD_SESSION_KEY]);
+        $jwt = $_COOKIE[Auth::$cookieName] ?? Request::getBearerToken();
+
+        if (!$jwt) {
+            if (isset($_SESSION[Auth::PAYLOAD_SESSION_KEY])) {
+                unset($_SESSION[Auth::PAYLOAD_SESSION_KEY]);
+            }
             return false;
         }
 
-        $jwt = $_COOKIE[Auth::$cookieName];
-
         if (AuthConfig::IS_TOKEN_AUTO_REFRESH) {
-            $jwt = $auth->refreshToken($jwt);
-            $verifyToken = $auth->verifyToken($jwt);
+            try {
+                $jwt = $auth->refreshToken($jwt);
+
+                if (!isset($_COOKIE[Auth::$cookieName]) && !headers_sent()) {
+                    header('Authorization: Bearer ' . $jwt);
+                    header('X-Refreshed-Token: ' . $jwt);
+                }
+            } catch (Throwable) {
+                return false;
+            }
         }
 
         $verifyToken = $auth->verifyToken($jwt);
+
         if ($verifyToken === false) {
             return false;
         }
 
-        // Access the PAYLOAD_NAME property using the -> operator instead of array syntax
-        if (isset($verifyToken->{Auth::PAYLOAD_NAME})) {
-            return true;
-        }
-
-        return false;
+        return isset($verifyToken->{Auth::PAYLOAD_NAME});
     }
 
     protected static function hasRequiredRole(string $requestPathname): string
