@@ -13,7 +13,7 @@ const newProjectName = basename(join(__dirname, ".."));
 
 function updateProjectNameInConfig(
   filePath: string,
-  newProjectName: string
+  newProjectName: string,
 ): void {
   const filePathDir = dirname(filePath);
 
@@ -23,7 +23,7 @@ function updateProjectNameInConfig(
 
   const targetPath = getTargetPath(
     filePathDir,
-    prismaPhpConfigJson.phpEnvironment
+    prismaPhpConfigJson.phpEnvironment,
   );
 
   prismaPhpConfigJson.bsTarget = `http://localhost${targetPath}`;
@@ -39,59 +39,84 @@ function updateProjectNameInConfig(
         return;
       }
       console.log(
-        "The project name, PHP path, and other paths have been updated successfully."
+        "The project name, PHP path, and other paths have been updated successfully.",
       );
-    }
+    },
   );
 }
 
 function getTargetPath(fullPath: string, environment: string): string {
   const normalizedPath = normalize(fullPath);
 
-  if (process.env.CI === "true") {
+  // ---- CI / Railway / Docker safe-guards ----
+  // GitHub Actions etc.
+  if (process.env.CI === "true") return "/";
+
+  // Railway commonly exposes these (not guaranteed, but helpful)
+  if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID)
+    return "/";
+
+  // Docker/containers: your app root is usually /app
+  // If you're not inside an AMP stack folder, don't crash.
+  const lower = normalizedPath.toLowerCase();
+  if (
+    lower === "/app" ||
+    lower.startsWith("/app" + sep) ||
+    lower.startsWith("/app/")
+  ) {
     return "/";
   }
 
-  const webDirectories: { [key: string]: string } = {
+  // ---- Local AMP detection map (your original logic) ----
+  const webDirectories: Record<string, string> = {
     XAMPP: join("htdocs"),
     WAMP: join("www"),
     MAMP: join("htdocs"),
     LAMP: join("var", "www", "html"),
     LEMP: join("usr", "share", "nginx", "html"),
     AMPPS: join("www"),
-    UniformServer: join("www"),
-    EasyPHP: join("data", "localweb"),
+    UNIFORMSERVER: join("www"),
+    EASYPHP: join("data", "localweb"),
   };
 
-  const webDir = webDirectories[environment.toUpperCase()];
-  if (!webDir) {
-    throw new Error(`Unsupported environment: ${environment}`);
-  }
+  const envKey = (environment || "").toUpperCase();
+  const webDir = webDirectories[envKey];
 
-  const indexOfWebDir = normalizedPath
-    .toLowerCase()
-    .indexOf(normalize(webDir).toLowerCase());
-  if (indexOfWebDir === -1) {
-    throw new Error(`Web directory not found in path: ${webDir}`);
-  }
+  // If phpEnvironment is missing/unknown, don't crash in non-local contexts.
+  if (!webDir) return "/";
 
-  const startIndex = indexOfWebDir + webDir.length;
+  const webDirNorm = normalize(webDir).toLowerCase();
+  const idx = lower.indexOf(webDirNorm);
+
+  // If we can't find htdocs/www/etc, fall back instead of throwing.
+  if (idx === -1) return "/";
+
+  const startIndex = idx + webDir.length;
   const subPath = normalizedPath.slice(startIndex);
+
   const safeSeparatorRegex = new RegExp(
     sep.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
-    "g"
+    "g",
   );
-  const finalPath = subPath.replace(safeSeparatorRegex, "/") + "/";
 
-  return finalPath;
+  const finalPath = (subPath.replace(safeSeparatorRegex, "/") || "/") + "/";
+
+  // Ensure it starts with "/"
+  return finalPath.startsWith("/") ? finalPath : `/${finalPath}`;
 }
 
 const configFilePath = join(__dirname, "..", "prisma-php.json");
 
-updateProjectNameInConfig(configFilePath, newProjectName);
+const isLocal =
+  !process.env.CI &&
+  !process.env.RAILWAY_ENVIRONMENT &&
+  !process.env.RAILWAY_PROJECT_ID;
+if (isLocal) {
+  updateProjectNameInConfig(configFilePath, newProjectName);
+}
 
 export const deleteFilesIfExist = async (
-  filePaths: string[]
+  filePaths: string[],
 ): Promise<void> => {
   for (const filePath of filePaths) {
     try {
@@ -113,7 +138,7 @@ export const deleteFilesIfExist = async (
 };
 
 export async function deleteDirectoriesIfExist(
-  dirPaths: string[]
+  dirPaths: string[],
 ): Promise<void> {
   for (const dirPath of dirPaths) {
     try {
