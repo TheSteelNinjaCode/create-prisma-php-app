@@ -8,7 +8,10 @@ require_once __DIR__ . '/settings/paths.php';
 use Dotenv\Dotenv;
 use Lib\Middleware\CorsMiddleware;
 
-Dotenv::createImmutable(DOCUMENT_PATH)->load();
+if (file_exists(DOCUMENT_PATH . '/.env')) {
+    Dotenv::createImmutable(DOCUMENT_PATH)->safeLoad();
+}
+
 CorsMiddleware::handle();
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -27,6 +30,7 @@ use PP\ErrorHandler;
 use PP\Attributes\Exposed;
 use PP\Streaming\SSE;
 use PP\Security\RateLimiter;
+use PP\Env;
 
 final class Bootstrap extends RuntimeException
 {
@@ -59,7 +63,7 @@ final class Bootstrap extends RuntimeException
 
     public static function run(): void
     {
-        date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
+        date_default_timezone_set(Env::string('APP_TIMEZONE', 'UTC'));
 
         PrismaPHPSettings::init();
         Request::init();
@@ -139,7 +143,7 @@ final class Bootstrap extends RuntimeException
 
     private static function setCsrfCookie(): void
     {
-        $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? 'pp_default_insecure_secret';
+        $secret = Env::string('FUNCTION_CALL_SECRET', 'pp_default_insecure_secret');
         $shouldRegenerate = true;
 
         if (isset($_COOKIE['prisma_php_csrf'])) {
@@ -175,7 +179,7 @@ final class Bootstrap extends RuntimeException
     {
         $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
         $cookieToken = $_COOKIE['prisma_php_csrf'] ?? '';
-        $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
+        $secret = Env::string('FUNCTION_CALL_SECRET', '');
 
         if (empty($headerToken) || empty($cookieToken)) {
             self::jsonExit(['success' => false, 'error' => 'CSRF token missing']);
@@ -217,12 +221,11 @@ final class Bootstrap extends RuntimeException
 
     private static function determineContentToInclude(): array
     {
-        $requestUri = $_SERVER['REQUEST_URI'];
-        $requestUri = empty($_SERVER['SCRIPT_URL']) ? trim(self::uriExtractor($requestUri)) : trim($requestUri);
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+        $requestUri = trim(self::uriExtractor($requestUri));
 
         $scriptUrl = explode('?', $requestUri, 2)[0];
-        $pathname = $_SERVER['SCRIPT_URL'] ?? $scriptUrl;
-        $pathname = trim($pathname, '/');
+        $pathname = trim($scriptUrl, '/');
         $baseDir = APP_PATH;
         $includePath = '';
         $layoutsToInclude = [];
@@ -520,7 +523,7 @@ final class Bootstrap extends RuntimeException
     {
         $projectName = PrismaPHPSettings::$option->projectName ?? '';
         if (empty($projectName)) {
-            return "/";
+            return $scriptUrl;
         }
 
         $escapedIdentifier = preg_quote($projectName, '/');
@@ -528,7 +531,7 @@ final class Bootstrap extends RuntimeException
             return rtrim(ltrim($matches[1], '/'), '/');
         }
 
-        return "/";
+        return $scriptUrl;
     }
 
     private static function findGroupFolder(string $pathname): string
@@ -713,7 +716,7 @@ final class Bootstrap extends RuntimeException
 
     private static function checkForDuplicateRoutes(): void
     {
-        if (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'production') {
+        if (Env::string('APP_ENV', 'production') === 'production') {
             return;
         }
 
@@ -958,9 +961,9 @@ final class Bootstrap extends RuntimeException
 
         if (empty($limits)) {
             if ($attribute->requiresAuth) {
-                $limits = $_ENV['RATE_LIMIT_AUTH'] ?? '60/minute';
+                $limits = Env::string('RATE_LIMIT_AUTH', '60/minute');
             } else {
-                $limits = $_ENV['RATE_LIMIT_RPC'] ?? '60/minute';
+                $limits = Env::string('RATE_LIMIT_RPC', '60/minute');
             }
         }
 
@@ -976,6 +979,7 @@ final class Bootstrap extends RuntimeException
             return ['success' => false, 'error' => 'Function not callable from client'];
         }
 
+        $attribute = self::getExposedAttribute($fn);
         if (!self::validateAccess($attribute)) {
             return ['success' => false, 'error' => 'Permission denied'];
         }
@@ -996,7 +1000,7 @@ final class Bootstrap extends RuntimeException
                     return ['success' => false, 'error' => $e->getMessage()];
                 }
 
-                if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
+                if (Env::string('SHOW_ERRORS', 'false') === 'false') {
                     return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
                 } else {
                     return ['success' => false, 'error' => "Function error: {$e->getMessage()}"];
@@ -1071,7 +1075,7 @@ final class Bootstrap extends RuntimeException
                 return ['success' => false, 'error' => $e->getMessage()];
             }
 
-            if (isset($_ENV['SHOW_ERRORS']) && $_ENV['SHOW_ERRORS'] === 'false') {
+            if (Env::string('SHOW_ERRORS', 'false') === 'false') {
                 return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
             } else {
                 return ['success' => false, 'error' => "Call error: {$e->getMessage()}"];
@@ -1319,16 +1323,20 @@ try {
         }
 
         if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
-            ob_end_clean();
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
             Bootstrap::wireCallback();
         }
 
         if ((!Request::$isWire && !Bootstrap::$secondRequestC69CD) && isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
+            $cacheEnabled = (Env::string('CACHE_ENABLED', 'false') === 'true');
+
             $shouldCache = CacheHandler::$isCacheable === true
-                || (CacheHandler::$isCacheable === null && $_ENV['CACHE_ENABLED'] === 'true');
+                || (CacheHandler::$isCacheable === null && $cacheEnabled);
 
             if ($shouldCache) {
-                CacheHandler::serveCache(Request::$decodedUri, intval($_ENV['CACHE_TTL'] ?? 600));
+                CacheHandler::serveCache(Request::$decodedUri, intval(Env::string('CACHE_TTL', '600')));
             }
         }
 

@@ -15,11 +15,12 @@ use PP\Request;
 use Exception;
 use InvalidArgumentException;
 use ArrayObject;
+use PP\Env;
 
 class Auth
 {
     public const PAYLOAD_NAME = 'payload_name_8639D';
-    public const ROLE_NAME = '';
+    public const ROLE_NAME = 'role';
     public const PAYLOAD_SESSION_KEY = 'payload_session_key_2183A';
 
     public static string $cookieName = '';
@@ -27,11 +28,11 @@ class Auth
     private static ?Auth $instance = null;
     private const PPAUTH = 'ppauth';
     private string $secretKey;
-    private string $defaultTokenValidity = '1h'; // Default to 1 hour
+    private string $defaultTokenValidity = AuthConfig::DEFAULT_TOKEN_VALIDITY;
 
     private function __construct()
     {
-        $this->secretKey = $_ENV['AUTH_SECRET'] ?? 'CD24eEv4qbsC5LOzqeaWbcr58mBMSvA4Mkii8GjRiHkt';
+        $this->secretKey = Env::string('AUTH_SECRET', 'CD24eEv4qbsC5LOzqeaWbcr58mBMSvA4Mkii8GjRiHkt');
         self::$cookieName = self::getCookieName();
     }
 
@@ -255,7 +256,7 @@ class Auth
 
     public function rotateCsrfToken(): void
     {
-        $secret = $_ENV['FUNCTION_CALL_SECRET'] ?? '';
+        $secret = Env::string('FUNCTION_CALL_SECRET', '');
 
         if (empty($secret)) {
             return;
@@ -546,7 +547,7 @@ class Auth
 
     private static function getCookieName(): string
     {
-        $authCookieName = $_ENV['AUTH_COOKIE_NAME'] ?? 'auth_cookie_name_d36e5';
+        $authCookieName = Env::string('AUTH_COOKIE_NAME', 'auth_cookie_name_d36e5');
         return strtolower(preg_replace('/\s+/', '_', trim($authCookieName)));
     }
 }

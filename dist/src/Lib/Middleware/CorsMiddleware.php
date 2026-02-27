@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Lib\Middleware;
 
+use PP\Env;
+
 final class CorsMiddleware
 {
     public static function handle(?array $overrides = null): void
@@ -58,14 +60,14 @@ final class CorsMiddleware
 
     private static function buildConfig(?array $overrides): array
     {
-        $allowed = self::parseList($_ENV['CORS_ALLOWED_ORIGINS'] ?? '');
+        $allowed = self::parseList(Env::string('CORS_ALLOWED_ORIGINS', ''));
         $cfg = [
             'allowedOrigins'   => $allowed,
-            'allowCredentials' => filter_var($_ENV['CORS_ALLOW_CREDENTIALS'] ?? 'false', FILTER_VALIDATE_BOOLEAN),
-            'allowedMethods'   => $_ENV['CORS_ALLOWED_METHODS'] ?? 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-            'allowedHeaders'   => trim($_ENV['CORS_ALLOWED_HEADERS'] ?? ''),
-            'exposeHeaders'    => trim($_ENV['CORS_EXPOSE_HEADERS'] ?? ''),
-            'maxAge'           => (int)($_ENV['CORS_MAX_AGE'] ?? 86400),
+            'allowCredentials' => Env::bool('CORS_ALLOW_CREDENTIALS', false),
+            'allowedMethods'   => Env::string('CORS_ALLOWED_METHODS', 'GET, POST, PUT, PATCH, DELETE, OPTIONS'),
+            'allowedHeaders'   => trim(Env::string('CORS_ALLOWED_HEADERS', '')),
+            'exposeHeaders'    => trim(Env::string('CORS_EXPOSE_HEADERS', '')),
+            'maxAge'           => Env::int('CORS_MAX_AGE', 86400),
         ];
 
         if (is_array($overrides)) {

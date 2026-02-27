@@ -23,6 +23,7 @@ final class AuthConfig
     public const IS_ROLE_BASE = false;
     public const IS_TOKEN_AUTO_REFRESH = false;
     public const IS_ALL_ROUTES_PRIVATE = false;
+    public const DEFAULT_TOKEN_VALIDITY = "1h"; // Default to 1 hour
 
     /**
      * This is the (default) option for authentication. If IS_ALL_ROUTES_PRIVATE is set to false, 

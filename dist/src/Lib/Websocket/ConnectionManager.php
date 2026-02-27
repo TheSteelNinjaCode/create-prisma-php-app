@@ -15,12 +15,12 @@ class ConnectionManager implements MessageComponentInterface
 
     public function __construct()
     {
-        $this->clients = new SplObjectStorage;
+        $this->clients = new SplObjectStorage();
     }
 
     public function onOpen(ConnectionInterface $conn): void
     {
-        $this->clients->attach($conn);
+        $this->clients->offsetSet($conn, true);
         echo "New connection! ({$conn->resourceId})";
     }
 
@@ -35,7 +35,7 @@ class ConnectionManager implements MessageComponentInterface
 
     public function onClose(ConnectionInterface $conn): void
     {
-        $this->clients->detach($conn);
+        $this->clients->offsetUnset($conn);
         echo "Connection {$conn->resourceId} has disconnected";
     }
 

@@ -12,20 +12,21 @@ use Dotenv\Dotenv;
 use PhpMcp\Server\Server;
 use PhpMcp\Server\Transports\StreamableHttpServerTransport;
 use Throwable;
+use PP\Env;
 
 // ── Load .env (optional) and timezone ──────────────────────────────────────────
 if (file_exists(DOCUMENT_PATH . '/.env')) {
     Dotenv::createImmutable(DOCUMENT_PATH)->safeLoad();
 }
-date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
+date_default_timezone_set(Env::string('APP_TIMEZONE', 'UTC'));
 
 // ── Resolve settings (with sane defaults) ─────────────────────────────────────
-$appName    = $_ENV['MCP_NAME']         ?? 'prisma-php-mcp';
-$appVersion = $_ENV['MCP_VERSION']      ?? '0.0.1';
-$host       = $_ENV['MCP_HOST']         ?? '127.0.0.1';
-$port       = (int)($_ENV['MCP_PORT']   ?? 4000);
-$prefix     = trim($_ENV['MCP_PATH_PREFIX'] ?? 'mcp', '/');
-$enableJson = filter_var($_ENV['MCP_JSON_RESPONSE'] ?? 'false', FILTER_VALIDATE_BOOLEAN);
+$appName    = Env::string('MCP_NAME', 'prisma-php-mcp');
+$appVersion = Env::string('MCP_VERSION', '0.0.1');
+$host       = Env::string('MCP_HOST', '127.0.0.1');
+$port       = Env::int('MCP_PORT', 4000);
+$prefix     = trim(Env::string('MCP_PATH_PREFIX', 'mcp'), '/');
+$enableJson = Env::bool('MCP_JSON_RESPONSE', false);
 
 // ── Build server and discover tools ───────────────────────────────────────────
 $server = Server::make()

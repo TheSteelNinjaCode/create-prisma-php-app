@@ -15,14 +15,15 @@ use Ratchet\WebSocket\WsServer;
 use Lib\Websocket\ConnectionManager;
 use React\EventLoop\LoopInterface;
 use Throwable;
+use PP\Env;
 
 // ── Load .env (optional) and timezone ─────────────────────────────────────────
 if (file_exists(DOCUMENT_PATH . '/.env')) {
     Dotenv::createImmutable(DOCUMENT_PATH)->safeLoad();
 }
-date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
+date_default_timezone_set(Env::string('APP_TIMEZONE', 'UTC'));
 
-// ── Tiny argv parser: allows --host=0.0.0.0 --port=8080 ──────────────────────
+// ── Tiny argv parser: allows --host=0.0.0.0 --port=9001 ──────────────────────
 $cli = [];
 foreach ($argv ?? [] as $arg) {
     if (preg_match('/^--([^=]+)=(.*)$/', $arg, $m)) {
@@ -31,11 +32,11 @@ foreach ($argv ?? [] as $arg) {
 }
 
 // ── Resolve settings (env → cli defaults) ────────────────────────────────────
-$appName = $_ENV['WS_NAME']       ?? 'prisma-php-ws';
-$appVer  = $_ENV['WS_VERSION']    ?? '0.0.1';
-$host    = $cli['host']           ?? ($_ENV['WS_HOST'] ?? '127.0.0.1');
-$port    = (int)($cli['port']     ?? ($_ENV['WS_PORT'] ?? 8080));
-$verbose = filter_var($cli['verbose'] ?? ($_ENV['WS_VERBOSE'] ?? 'true'), FILTER_VALIDATE_BOOLEAN);
+$appName = Env::string('WS_NAME', 'prisma-php-ws');
+$appVer  = Env::string('WS_VERSION', '0.0.1');
+$host    = $cli['host']           ?? Env::string('WS_HOST', '127.0.0.1');
+$port    = (int)($cli['port']     ?? Env::int('WS_PORT', 9001));
+$verbose = filter_var($cli['verbose'] ?? Env::bool('WS_VERBOSE', true), FILTER_VALIDATE_BOOLEAN);
 
 // ── Console helpers ──────────────────────────────────────────────────────────
 $color = static fn(string $t, string $c) => "\033[{$c}m{$t}\033[0m";
