@@ -974,8 +974,7 @@ final class Bootstrap extends RuntimeException
 
     private static function dispatchFunction(string $fn, mixed $args)
     {
-        $attribute = self::getExposedAttribute($fn);
-        if (!$attribute) {
+        if (!self::isFunctionAllowed($fn)) {
             return ['success' => false, 'error' => 'Function not callable from client'];
         }
 
