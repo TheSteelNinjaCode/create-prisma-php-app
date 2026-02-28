@@ -28,6 +28,7 @@ use PP\PHPX\TemplateCompiler;
 use PP\CacheHandler;
 use PP\ErrorHandler;
 use PP\Attributes\Exposed;
+use PP\Attributes\ExposedRegistry;
 use PP\Streaming\SSE;
 use PP\Security\RateLimiter;
 use PP\Env;
@@ -974,6 +975,13 @@ final class Bootstrap extends RuntimeException
 
     private static function dispatchFunction(string $fn, mixed $args)
     {
+        if (!function_exists($fn)) {
+            $resolved = ExposedRegistry::resolveFunction($fn);
+            if ($resolved) {
+                $fn = $resolved;
+            }
+        }
+
         if (!self::isFunctionAllowed($fn)) {
             return ['success' => false, 'error' => 'Function not callable from client'];
         }
