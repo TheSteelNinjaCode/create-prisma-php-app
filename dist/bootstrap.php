@@ -1019,26 +1019,16 @@ final class Bootstrap extends RuntimeException
 
     private static function dispatchMethod(string $call, mixed $args)
     {
-        if (!self::isMethodAllowed(
-            strpos($call, '->') !== false
-                ? explode('->', $call, 2)[0]
-                : explode('::', $call, 2)[0],
-            strpos($call, '->') !== false
-                ? explode('->', $call, 2)[1]
-                : explode('::', $call, 2)[1]
-        )) {
-            return ['success' => false, 'error' => 'Method not callable from client'];
-        }
-
         if (strpos($call, '->') !== false) {
-            list($requested, $method) = explode('->', $call, 2);
+            [$requested, $method] = explode('->', $call, 2);
             $isStatic = false;
         } else {
-            list($requested, $method) = explode('::', $call, 2);
+            [$requested, $method] = explode('::', $call, 2);
             $isStatic = true;
         }
 
         $class = $requested;
+
         if (!class_exists($class)) {
             if ($import = self::resolveClassImport($requested)) {
                 require_once $import['file'];
@@ -1049,8 +1039,12 @@ final class Bootstrap extends RuntimeException
         if (!class_exists($class)) {
             return ['success' => false, 'error' => "Class '$requested' not found"];
         }
-        $attribute = self::getExposedAttribute($class, $method);
 
+        if (!self::isMethodAllowed($class, $method)) {
+            return ['success' => false, 'error' => 'Method not callable from client'];
+        }
+
+        $attribute = self::getExposedAttribute($class, $method);
         if (!$attribute) {
             return ['success' => false, 'error' => 'Method not callable from client'];
         }
