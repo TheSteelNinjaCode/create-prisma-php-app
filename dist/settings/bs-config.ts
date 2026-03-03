@@ -3,6 +3,7 @@ import {
   responseInterceptor,
 } from "http-proxy-middleware";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
+import { networkInterfaces } from "os";
 import browserSync, { BrowserSyncInstance } from "browser-sync";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
@@ -22,6 +23,18 @@ const { __dirname } = getFileMeta();
 const bs: BrowserSyncInstance = browserSync.create();
 
 const PUBLIC_IGNORE_DIRS = [""];
+
+function getExternalIP(): string | null {
+  const nets = networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]!) {
+      if (net.family === "IPv4" && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return null;
+}
 
 const pipeline = new DebouncedWorker(
   async () => {
@@ -117,6 +130,7 @@ createSrcWatcher(viteFlagFile, {
 bs.init(
   {
     proxy: "http://localhost:3000",
+    online: true,
     middleware: [
       (_req, res, next) => {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -217,9 +231,13 @@ bs.init(
       return;
     }
 
+    const bsPort = bsInstance.getOption("port");
     const urls = bsInstance.getOption("urls");
-    const localUrl = urls.get("local");
-    const externalUrl = urls.get("external");
+    const localUrl = urls.get("local") || `http://localhost:${bsPort}`;
+    const externalIP = getExternalIP();
+    const externalUrl =
+      urls.get("external") ||
+      (externalIP ? `http://${externalIP}:${bsPort}` : null);
     const uiUrl = urls.get("ui");
     const uiExtUrl = urls.get("ui-external");
 
