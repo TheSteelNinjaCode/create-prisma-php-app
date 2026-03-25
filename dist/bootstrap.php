@@ -1307,10 +1307,6 @@ try {
     }
 
     if (!Bootstrap::$isContentIncluded && !Bootstrap::$isChildContentIncluded) {
-        if (!Bootstrap::$secondRequestC69CD) {
-            Bootstrap::createUpdateRequestData();
-        }
-
         if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
             if (isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
                 foreach (Bootstrap::$requestFilesData[Request::$decodedUri]['includedFiles'] as $file) {
@@ -1356,6 +1352,10 @@ try {
         MainLayout::$html = Bootstrap::applyRootLayoutId(MainLayout::$html);
 
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
+
+        if (!Bootstrap::$secondRequestC69CD) {
+            Bootstrap::createUpdateRequestData();
+        }
 
         if (
             http_response_code() === 200
