@@ -28,6 +28,14 @@ Also use it to confirm environment-specific details such as:
 - component scan directories
 - excluded files
 
+## Read PulsePoint docs when UI reactivity is involved
+
+If the task involves PulsePoint state, effects, refs, directives, frontend interactivity, or reactive UI behavior, read `10-pulse-point.md` before generating code.
+
+Treat `10-pulse-point.md` as the source of truth for PulsePoint runtime usage, allowed APIs, markup directives, file layout expectations, and reactive browser-side patterns.
+
+Do not invent PulsePoint helpers, directives, or APIs that are not explicitly documented there.
+
 ## Decision rules for AI agents
 
 - Do not assume a feature is enabled unless it is present and enabled in `prisma-php.json`.
@@ -39,6 +47,8 @@ Also use it to confirm environment-specific details such as:
 - Do not generate websocket-specific setup unless `websocket` is enabled.
 - If `backendOnly` is `true`, avoid frontend-oriented setup unless the user explicitly asks for it.
 - When routing, layouts, middleware, or file conventions are involved, read the relevant Prisma PHP docs first.
+- When working with PulsePoint-powered UI, read `10-pulse-point.md` first and follow its rules strictly.
+- Do not assume behavior from React, Vue, Alpine, Livewire, or other frontend systems when generating PulsePoint code.
 
 ## Priority order
 
@@ -46,7 +56,8 @@ When working in a Prisma PHP project, use this order of truth:
 
 1. The user's explicit request
 2. The installed Prisma PHP docs for the current version
-3. `./prisma-php.json`
-4. Existing project code and structure
+3. `10-pulse-point.md` for PulsePoint-specific runtime behavior and reactive UI rules
+4. `./prisma-php.json`
+5. Existing project code and structure
 
 <!-- END:prisma-php-agent-rules -->
