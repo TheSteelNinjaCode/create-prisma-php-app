@@ -1,10 +1,10 @@
 <!-- BEGIN:prisma-php-agent-rules -->
 
-# Prisma PHP: always read the docs, project manifest, and installed core package paths before coding
+# Prisma PHP: always read the docs, project manifest, upgrade guide, and installed core package paths before coding
 
 Before any Prisma PHP work, read the relevant installed docs for the current project version.
 
-Do not rely on assumptions from other frameworks. The installed Prisma PHP docs and project manifest are the source of truth for the active setup.
+Do not rely on assumptions from other frameworks. The installed Prisma PHP docs, project manifest, and project-specific upgrade workflow are the source of truth for the active setup.
 
 ## Read `prisma-php.json` first
 
@@ -27,6 +27,32 @@ Also use it to confirm environment-specific details such as:
 - BrowserSync target and path rewriting
 - component scan directories
 - excluded files
+
+## Read `upgrading.md` when updating or enabling features
+
+If the task involves upgrading Prisma PHP, updating project files, enabling new framework capabilities, syncing project scaffolding, or installing feature-related dependencies, read `upgrading.md` first.
+
+Treat `upgrading.md` as the source of truth for the project update workflow.
+
+Use it when:
+
+- enabling Prisma PHP features for an existing project
+- updating project scaffolding after changing feature flags
+- syncing framework-managed files with the current Prisma PHP version
+- following the recommended project update command
+- checking whether a feature must be enabled in `prisma-php.json` before use
+
+Important rules:
+
+- Before enabling any Prisma PHP feature, check and update `./prisma-php.json` first.
+- Do not assume a feature is active until it is enabled in `prisma-php.json`.
+- After changing feature flags or project capabilities, run the recommended project update command:
+
+```bash
+npx pp update project
+```
+
+- Use `upgrading.md` before making assumptions about dependency updates, feature activation, scaffold sync steps, or project-wide update behavior.
 
 ## Read the installed Prisma PHP core package when framework internals matter
 
@@ -70,6 +96,8 @@ Do not invent PulsePoint helpers, directives, or APIs that are not explicitly do
 ## Decision rules for AI agents
 
 - Do not assume a feature is enabled unless it is present and enabled in `prisma-php.json`.
+- Before enabling or using framework features in an existing project, check `prisma-php.json` first.
+- When feature flags or project capabilities change, read `upgrading.md` and follow the documented update workflow.
 - Do not generate BackendOnly-specific code unless `backendOnly` is enabled.
 - Do not generate Tailwind-based UI unless `tailwindcss` is enabled.
 - Do not generate Prisma ORM setup or usage unless `prisma` is enabled.
@@ -89,15 +117,17 @@ When working in a Prisma PHP project, use this order of truth:
 1. The user's explicit request
 2. The installed Prisma PHP docs for the current version
 3. `./prisma-php.json`
-4. `vendor/tsnc/prisma-php/src` for installed core framework implementation details
-5. `10-pulse-point.md` for PulsePoint-specific runtime behavior and reactive UI rules
-6. Existing project code and structure
+4. `upgrading.md` for project update and feature-enablement workflow
+5. `vendor/tsnc/prisma-php/src` for installed core framework implementation details
+6. `10-pulse-point.md` for PulsePoint-specific runtime behavior and reactive UI rules
+7. Existing project code and structure
 
 ## Practical interpretation
 
 Use these rules together:
 
 - `prisma-php.json` tells you which capabilities are enabled.
+- `upgrading.md` tells you how to update the project after changing feature flags or enabling capabilities.
 - `vendor/tsnc/prisma-php/src` tells you how the installed core package is actually structured and implemented.
 - `10-pulse-point.md` tells you how PulsePoint runtime code should be written.
 - existing app code in `src/` shows local project patterns and conventions.
