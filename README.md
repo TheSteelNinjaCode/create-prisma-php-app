@@ -15,6 +15,7 @@
 - ⚡ **Effortless Routing:** Manage complex routes with ease, supporting dynamic patterns and nested structures.
 - 🧩 **Component-Based Architecture:** Integrate reusable components effortlessly, just like React.
 - 🛠️ **Flexible Integration:** Choose and integrate only the packages you need, such as:
+  - 🧁 **BackendOnly** – for backend-only projects without frontend dependencies.
   - 🧁 **Tailwind CSS** – for modern UI styling.
   - 📘 **Swagger Docs** – for powerful API documentation.
   - 🔌 **WebSocket** – for real-time interactions.
@@ -38,6 +39,7 @@ This interactive process will prompt you for setup options like Tailwind CSS, Sw
 Example:
 
 ```bash
+✔ Would you like to use BackendOnly? … No / Yes
 ✔ Would you like to use Tailwind CSS? … No / Yes
 ✔ Would you like to use Swagger Docs? … No / Yes
 ✔ Would you like to use MCP (Model Context Protocol)? … No / Yes
