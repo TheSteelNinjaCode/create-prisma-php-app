@@ -51,6 +51,15 @@ final class Bootstrap extends RuntimeException
     private static array $fileExistCache = [];
     private static array $regexCache = [];
 
+    private static function isHttpsRequest(): bool
+    {
+        return (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+            (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+        );
+    }
+
     public function __construct(string $message, string $context = '', int $code = 0, ?Throwable $previous = null)
     {
         $this->context = $context;
@@ -76,7 +85,7 @@ final class Bootstrap extends RuntimeException
             'expires' => time() + 3600,
             'path' => '/',
             'domain' => '',
-            'secure' => true,
+            'secure' => self::isHttpsRequest(),
             'httponly' => false,
             'samesite' => 'Lax',
         ]);
@@ -167,7 +176,7 @@ final class Bootstrap extends RuntimeException
             setcookie('prisma_php_csrf', $token, [
                 'expires'  => time() + 3600,
                 'path'     => '/',
-                'secure'   => true,
+                'secure'   => self::isHttpsRequest(),
                 'httponly' => false,
                 'samesite' => 'Lax',
             ]);
