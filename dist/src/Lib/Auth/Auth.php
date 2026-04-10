@@ -22,6 +22,7 @@ class Auth
     public const PAYLOAD_NAME = 'payload_name_8639D';
     public const ROLE_NAME = 'role';
     public const PAYLOAD_SESSION_KEY = 'payload_session_key_2183A';
+    private const OAUTH_STATE_SESSION_KEY = 'oauth_state_61e4a';
 
     public static string $cookieName = '';
 
@@ -32,7 +33,10 @@ class Auth
 
     private function __construct()
     {
-        $this->secretKey = Env::string('AUTH_SECRET', 'CD24eEv4qbsC5LOzqeaWbcr58mBMSvA4Mkii8GjRiHkt');
+        $this->secretKey = Env::string('AUTH_SECRET', '');
+        if ($this->secretKey === '') {
+            throw new InvalidArgumentException('AUTH_SECRET is required for authentication.');
+        }
         self::$cookieName = self::getCookieName();
     }
 
@@ -258,8 +262,8 @@ class Auth
     {
         $secret = Env::string('FUNCTION_CALL_SECRET', '');
 
-        if (empty($secret)) {
-            return;
+        if ($secret === '') {
+            throw new InvalidArgumentException('FUNCTION_CALL_SECRET is required for CSRF protection.');
         }
 
         $nonce = bin2hex(random_bytes(16));
@@ -386,26 +390,34 @@ class Auth
     {
         $dynamicRouteParams = Request::$dynamicParams[self::PPAUTH] ?? [];
 
-        if (Request::$isGet && in_array('signin', $dynamicRouteParams)) {
+        if (Request::$isGet && in_array('signin', $dynamicRouteParams, true)) {
             foreach ($providers as $provider) {
-                if ($provider instanceof GithubProvider && in_array('github', $dynamicRouteParams)) {
-                    $githubAuthUrl = "https://github.com/login/oauth/authorize?scope=user:email%20read:user&client_id={$provider->clientId}";
+                if ($provider instanceof GithubProvider && in_array('github', $dynamicRouteParams, true)) {
+                    $state = $this->createOAuthState('github');
+                    $githubAuthUrl = "https://github.com/login/oauth/authorize?scope=user:email%20read:user&client_id={$provider->clientId}&state=" . urlencode($state);
                     Request::redirect($githubAuthUrl);
-                } elseif ($provider instanceof GoogleProvider && in_array('google', $dynamicRouteParams)) {
+                } elseif ($provider instanceof GoogleProvider && in_array('google', $dynamicRouteParams, true)) {
+                    $state = $this->createOAuthState('google');
                     $googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?"
                         . "scope=" . urlencode('email profile') . "&"
                         . "response_type=code&"
                         . "client_id=" . urlencode($provider->clientId) . "&"
-                        . "redirect_uri=" . urlencode($provider->redirectUri);
+                        . "redirect_uri=" . urlencode($provider->redirectUri) . "&"
+                        . "state=" . urlencode($state);
                     Request::redirect($googleAuthUrl);
                 }
             }
         }
 
         $authCode = Validator::string($_GET['code'] ?? '');
+        $authState = Validator::string($_GET['state'] ?? '', false);
 
-        if (Request::$isGet && in_array('callback', $dynamicRouteParams) && isset($authCode)) {
-            if (in_array('github', $dynamicRouteParams)) {
+        if (Request::$isGet && in_array('callback', $dynamicRouteParams, true) && $authCode !== '') {
+            if (in_array('github', $dynamicRouteParams, true)) {
+                if (!$this->consumeOAuthState('github', $authState)) {
+                    exit("Error occurred. Please try again.");
+                }
+
                 $provider = $this->findProvider($providers, GithubProvider::class);
 
                 if (!$provider) {
@@ -413,7 +425,11 @@ class Auth
                 }
 
                 return $this->githubProvider($provider, $authCode);
-            } elseif (in_array('google', $dynamicRouteParams)) {
+            } elseif (in_array('google', $dynamicRouteParams, true)) {
+                if (!$this->consumeOAuthState('google', $authState)) {
+                    exit("Error occurred. Please try again.");
+                }
+
                 $provider = $this->findProvider($providers, GoogleProvider::class);
 
                 if (!$provider) {
@@ -552,6 +568,31 @@ class Auth
                 $this->signIn($userToAuthenticate, $googleProvider->maxAge);
             }
         }
+    }
+
+    private function createOAuthState(string $provider): string
+    {
+        $state = bin2hex(random_bytes(16));
+        $_SESSION[self::OAUTH_STATE_SESSION_KEY][$provider] = $state;
+
+        return $state;
+    }
+
+    private function consumeOAuthState(string $provider, string $state): bool
+    {
+        $expectedState = $_SESSION[self::OAUTH_STATE_SESSION_KEY][$provider] ?? '';
+
+        if (!is_string($expectedState) || $expectedState === '' || $state === '' || !hash_equals($expectedState, $state)) {
+            return false;
+        }
+
+        unset($_SESSION[self::OAUTH_STATE_SESSION_KEY][$provider]);
+
+        if (empty($_SESSION[self::OAUTH_STATE_SESSION_KEY])) {
+            unset($_SESSION[self::OAUTH_STATE_SESSION_KEY]);
+        }
+
+        return true;
     }
 
     private static function getCookieName(): string

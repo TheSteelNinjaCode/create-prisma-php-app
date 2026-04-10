@@ -60,6 +60,19 @@ final class Bootstrap extends RuntimeException
         );
     }
 
+    public static function isPathWithinApp(string $path): bool
+    {
+        $resolvedPath = realpath($path);
+        if ($resolvedPath === false) {
+            return false;
+        }
+
+        $appPath = rtrim(str_replace('\\', '/', APP_PATH), '/');
+        $normalizedResolvedPath = str_replace('\\', '/', $resolvedPath);
+
+        return str_starts_with($normalizedResolvedPath, $appPath . '/');
+    }
+
     public function __construct(string $message, string $context = '', int $code = 0, ?Throwable $previous = null)
     {
         $this->context = $context;
@@ -153,7 +166,11 @@ final class Bootstrap extends RuntimeException
 
     private static function setCsrfCookie(): void
     {
-        $secret = Env::string('FUNCTION_CALL_SECRET', 'pp_default_insecure_secret');
+        $secret = Env::string('FUNCTION_CALL_SECRET', '');
+
+        if ($secret === '') {
+            throw new RuntimeException('FUNCTION_CALL_SECRET is required for CSRF protection.');
+        }
         $shouldRegenerate = true;
 
         if (isset($_COOKIE['prisma_php_csrf'])) {
@@ -190,6 +207,10 @@ final class Bootstrap extends RuntimeException
         $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
         $cookieToken = $_COOKIE['prisma_php_csrf'] ?? '';
         $secret = Env::string('FUNCTION_CALL_SECRET', '');
+
+        if ($secret === '') {
+            self::jsonExit(['success' => false, 'error' => 'CSRF secret is not configured']);
+        }
 
         if (empty($headerToken) || empty($cookieToken)) {
             self::jsonExit(['success' => false, 'error' => 'CSRF token missing']);
@@ -1267,11 +1288,18 @@ try {
 
         if (is_file(Bootstrap::$requestFilePath)) {
             if (file_exists(Bootstrap::$requestFilePath) && Request::$isXFileRequest) {
+                if (!Bootstrap::isPathWithinApp(Bootstrap::$requestFilePath)) {
+                    http_response_code(403);
+                    exit;
+                }
+
+                $resolvedRequestFilePath = realpath(Bootstrap::$requestFilePath);
+
                 if (pathinfo(Bootstrap::$requestFilePath, PATHINFO_EXTENSION) === 'php') {
-                    include Bootstrap::$requestFilePath;
+                    include $resolvedRequestFilePath ?: Bootstrap::$requestFilePath;
                 } else {
-                    header('Content-Type: ' . mime_content_type(Bootstrap::$requestFilePath));
-                    readfile(Bootstrap::$requestFilePath);
+                    header('Content-Type: ' . mime_content_type($resolvedRequestFilePath ?: Bootstrap::$requestFilePath));
+                    readfile($resolvedRequestFilePath ?: Bootstrap::$requestFilePath);
                 }
                 exit;
             }

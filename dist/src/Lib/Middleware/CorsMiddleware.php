@@ -17,6 +17,10 @@ final class CorsMiddleware
 
         $cfg = self::buildConfig($overrides);
 
+        if ($cfg['allowCredentials'] && self::listHasWildcard($cfg['allowedOrigins'])) {
+            return;
+        }
+
         if (!self::isAllowedOrigin($origin, $cfg['allowedOrigins'])) {
             return;
         }
