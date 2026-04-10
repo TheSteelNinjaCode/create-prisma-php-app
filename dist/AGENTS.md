@@ -93,7 +93,7 @@ Before generating code, choose the documentation file based on the task.
   Read `components.md`
 
 - **File uploads, `multipart/form-data`, `$_FILES`, `PP\FileManager\UploadFile`, rename flows, delete flows, allowed file types, upload size rules, or file manager UI behavior**  
-  Read `file-manager.md`, then verify the official File Manager docs at `get-started-file`
+  Read `file-manager.md`, then verify the official File Manager docs at `vendor/tsnc/prisma-php/src/FileManager/UploadFile.php`
 
 - **Authentication strategy, `AuthConfig.php`, route privacy model, sign-in, sign-out, JWT session lifecycle, `refreshUserSession`, RBAC, credentials auth, OAuth, social login, or auth state manager usage**  
   Read `authentication.md`, then verify the matching official docs in this order: `auth-get-started`, `credentials`, and `state-manager-auth`
@@ -120,7 +120,7 @@ Before generating code, choose the documentation file based on the task.
   Read `pulsepoint.md`
 
 - **Sanitization, `PP\Validator`, `PP\Rule`, field validation, form validation, live validation, or backend validation rules**  
-  Read the official Validator docs at `https://prismaphp.tsnc.tech/docs/php-validator`, then apply the relevant local guidance from `fetching-data.md`, `error-handling.md`, and `route-handlers.md`
+  Read `validator.md`, then apply the relevant local guidance from `fetching-data.md`, `error-handling.md`, and `route-handlers.md`
 
 - **Upgrading Prisma PHP, enabling features, syncing framework-managed project files, or running project updates**  
   Read `upgrading.md`
@@ -167,6 +167,66 @@ Choose a more PHP-only pattern only when:
 - the user explicitly asks for PHP-only behavior
 - the task is clearly non-reactive
 - the task is a standalone API, webhook, integration endpoint, or public JSON handler
+
+## Route structure rule AI must not get wrong
+
+There are two different file-structure rules, and AI must not mix them.
+
+### Normal route files such as `index.php` and nested `layout.php`
+
+Use this pattern:
+
+1. PHP
+2. one parent HTML element for the route content
+3. one `<script>` block after that parent element
+
+Example:
+
+```php
+<?php
+
+// PHP Code
+?>
+
+<section>
+    <h1>Dashboard</h1>
+    <p>Count: {count}</p>
+</section>
+
+<script>
+    const [count, setCount] = pp.state(0);
+</script>
+```
+
+### Imported partials rendered with `ImportComponent::render(...)`
+
+Use this pattern:
+
+1. PHP
+2. exactly one parent root element
+3. keep any component-local `<script>` inside that root element
+
+Example:
+
+```php
+<?php
+// PHP Code
+?>
+
+<div>
+    <h2>Search</h2>
+    <input value="{query}" />
+    <script>
+        console.log('Search component ready');
+    </script>
+</div>
+```
+
+Do not:
+
+- put a sibling `<script>` next to the imported partial root
+- apply the imported-partial rule to normal route files
+- apply the normal route-file pattern to `ImportComponent` partials
 
 ## Default workflow for AI agents
 
