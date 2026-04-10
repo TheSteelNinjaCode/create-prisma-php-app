@@ -117,7 +117,7 @@ class Auth
 
         $jwt = $_COOKIE[self::$cookieName];
         $verifyToken = $this->verifyToken($jwt);
-        if ($verifyToken === false) {
+        if ($verifyToken === null) {
             return false;
         }
 

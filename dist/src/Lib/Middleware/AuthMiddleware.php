@@ -123,11 +123,11 @@ final class AuthMiddleware
 
         $verifyToken = $auth->verifyToken($jwt);
 
-        if ($verifyToken === false) {
+        if ($verifyToken === null) {
             return false;
         }
 
-        return isset($verifyToken->{Auth::PAYLOAD_NAME});
+        return true;
     }
 
     protected static function hasRequiredRole(string $requestPathname): string
