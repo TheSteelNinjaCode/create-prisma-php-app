@@ -170,7 +170,7 @@ Choose a more PHP-only pattern only when:
 
 ## Route structure rule AI must not get wrong
 
-There are two different file-structure rules, and AI must not mix them.
+There are two related structure rules, and AI must not mix their responsibilities.
 
 ### Normal route files such as `index.php` and nested `layout.php`
 
@@ -178,7 +178,7 @@ Use this pattern:
 
 1. PHP
 2. one parent HTML element for the route content
-3. one `<script>` block after that parent element
+3. when PulsePoint is present, keep one `<script>` block as the last child inside that same root element
 
 Example:
 
@@ -188,14 +188,13 @@ Example:
 // PHP Code
 ?>
 
-<section>
+<section pp-component="dashboard-page">
     <h1>Dashboard</h1>
     <p>Count: {count}</p>
+    <script>
+        const [count, setCount] = pp.state(0);
+    </script>
 </section>
-
-<script>
-    const [count, setCount] = pp.state(0);
-</script>
 ```
 
 ### Imported partials rendered with `ImportComponent::render(...)`
@@ -204,7 +203,7 @@ Use this pattern:
 
 1. PHP
 2. exactly one parent root element
-3. keep any component-local `<script>` inside that root element
+3. keep any component-local `<script>` inside that root element, and let Prisma PHP inject `pp-component` for that boundary
 
 Example:
 
@@ -224,9 +223,9 @@ Example:
 
 Do not:
 
-- put a sibling `<script>` next to the imported partial root
-- apply the imported-partial rule to normal route files
-- apply the normal route-file pattern to `ImportComponent` partials
+- put a sibling `<script>` next to a route root or imported partial root
+- manually add `pp-component` inside imported partial source
+- assume `ImportComponent` injects `pp-component` for normal route files
 
 ## Default workflow for AI agents
 
