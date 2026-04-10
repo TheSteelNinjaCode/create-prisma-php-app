@@ -117,7 +117,7 @@ class Auth
 
         $jwt = $_COOKIE[self::$cookieName];
         $verifyToken = $this->verifyToken($jwt);
-        if ($verifyToken === false) {
+        if ($verifyToken === null) {
             return false;
         }
 
@@ -247,7 +247,7 @@ class Auth
                 'expires' => $expirationTime,
                 'path' => '/',
                 'domain' => '',
-                'secure' => true,
+                'secure' => $this->isHttpsRequest(),
                 'httponly' => true,
                 'samesite' => 'Lax',
             ]);
@@ -270,7 +270,7 @@ class Auth
             setcookie('prisma_php_csrf', $token, [
                 'expires'  => time() + 3600, // 1 hour validity
                 'path'     => '/',
-                'secure'   => true,
+                'secure'   => $this->isHttpsRequest(),
                 'httponly' => false, // Must be FALSE so client JS can read it
                 'samesite' => 'Lax',
             ]);
@@ -307,6 +307,15 @@ class Auth
         if ($redirect) {
             Request::redirect($redirect);
         }
+    }
+
+    private function isHttpsRequest(): bool
+    {
+        return (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+            (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+        );
     }
 
     /**
