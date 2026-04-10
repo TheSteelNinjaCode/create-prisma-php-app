@@ -131,6 +131,43 @@ Before generating code, choose the documentation file based on the task.
 - **General doc entry point and framework orientation**  
   Read `index.md`
 
+## Default interactive UI and fetching rule
+
+For normal full-stack Prisma PHP work, assume the user wants the **PulsePoint-first** approach unless they explicitly ask otherwise.
+
+Default interaction stack:
+
+1. render route UI with `index.php`
+2. keep browser-side interactivity in **PulsePoint**
+3. call backend PHP from the frontend with **`pp.fetchFunction(...)`**
+4. mark callable PHP functions or methods with **`#[Exposed]`**
+5. validate and normalize input on the PHP side with **`PP\Validator`**
+
+Treat this as the default for:
+
+- search
+- filters
+- pagination
+- quick edit flows
+- toggles
+- dialogs and drawers
+- inline validation
+- route-local CRUD actions
+- dashboard interactions
+- similar reactive page behavior
+
+Do **not** default to:
+
+- a PHP-only interaction style
+- ad hoc `fetch('/api/...')` patterns
+- extra `route.php` files for page-local interactions that already fit `pp.fetchFunction(...)`
+
+Choose a more PHP-only pattern only when:
+
+- the user explicitly asks for PHP-only behavior
+- the task is clearly non-reactive
+- the task is a standalone API, webhook, integration endpoint, or public JSON handler
+
 ## Default workflow for AI agents
 
 Use this workflow unless the user asks for something narrower:
@@ -151,9 +188,9 @@ When the task is about creating or editing a route, do not guess.
 
 Important: creating a route means creating or updating the correct folder and route file under `src/app`. It does **not** mean editing generated route metadata. In particular, never update `files-list.json` by hand.
 
-- Use `index.php` for rendered UI and normal page routes
+- Use `index.php` for rendered UI and normal page routes, and default to PulsePoint plus `pp.fetchFunction(...)` for interactive behavior inside those routes unless the user explicitly asks for PHP-only behavior
 - Use `layout.php` for shared UI that wraps route subtrees
-- Use `route.php` for direct handlers such as JSON endpoints, API-style routes, AJAX handlers, form-processing endpoints, webhooks, or other no-view server logic
+- Use `route.php` for direct handlers such as JSON endpoints, API-style routes, AJAX handlers, form-processing endpoints, webhooks, or other no-view server logic; do not default to `route.php` for normal route-local interactions that fit PulsePoint plus `pp.fetchFunction(...)`
 - Use `not-found.php` for route-specific not-found UI
 - Use `error.php` for route or app-level error UI
 
