@@ -2,88 +2,76 @@
 
 # Prisma PHP AI Agent Rules
 
-Before generating, editing, or reviewing Prisma PHP code, read the installed Prisma PHP docs for the current project version, read the project manifest, and only inspect framework internals when the docs do not answer the task.
+This repository is the Prisma PHP package and docs workspace, not a generated Prisma PHP application.
 
-Do not guess framework behavior from Laravel, Next.js, React, Vue, Livewire, Alpine, or generic PHP habits. The installed Prisma PHP docs and the local project configuration are the source of truth.
+Treat `dist/docs/index.md` as the entry point for Prisma PHP guidance in this repo, then read the matching document in `dist/docs` before generating, editing, reviewing, or documenting framework-specific behavior.
 
-## Source of truth priority
+Do not guess framework behavior from Laravel, Next.js, React, Vue, Livewire, Alpine, Symfony, Socket.IO, or generic PHP habits. Prisma PHP's local docs and the current repository context are the source of truth.
 
-Use this order of truth when working in a Prisma PHP project:
+## Repository mode vs app mode
 
-1. The user’s explicit request
+There are two valid Prisma PHP contexts, and AI must not mix them up.
+
+### 1. Package/docs repo mode
+
+This workspace is package/docs repo mode.
+
+In this repo, use this order first:
+
+1. the user's explicit request
+2. `dist/docs/index.md`
+3. the relevant document in `dist/docs`
+4. `.github/copilot-instructions.md`
+5. `package.json` and nearby repo files
+6. Prisma PHP core internals only when the docs still leave a gap
+7. general framework knowledge as the last fallback
+
+Important repo-mode rules:
+
+- do not assume `./prisma-php.json` exists in this repository
+- do not assume `node_modules/prisma-php/dist/docs` is the active docs location for this workspace
+- do not assume `vendor/tsnc/prisma-php/src` exists locally in this workspace unless the task explicitly provides or references it
+- when editing or improving Prisma PHP guidance in this repo, keep `AGENTS.md`, `.github/copilot-instructions.md`, and `dist/docs` aligned with each other
+
+### 2. Consumer app mode
+
+When a task is about a generated Prisma PHP application rather than this package repo, use this app-mode order:
+
+1. the user's explicit request
 2. `./prisma-php.json`
-3. Installed Prisma PHP docs in `node_modules/prisma-php/dist/docs`
-4. Project-local conventions and existing project files
+3. installed Prisma PHP docs in `node_modules/prisma-php/dist/docs`
+4. project-local conventions and existing app files
 5. Prisma PHP core internals in `vendor/tsnc/prisma-php/src`
-6. General framework knowledge
+6. general framework knowledge
 
 If a documented Prisma PHP rule conflicts with a habit from another framework, follow Prisma PHP.
 
-## Installed docs location
+## Source of truth in this repo
 
-The installed Prisma PHP documentation for the active project lives in:
-
-```txt
-node_modules/prisma-php/dist/docs
-```
-
-AI agents must treat this directory as the primary documentation source for Prisma PHP behavior, routing, file conventions, features, helpers, and usage patterns for the installed version.
-
-Before writing framework-specific code, inspect the relevant documentation files in this directory.
-
-## Read `prisma-php.json` first
-
-Before generating code or making framework decisions, read:
+The Prisma PHP docs shipped in this repository live in:
 
 ```txt
-./prisma-php.json
+dist/docs
 ```
 
-Treat it as the capability manifest for the current app.
+The current docs entry point in this repository is:
 
-Use it to verify whether the project has features such as:
+```txt
+dist/docs/index.md
+```
 
-- `tailwindcss`
-- `backendOnly`
-- `swaggerDocs`
-- `websocket`
-- `mcp`
-- `prisma`
-- `typescript`
-
-Also use it to confirm environment-specific project details such as:
-
-- project root path
-- PHP executable path
-- BrowserSync target and path rewrite rules
-- component scan directories
-- excluded files
-
-Do not assume a feature is enabled unless it is present and enabled in `prisma-php.json`.
-
-## Framework-managed generated files
-
-Prisma PHP automatically generates and maintains certain framework files.
-
-### `files-list.json`
-
-Do **not** create, edit, reorder, or manually maintain `files-list.json`.
-
-Treat `files-list.json` as a **framework-generated file** for route discovery and internal bookkeeping. When creating, renaming, or removing routes, make the change in the actual route folders and route files under `src/app` and let Prisma PHP regenerate `files-list.json` automatically.
-
-If a route task appears to require editing `files-list.json`, that is almost certainly the wrong approach. The correct workflow is:
-
-1. create or update the route folder/file in `src/app`
-2. do **not** touch `files-list.json`
-3. let Prisma PHP regenerate framework-managed route metadata
+When updating AI guidance for Prisma PHP itself, treat `dist/docs` as the authoritative local documentation surface for this workspace.
 
 ## Required doc-routing map
 
-Before generating code, choose the documentation file based on the task.
+Before generating code, examples, instructions, or reviews, choose the documentation file based on the task.
 
 ### Read these docs first for these tasks
 
-- **Project setup, folder placement, route file choice, or overall file conventions**  
+- **Framework orientation, repo-wide guidance, or the high-level AI quick start**  
+  Read `index.md`
+
+- **Project setup, folder placement, route file choice, feature placement, or overall file conventions**  
   Read `project-structure.md`
 
 - **Creating a page, layout, nested route, dynamic route, or normal UI route**  
@@ -92,14 +80,29 @@ Before generating code, choose the documentation file based on the task.
 - **Creating, editing, composing, or reviewing PHPX components, props, children, fragments, icons, buttons, accordions, or component file placement**  
   Read `components.md`
 
-- **File uploads, `multipart/form-data`, `$_FILES`, `PP\FileManager\UploadFile`, rename flows, delete flows, allowed file types, upload size rules, or file manager UI behavior**  
-  Read `file-manager.md`, then verify the official File Manager docs at `vendor/tsnc/prisma-php/src/FileManager/UploadFile.php`
+- **Loading data, calling backend logic from the frontend, `pp.fetchFunction(...)`, `#[Exposed]`, route-local mutations, streaming responses, or interactive backend validation**  
+  Read `fetching-data.md`
+
+- **PulsePoint runtime behavior such as `pp.state`, `pp.effect`, `pp-for`, `pp-spread`, or `pp-ref`**  
+  Read `pulsepoint.md`
+
+- **Validation, sanitization, `PP\Validator`, `PP\Rule`, field validation, form validation, live validation, or request validation rules**  
+  Read `validator.md`, then apply the relevant local guidance from `fetching-data.md`, `error-handling.md`, and `route-handlers.md`
+
+- **File uploads, `multipart/form-data`, `$_FILES`, `PP\FileManager\UploadFile`, rename flows, replace flows, delete flows, allowed file types, upload size rules, or file manager UI behavior**  
+  Read `file-manager.md`, then verify the official File Manager docs and, when internals matter, the core upload file at `vendor/tsnc/prisma-php/src/FileManager/UploadFile.php`
+
+- **SMTP setup, `.env` mail variables, `PP\PHPMailer\Mailer`, HTML bodies, plain-text bodies, recipients, reply-to, CC, BCC, or attachments**  
+  Read `email.md`, then verify the official email docs at `email-get-started`
+
+- **Ratchet websocket setup, `IoServer`, `HttpServer`, `WsServer`, `ConnectionManager`, browser `WebSocket`, or realtime route behavior**  
+  Read `websocket.md`, then verify the official websocket docs in this order: `websocket-get-started`, `websocket-chat-app`
+
+- **MCP support, `#[McpTool]`, `#[Schema]`, `PhpMcp\Server\Server`, `StreamableHttpServerTransport`, AI tool endpoints, or `src/Lib/MCP/mcp-server.php`**  
+  Read `mcp.md`, then verify the official MCP docs in this order: `prisma-php-ai-mcp`, `ai-tools`
 
 - **Authentication strategy, `AuthConfig.php`, route privacy model, sign-in, sign-out, JWT session lifecycle, `refreshUserSession`, RBAC, credentials auth, OAuth, social login, or auth state manager usage**  
-  Read `authentication.md`, then verify the matching official docs in this order: `auth-get-started`, `credentials`, and `state-manager-auth`
-
-- **Loading data, calling backend logic from the frontend, `pp.fetchFunction(...)`, `#[Exposed]`, or interactive backend validation**  
-  Read `fetching-data.md`
+  Read `authentication.md`, then verify the matching official docs in this order: `auth-get-started`, `credentials`, `state-manager-auth`
 
 - **Cache behavior, route caching, invalidation, or `CacheHandler`**  
   Read `caching.md`
@@ -110,17 +113,11 @@ Before generating code, choose the documentation file based on the task.
 - **Expected errors, uncaught exceptions, `error.php`, `not-found.php`, `ErrorHandler`, or validation failures as expected errors**  
   Read `error-handling.md`
 
-- **Metadata, title, description, head scripts, favicon, icon, or `MainLayout` metadata behavior**  
+- **Metadata, title, description, custom head tags, favicon, icon, apple icon, or `MainLayout` metadata behavior**  
   Read `metadata-and-og-images.md`
 
-- **API-style routes, JSON responses, handlers, form-processing endpoints, `route.php`, or request validation in handlers**  
+- **API-style routes, JSON responses, handlers, webhooks, form-processing endpoints, `route.php`, or request validation in handlers**  
   Read `route-handlers.md`
-
-- **PulsePoint runtime behavior such as `pp.state`, `pp.effect`, `pp.ref`, `pp-for`, `pp-spread`, or `pp-ref`**  
-  Read `pulsepoint.md`
-
-- **Sanitization, `PP\Validator`, `PP\Rule`, field validation, form validation, live validation, or backend validation rules**  
-  Read `validator.md`, then apply the relevant local guidance from `fetching-data.md`, `error-handling.md`, and `route-handlers.md`
 
 - **Upgrading Prisma PHP, enabling features, syncing framework-managed project files, or running project updates**  
   Read `upgrading.md`
@@ -128,20 +125,55 @@ Before generating code, choose the documentation file based on the task.
 - **First-time project installation or app creation flow**  
   Read `installation.md`
 
-- **General doc entry point and framework orientation**  
-  Read `index.md`
+## Docs inventory in this repo
 
-## Default interactive UI and fetching rule
+The current Prisma PHP docs shipped here include:
 
-For normal full-stack Prisma PHP work, assume the user wants the **PulsePoint-first** approach unless they explicitly ask otherwise.
+- `authentication.md`
+- `caching.md`
+- `components.md`
+- `email.md`
+- `error-handling.md`
+- `fetching-data.md`
+- `file-manager.md`
+- `index.md`
+- `installation.md`
+- `layouts-and-pages.md`
+- `mcp.md`
+- `metadata-and-og-images.md`
+- `prisma-php-orm.md`
+- `project-structure.md`
+- `pulsepoint.md`
+- `route-handlers.md`
+- `upgrading.md`
+- `validator.md`
+- `websocket.md`
+
+When adding or reviewing AI guidance, do not stop at older docs only. Make sure the guidance also covers `email.md`, `mcp.md`, and `websocket.md`, plus newer behavior documented in `fetching-data.md` and `metadata-and-og-images.md`.
+
+## Framework-generated files
+
+Prisma PHP automatically generates and maintains certain framework files in consumer apps.
+
+### `files-list.json`
+
+Do **not** create, edit, reorder, or manually maintain `files-list.json`.
+
+Treat `files-list.json` as a framework-generated file for route discovery and internal bookkeeping. When creating, renaming, or removing routes in a Prisma PHP app, make the change in the actual route folders and route files under `src/app` and let Prisma PHP regenerate `files-list.json` automatically.
+
+If a route task appears to require editing `files-list.json`, that is almost certainly the wrong approach.
+
+## Default interactive UI and data-flow rule
+
+For normal full-stack Prisma PHP work, assume the user wants the PulsePoint-first approach unless they explicitly ask otherwise.
 
 Default interaction stack:
 
 1. render route UI with `index.php`
-2. keep browser-side interactivity in **PulsePoint**
-3. call backend PHP from the frontend with **`pp.fetchFunction(...)`**
-4. mark callable PHP functions or methods with **`#[Exposed]`**
-5. validate and normalize input on the PHP side with **`PP\Validator`**
+2. keep browser-side interactivity in PulsePoint
+3. call backend PHP from the frontend with `pp.fetchFunction(...)`
+4. mark callable PHP functions or methods with `#[Exposed]`
+5. validate and normalize input on the PHP side with `PP\Validator`
 
 Treat this as the default for:
 
@@ -154,6 +186,8 @@ Treat this as the default for:
 - inline validation
 - route-local CRUD actions
 - dashboard interactions
+- streaming assistants
+- progress logs
 - similar reactive page behavior
 
 Do **not** default to:
@@ -161,10 +195,11 @@ Do **not** default to:
 - a PHP-only interaction style
 - ad hoc `fetch('/api/...')` patterns
 - extra `route.php` files for page-local interactions that already fit `pp.fetchFunction(...)`
+- a separate Node realtime or tool server when the documented Prisma PHP runtime already fits the task
 
-Choose a more PHP-only pattern only when:
+Choose a more PHP-only or handler-only pattern only when:
 
-- the user explicitly asks for PHP-only behavior
+- the user explicitly asks for it
 - the task is clearly non-reactive
 - the task is a standalone API, webhook, integration endpoint, or public JSON handler
 
@@ -176,20 +211,30 @@ There are two related structure rules, and AI must not mix their responsibilitie
 
 Use this pattern:
 
-1. PHP
+1. PHP first
 2. one parent HTML element for the route content
-3. when PulsePoint is present, keep one `<script>` block as the last child inside that same root element
+3. when PulsePoint is present, put `pp-component` on that route root
+4. keep one `<script>` block as the last child inside that same root element
+
+Also follow these route-file rules:
+
+- `index.php` and nested `layout.php` must render a single parent HTML element
+- only the root `layout.php` should define `<html>`, `<head>`, and `<body>`
+- when PulsePoint is present in a root `layout.php`, keep `MainLayout::$children` and any `<script>` inside one clear wrapper
 
 Example:
 
 ```php
 <?php
 
-// PHP Code
+use PP\MainLayout;
+
+MainLayout::$title = 'Todos';
+MainLayout::$description = 'Track tasks and view the current item count.';
 ?>
 
-<section pp-component="dashboard-page">
-    <h1>Dashboard</h1>
+<section pp-component="todos-page">
+    <h1>Todos</h1>
     <p>Count: {count}</p>
     <script>
         const [count, setCount] = pp.state(0);
@@ -201,15 +246,18 @@ Example:
 
 Use this pattern:
 
-1. PHP
+1. PHP first
 2. exactly one parent root element
-3. keep any component-local `<script>` inside that root element, and let Prisma PHP inject `pp-component` for that boundary
+3. keep any component-local `<script>` inside that root element
+4. let Prisma PHP inject `pp-component` for that boundary automatically
 
 Example:
 
 ```php
 <?php
-// PHP Code
+
+// PHP code
+
 ?>
 
 <div>
@@ -227,40 +275,91 @@ Do not:
 - manually add `pp-component` inside imported partial source
 - assume `ImportComponent` injects `pp-component` for normal route files
 
-## Default workflow for AI agents
+## Metadata rules
 
-Use this workflow unless the user asks for something narrower:
+For document metadata, prefer `MainLayout::$title` and `MainLayout::$description`.
 
-1. Read `./prisma-php.json`
-2. Read the relevant installed doc from `node_modules/prisma-php/dist/docs`
-3. Inspect nearby project files that match the route, feature, or component being changed
-4. If the task is component-related, read `components.md` before generating PHPX component code
-5. If the task is upload- or file-manager-related, read `file-manager.md` before generating upload, rename, delete, or file-listing code
-6. Generate code using Prisma PHP conventions
-7. Inspect `vendor/tsnc/prisma-php/src` only if framework internals are required
+Important metadata rules:
 
-Do not jump directly into framework internals if the installed docs already answer the task.
+- a local `$title` variable only affects rendered page content unless you also assign metadata through `MainLayout`
+- use `MainLayout::addCustomMetaData(...)` for additional `<meta>` values when needed
+- keep visible headings separate from document metadata when the UI text and SEO title must differ
+- read `metadata-and-og-images.md` or `layouts-and-pages.md` before inventing Next.js-style metadata exports or Open Graph image workflows
+
+## Streaming and SSE rules
+
+Prisma PHP supports streaming through `pp.fetchFunction(...)` when an exposed function yields values.
+
+Default streaming rules:
+
+- prefer an exposed generator that simply yields strings or arrays
+- let Prisma PHP handle the SSE response automatically for normal `pp.fetchFunction(...)` streaming
+- on the client, put stream UI updates in `onStream`, `onStreamError`, and `onStreamComplete`
+- do not wait for a final JSON payload when the response is streamed
+
+Current parsing rules AI should know:
+
+- Prisma PHP sends streamed payloads as SSE `data:` lines
+- the built-in `pp.fetchFunction(...)` stream parser currently forwards only `data:` lines to `onStream`
+- `event:`, `id:`, and `retry:` may be emitted by low-level SSE helpers, but the built-in stream callback currently ignores them
+- prefer JSON values or single-line strings for streamed chunks instead of multi-line text blobs
+
+Low-level helpers exist when manual SSE control is required:
+
+- `PP\Streaming\SSE`
+- `PP\Streaming\ServerSentEvent`
+
+Core locations documented for those helpers are:
+
+```txt
+vendor/tsnc/prisma-php/src/SSE.php
+vendor/tsnc/prisma-php/src/Streaming/ServerSentEvent.php
+```
 
 ## Route file decision rules
 
 When the task is about creating or editing a route, do not guess.
 
-Important: creating a route means creating or updating the correct folder and route file under `src/app`. It does **not** mean editing generated route metadata. In particular, never update `files-list.json` by hand.
+Important: creating a route means creating or updating the correct folder and route file under `src/app`. It does **not** mean editing generated route metadata.
 
-- Use `index.php` for rendered UI and normal page routes, and default to PulsePoint plus `pp.fetchFunction(...)` for interactive behavior inside those routes unless the user explicitly asks for PHP-only behavior
-- Use `layout.php` for shared UI that wraps route subtrees
-- Use `route.php` for direct handlers such as JSON endpoints, API-style routes, AJAX handlers, form-processing endpoints, webhooks, or other no-view server logic; do not default to `route.php` for normal route-local interactions that fit PulsePoint plus `pp.fetchFunction(...)`
-- Use `not-found.php` for route-specific not-found UI
-- Use `error.php` for route or app-level error UI
+- use `index.php` for rendered UI and normal page routes
+- use `layout.php` for shared UI that wraps route subtrees
+- use `route.php` for direct handlers such as JSON endpoints, API-style routes, AJAX handlers, form-processing endpoints, and webhooks
+- use `not-found.php` for route-specific not-found UI
+- use `error.php` for route or app-level error UI
+- use `loading.php` when the task is specifically about a loading UI state for a route subtree
 
-Also verify `backendOnly` in `prisma-php.json`:
+For normal route-local interactivity, prefer `index.php` plus PulsePoint and `pp.fetchFunction(...)` over inventing extra handlers.
+
+In a consumer app, also verify `backendOnly` in `prisma-php.json`:
 
 - if `backendOnly` is `false`, normal routes should usually be implemented with `index.php`
 - if `backendOnly` is `true`, route behavior will usually center on `route.php`
 
+## Default workflow for AI agents
+
+Use this workflow unless the user asks for something narrower.
+
+### For this repository
+
+1. read `dist/docs/index.md`
+2. read the relevant document in `dist/docs`
+3. inspect nearby docs, examples, and guidance files in this repo
+4. keep `AGENTS.md` and `.github/copilot-instructions.md` aligned with the documented behavior
+5. inspect framework internals only when the docs still leave a real gap
+
+### For consumer app examples or generated-app tasks
+
+1. read `./prisma-php.json`
+2. read the relevant installed doc from `node_modules/prisma-php/dist/docs`
+3. inspect nearby project files that match the route, feature, or component being changed
+4. inspect `vendor/tsnc/prisma-php/src` only if the docs do not answer the task
+
+Do not jump directly into framework internals if the current docs already answer the task.
+
 ## Authentication rules
 
-When the task involves auth, do not guess from Laravel, NextAuth, generic JWT packages, or ad hoc middleware habits.
+When the task involves auth, do not guess from Laravel, generic JWT packages, or ad hoc middleware habits.
 
 Use this auth decision flow:
 
@@ -269,7 +368,7 @@ Use this auth decision flow:
 3. inspect `src/Lib/Auth/AuthConfig.php` when present
 4. inspect the current auth-related routes under `src/app`
 5. inspect Prisma models that support auth before generating registration, login, or provider code
-6. keep route protection, function protection, and session lifecycle aligned with Prisma PHP’s documented auth model
+6. keep route protection, function protection, and session lifecycle aligned with Prisma PHP's documented auth model
 
 Important auth rules:
 
@@ -304,7 +403,82 @@ Important file-manager rules:
 - do **not** place uploaded files inside `src/app`
 - do **not** assume HTML size hints replace `php.ini` upload limits
 - do **not** invent undocumented storage abstractions when `UploadFile` already fits the task
-- for upload, rename, replace, delete, and file-listing tasks, read `file-manager.md` first
+
+## Email rules
+
+When the task involves email, read `email.md` first.
+
+Prisma PHP email follows the documented `PP\PHPMailer\Mailer` model backed by PHPMailer. Do not replace it with raw `mail()`, undocumented wrappers, or habits copied from another mail framework.
+
+Use this email workflow:
+
+1. read `email.md`
+2. inspect `.env` for SMTP and sender values in the target app
+3. inspect the route, exposed function, or handler that sends the email
+4. inspect the HTML body or attachment source when present
+5. inspect framework internals only when the docs and current app code still leave a gap
+
+The documented core mailer file is:
+
+```txt
+vendor/tsnc/prisma-php/src/PHPMailer/Mailer.php
+```
+
+Important email rules:
+
+- keep SMTP credentials and sender defaults in `.env`, not in route files
+- the documented env vars are `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_ENCRYPTION`, `SMTP_PORT`, `MAIL_FROM`, and `MAIL_FROM_NAME`
+- validate user-provided email fields before calling the mailer
+- prefer the documented fluent API such as `to(...)`, `subject(...)`, `html(...)`, `text(...)`, `attach(...)`, and `send()`
+- use `raw()` only when low-level PHPMailer access is genuinely needed
+
+## WebSocket rules
+
+When the task involves realtime messaging, presence, live dashboards, `Ratchet`, or browser `WebSocket`, read `websocket.md` first.
+
+Prisma PHP websocket support follows a Ratchet-based PHP server plus a `ConnectionManager` under `src/Lib/Websocket`. Do not replace that default with Socket.IO, a separate Node server, or an unrelated hosted realtime service unless the user explicitly asks for a different architecture.
+
+Use this websocket workflow:
+
+1. read `websocket.md`
+2. inspect whether websocket support is enabled in `prisma-php.json` in the target app
+3. inspect `src/Lib/Websocket`
+4. inspect the route or client script that opens the browser `WebSocket`
+5. inspect `settings/restart-websocket.ts` when local restart behavior matters
+6. inspect framework internals only when the docs do not answer the task
+
+Important websocket rules:
+
+- use `src/Lib/Websocket/websocket-server.php` as the source of truth for startup behavior
+- use `src/Lib/Websocket/ConnectionManager.php` as the lifecycle boundary for clients and broadcasts
+- preserve documented env vars and defaults: `WS_NAME`, `WS_VERSION`, `WS_HOST`, `WS_PORT`, `WS_VERBOSE`, `APP_TIMEZONE`
+- preserve CLI overrides through `--host=...`, `--port=...`, and `--verbose=...`
+- preserve the documented casing `src/Lib/Websocket`
+- for existing apps, enable `websocket` in `prisma-php.json` and run `npx pp update project -y` before inventing manual scaffolding
+
+## MCP rules
+
+When the task involves Model Context Protocol support, read `mcp.md` first.
+
+Prisma PHP MCP support follows the documented `PhpMcp\Server` model with attribute-based tool discovery. Do not replace it with custom REST endpoints pretending to be MCP, hand-rolled JSON-RPC parsing, or unrelated agent abstractions when the documented Prisma PHP stack already fits the task.
+
+Use this MCP workflow:
+
+1. read `mcp.md`
+2. inspect whether MCP support is enabled in `prisma-php.json` in the target app
+3. inspect `src/Lib/MCP`
+4. inspect tool classes and the services they call
+5. inspect auth, ORM, and env configuration when tools read protected or database-backed data
+6. inspect framework internals only when the docs do not answer the task
+
+Important MCP rules:
+
+- use `src/Lib/MCP/mcp-server.php` as the source of truth for startup behavior
+- preserve attribute-based discovery with `#[McpTool]` and `#[Schema]`
+- preserve the documented discovery model built around scanning the source tree instead of manually wiring every tool class by default
+- preserve the documented casing `src/Lib/MCP`
+- preserve documented env vars and defaults: `MCP_NAME`, `MCP_VERSION`, `MCP_HOST`, `MCP_PORT`, `MCP_PATH_PREFIX`, `MCP_JSON_RESPONSE`, `APP_TIMEZONE`
+- for existing apps, enable `mcp` in `prisma-php.json` and run `npx pp update project -y` before inventing manual scaffolding
 
 ## Prisma ORM workflow rules
 
@@ -321,28 +495,32 @@ Use this ORM decision flow:
 7. after schema synchronization, run `npx ppo generate`
 8. only then write or update PHP code that depends on the generated Prisma classes
 
-Important rules:
+Important ORM rules:
 
 - do **not** use `npx pp update project -y` as the normal fix for Prisma ORM schema changes
 - use `npx prisma migrate dev` for the normal development migration workflow
 - use `npx prisma migrate deploy` for production or CI/CD migration application
 - use `npx prisma db push` only for explicit prototyping or no-migration database sync
 - do **not** treat `npx ppo generate` as a migration step
-- `npx ppo generate` should run the first time generated PHP ORM classes are needed and whenever `schema.prisma` changes
-- if the task mentions Prisma ORM, `schema.prisma`, migrations, generated classes, SQLite, MySQL, or PostgreSQL, read `prisma-php-orm.md` first
 
 ## Validation rules
 
-When a task involves user input, form handling, search params, JSON payloads, `pp.fetchFunction(...)`, or `route.php` bodies, do not trust raw values.
+When a task involves user input, form handling, search params, JSON payloads, `pp.fetchFunction(...)`, `route.php` bodies, or tool parameters, do not trust raw values.
 
 Default Prisma PHP validation rules:
 
-- use **`PP\Validator`** as the backend validation and normalization layer
-- prefer the **`Rule` builder** for rule-based validation
+- use `PP\Validator` as the backend validation and normalization layer
+- prefer the `Rule` builder for rule-based validation
 - validate in PHP even when the frontend already performs local checks
 - return structured validation results for expected failures
 - do not treat routine invalid input as an uncaught exception
 - in reactive flows, use PulsePoint for local state and `Validator` for authoritative server validation
+
+When internals matter, the documented Prisma PHP core validator location is:
+
+```txt
+vendor/tsnc/prisma-php/src/Validator.php
+```
 
 ## PulsePoint rules
 
@@ -355,18 +533,6 @@ Also follow these rules:
 - keep backend concerns separate from PulsePoint runtime concerns
 - prefer simple documented runtime primitives over abstractions copied from other ecosystems
 
-## Reactive frontend + server-call rule
-
-For frontend interactivity in Prisma PHP, prefer the documented Prisma PHP pattern:
-
-- use **PulsePoint** for reactive browser state and UI behavior
-- use **`pp.fetchFunction(...)`** for page-local or component-local server calls
-- expose callable PHP functions with **`#[Exposed]`**
-
-Do not default to handcrafted `fetch('/api/...')` calls, ad hoc AJAX endpoints, or extra `route.php` files when the task is a normal reactive UI interaction that fits `pp.fetchFunction(...)`.
-
-Use `route.php` when the user explicitly needs an API-style endpoint, webhook, JSON route, or handler that should exist independently of the current page.
-
 ## Component rules
 
 When the task involves Prisma PHPX components, reusable UI elements, props, children, fragments, icons, buttons, accordions, or component composition, read `components.md` first.
@@ -377,7 +543,6 @@ Also follow these rules:
 - keep component file names and class names aligned
 - preserve documented PHPX patterns for `$props`, `$children`, `$class`, and `getAttributes(...)`
 - follow documented component placement and grouping conventions before inspecting framework internals
-- use `vendor/tsnc/prisma-php/src` only when the installed docs and `components.md` do not answer the task
 
 ## Prisma PHP XML syntax rules
 
@@ -444,24 +609,30 @@ Do not output permissive HTML shorthand in Prisma PHP UI files.
 
 ## When to inspect framework internals
 
-Prisma PHP core Composer package files live in:
+Inspect framework internals only when the docs and current files do not answer the task.
+
+Useful app-mode core locations include:
 
 ```txt
 vendor/tsnc/prisma-php/src
+vendor/tsnc/prisma-php/src/PHPMailer/Mailer.php
+vendor/tsnc/prisma-php/src/FileManager/UploadFile.php
+vendor/tsnc/prisma-php/src/Validator.php
+vendor/tsnc/prisma-php/src/SSE.php
+vendor/tsnc/prisma-php/src/Streaming/ServerSentEvent.php
 ```
 
-Inspect this directory only when the task depends on framework internals not already answered by the installed docs.
-
-Use it when the task involves:
+Use framework internals when the task involves:
 
 - confirming namespaces, classes, or helper names
 - understanding how a core class behaves internally
-- verifying available attributes such as `#[Exposed]`
+- verifying available attributes such as `#[Exposed]`, `#[McpTool]`, or `#[Schema]`
 - checking PHPX compiler or template compiler behavior
 - tracing PulsePoint integration points inside Prisma PHP
-- debugging framework-level issues that are not explained by the docs
+- confirming mailer, SSE, websocket, or MCP runtime behavior not already clear from the docs
+- debugging framework-level issues that are not explained by the current docs
 
-For ordinary app work, prefer the installed docs and local project files first.
+For ordinary app or docs work, prefer the current docs and local project files first.
 
 ## Upgrade and feature-enable workflow
 
@@ -469,20 +640,16 @@ If the task involves enabling a feature, syncing framework-managed files, or upd
 
 Important rules:
 
-- update `prisma-php.json` before assuming a feature is active
+- update `prisma-php.json` before assuming a feature is active in a consumer app
 - do not assume Tailwind, Prisma, Swagger, WebSocket, MCP, or TypeScript support is enabled unless `prisma-php.json` says so
 - after changing feature flags, follow the documented project update flow
-- for AI-driven or scripted updates, prefer:
+- for AI-driven or scripted updates, prefer `npx pp update project -y`
 
-```bash
-npx pp update project -y
-```
-
-This command is for project updates and framework-managed file refreshes. It is not the default ORM migration command.
+That command is for project updates and framework-managed file refreshes. It is not the default ORM migration command.
 
 ## Final operating rule
 
-When Prisma PHP behavior is documented locally, read the relevant installed doc first and follow it.
+When Prisma PHP behavior is documented locally, read the relevant current doc first and follow it.
 
 Do not guess.
 
