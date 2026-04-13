@@ -32,6 +32,7 @@ Important repo-mode rules:
 - do not assume `node_modules/prisma-php/dist/docs` is the active docs location for this workspace
 - do not assume `vendor/tsnc/prisma-php/src` exists locally in this workspace unless the task explicitly provides or references it
 - when editing or improving Prisma PHP guidance in this repo, keep `AGENTS.md`, `.github/copilot-instructions.md`, and `dist/docs` aligned with each other
+- keep each `dist/docs/*.md` page AI-discoverable on its own by making the frontmatter description and opening guidance explicit about when agents should read that file and which nearby docs to consult next
 
 ### 2. Consumer app mode
 
@@ -74,6 +75,12 @@ Before generating code, examples, instructions, or reviews, choose the documenta
 - **Project setup, folder placement, route file choice, feature placement, or overall file conventions**  
   Read `project-structure.md`
 
+- **CLI project creation, starter kits, feature flags, or `npx pp update project` usage**  
+  Read `commands.md`
+
+- **Backend-only Prisma PHP usage, API-first projects, `backendOnly`, separate frontend consumers, or CORS setup for API routes**  
+  Read `backend-only.md`
+
 - **Creating a page, layout, nested route, dynamic route, or normal UI route**  
   Read `layouts-and-pages.md`
 
@@ -83,11 +90,17 @@ Before generating code, examples, instructions, or reviews, choose the documenta
 - **Loading data, calling backend logic from the frontend, `pp.fetchFunction(...)`, `#[Exposed]`, route-local mutations, streaming responses, or interactive backend validation**  
   Read `fetching-data.md`
 
+- **AI integration, provider SDKs, chat UIs, streamed assistant output, or deciding between page-local assistant UI, websocket, and MCP tools**  
+  Read `get-started-ia.md`, then use `fetching-data.md`, `validator.md`, `websocket.md`, or `mcp.md` as needed
+
 - **PulsePoint runtime behavior such as `pp.state`, `pp.effect`, `pp-for`, `pp-spread`, or `pp-ref`**  
   Read `pulsepoint.md`
 
 - **Validation, sanitization, `PP\Validator`, `PP\Rule`, field validation, form validation, live validation, or request validation rules**  
   Read `validator.md`, then apply the relevant local guidance from `fetching-data.md`, `error-handling.md`, and `route-handlers.md`
+
+- **Environment variables, `.env`, `PP\Env`, `Env::get`, `Env::string`, `Env::bool`, `Env::int`, feature flags, host and port config, or runtime bootstrap settings**  
+  Read `env.md`, then verify the official env docs at `env` and `env-file`
 
 - **File uploads, `multipart/form-data`, `$_FILES`, `PP\FileManager\UploadFile`, rename flows, replace flows, delete flows, allowed file types, upload size rules, or file manager UI behavior**  
   Read `file-manager.md`, then verify the official File Manager docs and, when internals matter, the core upload file at `vendor/tsnc/prisma-php/src/FileManager/UploadFile.php`
@@ -119,6 +132,9 @@ Before generating code, examples, instructions, or reviews, choose the documenta
 - **API-style routes, JSON responses, handlers, webhooks, form-processing endpoints, `route.php`, or request validation in handlers**  
   Read `route-handlers.md`
 
+- **Swagger or OpenAPI generation, `swaggerDocs`, `pphp-swagger.json`, `create-swagger-docs`, or `settings/prisma-schema-config.json`**  
+  Read `swagger-docs.md`
+
 - **Upgrading Prisma PHP, enabling features, syncing framework-managed project files, or running project updates**  
   Read `upgrading.md`
 
@@ -130,12 +146,16 @@ Before generating code, examples, instructions, or reviews, choose the documenta
 The current Prisma PHP docs shipped here include:
 
 - `authentication.md`
+- `backend-only.md`
 - `caching.md`
+- `commands.md`
 - `components.md`
 - `email.md`
+- `env.md`
 - `error-handling.md`
 - `fetching-data.md`
 - `file-manager.md`
+- `get-started-ia.md`
 - `index.md`
 - `installation.md`
 - `layouts-and-pages.md`
@@ -145,11 +165,12 @@ The current Prisma PHP docs shipped here include:
 - `project-structure.md`
 - `pulsepoint.md`
 - `route-handlers.md`
+- `swagger-docs.md`
 - `upgrading.md`
 - `validator.md`
 - `websocket.md`
 
-When adding or reviewing AI guidance, do not stop at older docs only. Make sure the guidance also covers `email.md`, `mcp.md`, and `websocket.md`, plus newer behavior documented in `fetching-data.md` and `metadata-and-og-images.md`.
+When adding or reviewing AI guidance, do not stop at older docs only. Make sure the guidance also covers `backend-only.md`, `email.md`, `env.md`, `get-started-ia.md`, `mcp.md`, `swagger-docs.md`, and `websocket.md`, plus newer behavior documented in `fetching-data.md` and `metadata-and-og-images.md`.
 
 ## Framework-generated files
 
@@ -431,6 +452,26 @@ Important email rules:
 - validate user-provided email fields before calling the mailer
 - prefer the documented fluent API such as `to(...)`, `subject(...)`, `html(...)`, `text(...)`, `attach(...)`, and `send()`
 - use `raw()` only when low-level PHPMailer access is genuinely needed
+
+## Env rules
+
+When the task involves `.env`, `PP\Env`, feature flags, ports, host names, timezones, API keys, numeric limits, or other runtime configuration values, read `env.md` first.
+
+Use this env workflow:
+
+1. read `env.md`
+2. inspect `.env` or the deployment environment when the task depends on actual values
+3. inspect the bootstrap or server entry file that loads or consumes the environment
+4. inspect the feature-specific doc such as `email.md`, `mcp.md`, `websocket.md`, `get-started-ia.md`, or `prisma-php-orm.md` when the env values belong to that feature
+5. inspect `vendor/tsnc/prisma-php/src/Env.php` only if the docs do not answer the task
+
+Important env rules:
+
+- prefer `PP\Env` over repeated ad hoc `getenv()` parsing in documented Prisma PHP code paths
+- use `Env::string(...)`, `Env::bool(...)`, and `Env::int(...)` for typed access with defaults
+- use `Env::get(...)` when raw nullable string access is actually needed
+- remember that `PP\Env` reads values from `getenv()`, `$_ENV`, and `$_SERVER`; it does not parse `.env` by itself
+- keep secrets and deployment-specific settings in `.env` or the real runtime environment, not hardcoded in route files or components
 
 ## WebSocket rules
 
