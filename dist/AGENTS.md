@@ -2,66 +2,50 @@
 
 # Prisma PHP AI Agent Rules
 
-This repository is the Prisma PHP package and docs workspace, not a generated Prisma PHP application.
+This AGENTS.md belongs in the root of a Prisma PHP application.
 
-Treat `dist/docs/index.md` as the entry point for Prisma PHP guidance in this repo, then read the matching document in `dist/docs` before generating, editing, reviewing, or documenting framework-specific behavior.
+Treat `./node_modules/prisma-php/dist/docs/index.md` as the entry point for Prisma PHP guidance, then read the matching document in `./node_modules/prisma-php/dist/docs` before generating, editing, reviewing, or documenting framework-specific behavior.
 
-Do not guess framework behavior from Laravel, Next.js, React, Vue, Livewire, Alpine, Symfony, Socket.IO, or generic PHP habits. Prisma PHP's local docs and the current repository context are the source of truth.
+Do not guess framework behavior from Laravel, Next.js, React, Vue, Livewire, Alpine, Symfony, Socket.IO, or generic PHP habits. Prisma PHP's installed docs in `./node_modules/prisma-php/dist/docs` and the current project files are the source of truth.
 
-## Repository mode vs app mode
+## Documentation source of truth
 
-There are two valid Prisma PHP contexts, and AI must not mix them up.
-
-### 1. Package/docs repo mode
-
-This workspace is package/docs repo mode.
-
-In this repo, use this order first:
-
-1. the user's explicit request
-2. `dist/docs/index.md`
-3. the relevant document in `dist/docs`
-4. `.github/copilot-instructions.md`
-5. `package.json` and nearby repo files
-6. Prisma PHP core internals only when the docs still leave a gap
-7. general framework knowledge as the last fallback
-
-Important repo-mode rules:
-
-- do not assume `./prisma-php.json` exists in this repository
-- do not assume `node_modules/prisma-php/dist/docs` is the active docs location for this workspace
-- do not assume `vendor/tsnc/prisma-php/src` exists locally in this workspace unless the task explicitly provides or references it
-- when editing or improving Prisma PHP guidance in this repo, keep `AGENTS.md`, `.github/copilot-instructions.md`, and `dist/docs` aligned with each other
-- keep each `dist/docs/*.md` page AI-discoverable on its own by making the frontmatter description and opening guidance explicit about when agents should read that file and which nearby docs to consult next
-
-### 2. Consumer app mode
-
-When a task is about a generated Prisma PHP application rather than this package repo, use this app-mode order:
+For Prisma PHP projects, use this order first:
 
 1. the user's explicit request
 2. `./prisma-php.json`
-3. installed Prisma PHP docs in `node_modules/prisma-php/dist/docs`
-4. project-local conventions and existing app files
-5. Prisma PHP core internals in `vendor/tsnc/prisma-php/src`
-6. general framework knowledge
+3. the relevant installed document in `./node_modules/prisma-php/dist/docs`
+4. `./AGENTS.md`
+5. project-local conventions and existing app files
+6. Prisma PHP core internals in `vendor/tsnc/prisma-php/src` only when the docs still leave a gap
+7. general framework knowledge as the last fallback
 
-If a documented Prisma PHP rule conflicts with a habit from another framework, follow Prisma PHP.
+Important rules:
 
-## Source of truth in this repo
+- treat `./node_modules/prisma-php/dist/docs` as the single documentation source of truth for the installed Prisma PHP version
+- expect `./AGENTS.md` at the project root
+- when the installed docs and a habit from another framework conflict, follow Prisma PHP
+- when updating Prisma PHP package/docs sources, keep `AGENTS.md`, `.github/copilot-instructions.md`, and `dist/docs` aligned so the published docs stay correct after install
 
-The Prisma PHP docs shipped in this repository live in:
+## Installed docs location
+
+In Prisma PHP applications, the installed docs live in:
 
 ```txt
-dist/docs
+node_modules/prisma-php/dist/docs
 ```
 
-The current docs entry point in this repository is:
+The current docs entry point for the installed version is:
 
 ```txt
-dist/docs/index.md
+node_modules/prisma-php/dist/docs/index.md
 ```
 
-When updating AI guidance for Prisma PHP itself, treat `dist/docs` as the authoritative local documentation surface for this workspace.
+The project root should also include:
+
+```txt
+AGENTS.md
+```
 
 ## Required doc-routing map
 
@@ -86,6 +70,9 @@ Before generating code, examples, instructions, or reviews, choose the documenta
 
 - **Creating, editing, composing, or reviewing PHPX components, props, children, fragments, icons, buttons, accordions, or component file placement**  
   Read `components.md`
+
+- **TypeScript frontend tooling, the `typescript` feature flag, the root `ts/` directory, `ts/main.ts`, npm packages, or registered browser helpers used from template expressions and PulsePoint scripts**  
+  Read `typescript.md`, then use `pulsepoint.md`, `layouts-and-pages.md`, or `components.md` for the affected component boundary
 
 - **Loading data, calling backend logic from the frontend, `pp.fetchFunction(...)`, `#[Exposed]`, route-local mutations, streaming responses, or interactive backend validation**  
   Read `fetching-data.md`
@@ -166,11 +153,12 @@ The current Prisma PHP docs shipped here include:
 - `pulsepoint.md`
 - `route-handlers.md`
 - `swagger-docs.md`
+- `typescript.md`
 - `upgrading.md`
 - `validator.md`
 - `websocket.md`
 
-When adding or reviewing AI guidance, do not stop at older docs only. Make sure the guidance also covers `backend-only.md`, `email.md`, `env.md`, `get-started-ia.md`, `mcp.md`, `swagger-docs.md`, and `websocket.md`, plus newer behavior documented in `fetching-data.md` and `metadata-and-og-images.md`.
+When adding or reviewing AI guidance, do not stop at older docs only. Make sure the guidance also covers `backend-only.md`, `email.md`, `env.md`, `get-started-ia.md`, `mcp.md`, `swagger-docs.md`, `typescript.md`, and `websocket.md`, plus newer behavior documented in `fetching-data.md` and `metadata-and-og-images.md`.
 
 ## Framework-generated files
 
@@ -270,7 +258,6 @@ Use this pattern:
 1. PHP first
 2. exactly one parent root element
 3. keep any component-local `<script>` inside that root element
-4. let Prisma PHP inject `pp-component` for that boundary automatically
 
 Example:
 
@@ -281,7 +268,7 @@ Example:
 
 ?>
 
-<div>
+<div pp-component="search-box">
     <h2>Search</h2>
     <input value="{query}" />
     <script>
@@ -361,20 +348,11 @@ In a consumer app, also verify `backendOnly` in `prisma-php.json`:
 
 Use this workflow unless the user asks for something narrower.
 
-### For this repository
-
-1. read `dist/docs/index.md`
-2. read the relevant document in `dist/docs`
-3. inspect nearby docs, examples, and guidance files in this repo
-4. keep `AGENTS.md` and `.github/copilot-instructions.md` aligned with the documented behavior
-5. inspect framework internals only when the docs still leave a real gap
-
-### For consumer app examples or generated-app tasks
-
 1. read `./prisma-php.json`
-2. read the relevant installed doc from `node_modules/prisma-php/dist/docs`
-3. inspect nearby project files that match the route, feature, or component being changed
-4. inspect `vendor/tsnc/prisma-php/src` only if the docs do not answer the task
+2. read the relevant installed doc from `./node_modules/prisma-php/dist/docs`
+3. inspect `./AGENTS.md` for project-level Prisma PHP guidance
+4. inspect nearby project files that match the route, feature, or component being changed
+5. inspect `vendor/tsnc/prisma-php/src` only if the docs do not answer the task
 
 Do not jump directly into framework internals if the current docs already answer the task.
 
