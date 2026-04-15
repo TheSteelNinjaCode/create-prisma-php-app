@@ -25,7 +25,7 @@ Important rules:
 - treat `./node_modules/prisma-php/dist/docs` as the single documentation source of truth for the installed Prisma PHP version
 - expect `./AGENTS.md` at the project root
 - when the installed docs and a habit from another framework conflict, follow Prisma PHP
-- when updating Prisma PHP package/docs sources, keep `AGENTS.md`, `.github/copilot-instructions.md`, and `dist/docs` aligned so the published docs stay correct after install
+- when updating Prisma PHP package/docs sources, keep `AGENTS.md` and `dist/docs` aligned for consumer apps; if the Prisma PHP package source repo also maintains `.github/copilot-instructions.md`, keep that source-repo file aligned there too
 
 ## Installed docs location
 
@@ -89,6 +89,9 @@ Before generating code, examples, instructions, or reviews, choose the documenta
 - **Environment variables, `.env`, `PP\Env`, `Env::get`, `Env::string`, `Env::bool`, `Env::int`, feature flags, host and port config, or runtime bootstrap settings**  
   Read `env.md`, then verify the official env docs at `env` and `env-file`
 
+- **Bootstrap flow, request initialization, `FUNCTION_CALL_SECRET`, `prisma_php_csrf`, `pp_local_store_key`, route resolution, or runtime init order**  
+  Read `bootstrap-runtime.md`, then use `env.md`, `fetching-data.md`, or `error-handling.md` as needed
+
 - **File uploads, `multipart/form-data`, `$_FILES`, `PP\FileManager\UploadFile`, rename flows, replace flows, delete flows, allowed file types, upload size rules, or file manager UI behavior**  
   Read `file-manager.md`, then verify the official File Manager docs and, when internals matter, the core upload file at `vendor/tsnc/prisma-php/src/FileManager/UploadFile.php`
 
@@ -134,6 +137,7 @@ The current Prisma PHP docs shipped here include:
 
 - `authentication.md`
 - `backend-only.md`
+- `bootstrap-runtime.md`
 - `caching.md`
 - `commands.md`
 - `components.md`
@@ -171,6 +175,20 @@ Do **not** create, edit, reorder, or manually maintain `files-list.json`.
 Treat `files-list.json` as a framework-generated file for route discovery and internal bookkeeping. When creating, renaming, or removing routes in a Prisma PHP app, make the change in the actual route folders and route files under `src/app` and let Prisma PHP regenerate `files-list.json` automatically.
 
 If a route task appears to require editing `files-list.json`, that is almost certainly the wrong approach.
+
+## Framework-managed package scripts
+
+Prisma PHP can generate `package.json` scripts for BrowserSync, Tailwind, TypeScript, WebSocket, MCP, Swagger docs, and related project helpers.
+
+AI agents should follow this default rule:
+
+- prefer `npm run dev` for ordinary local development
+- prefer `npm run build` for ordinary production-style asset builds
+- do **not** default to telling users to run `npm run tailwind`, `npm run tailwind:build`, `npm run ts:watch`, or `npm run ts:build` after routine file changes, because those are usually framework-managed through the generated top-level scripts
+- use `npm run websocket` or `npm run mcp` only when isolating local runtime startup, debugging, or when the project's scripts show those services are not already covered by the normal development flow
+- use `npm run create-swagger-docs` only when Swagger or OpenAPI output must be intentionally generated or refreshed
+
+When a task involves package scripts, read `commands.md` first and inspect the current `package.json` before assuming which feature scripts exist.
 
 ## Default interactive UI and data-flow rule
 
@@ -290,7 +308,7 @@ For document metadata, prefer `MainLayout::$title` and `MainLayout::$description
 Important metadata rules:
 
 - a local `$title` variable only affects rendered page content unless you also assign metadata through `MainLayout`
-- use `MainLayout::addCustomMetaData(...)` for additional `<meta>` values when needed
+- use `MainLayout::addCustomMetadata(...)` for additional `<meta>` values when needed
 - keep visible headings separate from document metadata when the UI text and SEO title must differ
 - read `metadata-and-og-images.md` or `layouts-and-pages.md` before inventing Next.js-style metadata exports or Open Graph image workflows
 
@@ -320,7 +338,7 @@ Low-level helpers exist when manual SSE control is required:
 Core locations documented for those helpers are:
 
 ```txt
-vendor/tsnc/prisma-php/src/SSE.php
+vendor/tsnc/prisma-php/src/Streaming/SSE.php
 vendor/tsnc/prisma-php/src/Streaming/ServerSentEvent.php
 ```
 
@@ -373,9 +391,9 @@ Important auth rules:
 
 - route privacy strategy is configured from `AuthConfig.php`
 - Prisma PHP supports both public-default and private-default route protection strategies
-- sign users in with `Auth::signIn(...)`
-- sign users out with `Auth::signOut(...)`
-- use `refreshUserSession(...)` when current-session auth payloads must be updated after role or profile changes
+- sign users in with `Auth::getInstance()->signIn(...)`
+- sign users out with `Auth::getInstance()->signOut(...)`
+- use `Auth::getInstance()->refreshUserSession(...)` when current-session auth payloads must be updated after role or profile changes
 - use role-based route protection in auth config for page access control
 - use `#[Exposed(allowedRoles: [...])]` for function-level access control when frontend code calls PHP directly
 - for credentials auth, model the schema first, then generate ORM classes before writing auth flows
@@ -637,7 +655,7 @@ vendor/tsnc/prisma-php/src
 vendor/tsnc/prisma-php/src/PHPMailer/Mailer.php
 vendor/tsnc/prisma-php/src/FileManager/UploadFile.php
 vendor/tsnc/prisma-php/src/Validator.php
-vendor/tsnc/prisma-php/src/SSE.php
+vendor/tsnc/prisma-php/src/Streaming/SSE.php
 vendor/tsnc/prisma-php/src/Streaming/ServerSentEvent.php
 ```
 
