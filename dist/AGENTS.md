@@ -194,6 +194,8 @@ When a task involves package scripts, read `commands.md` first and inspect the c
 
 For normal full-stack Prisma PHP work, assume the user wants the PulsePoint-first approach unless they explicitly ask otherwise.
 
+PulsePoint is the primary JavaScript authoring model for frontend work in Prisma PHP. For normal page behavior, keep the client logic inside a plain inline `<script>` within the route or imported-partial root, let Prisma PHP scope and execute it, and prefer `pp.fetchFunction(...)` over ad hoc endpoints.
+
 Default interaction stack:
 
 1. render route UI with `index.php`
@@ -220,6 +222,7 @@ Treat this as the default for:
 Do **not** default to:
 
 - a PHP-only interaction style
+- plain browser-DOM wiring when PulsePoint state, bindings, and native `on*` handlers already fit the task
 - ad hoc `fetch('/api/...')` patterns
 - extra `route.php` files for page-local interactions that already fit `pp.fetchFunction(...)`
 - a separate Node realtime or tool server when the documented Prisma PHP runtime already fits the task
@@ -248,6 +251,7 @@ Also follow these route-file rules:
 - `index.php` and nested `layout.php` must render a single parent HTML element
 - for normal pages and nested layouts, do **not** manually author `pp-component` on that root; Prisma PHP adds it automatically
 - author a plain `<script>` tag inside that root when PulsePoint logic is needed and do **not** add `type="text/pp"` manually
+- write PulsePoint state, derived values, and functions directly at the top level of that script; do **not** wrap them in `DOMContentLoaded`, an IIFE, manual `pp.mount()` calls, or custom scoping helpers
 - only the root `layout.php` should define `<html>`, `<head>`, and `<body>`
 - when PulsePoint is present in a root `layout.php`, keep `MainLayout::$children` and any `<script>` inside one clear wrapper
 
@@ -302,6 +306,7 @@ Do not:
 - put a sibling `<script>` next to a route root or imported partial root
 - manually add `pp-component` inside imported partial source
 - manually add `type="text/pp"` to route or imported-partial scripts
+- wrap imported-partial PulsePoint code in `DOMContentLoaded`, an IIFE, manual `pp.mount()` calls, or custom auto-execute helpers
 
 ## Metadata rules
 
@@ -567,6 +572,10 @@ When a task involves reactive frontend behavior, read `pulsepoint.md` first.
 
 Also follow these rules:
 
+- treat PulsePoint as the primary JavaScript authoring model for normal full-stack frontend work
+- keep page and imported-partial client logic inside the boundary's plain `<script>` tag instead of building extra DOM-ready or self-executing wrappers
+- prefer `pp.fetchFunction(...)` over ad hoc `fetch('/api/...')` calls for page-local PHP interactions
+- reserve plain browser JavaScript outside PulsePoint for external libraries, low-level browser APIs, and reusable helpers in `ts/`
 - do not invent undocumented PulsePoint helpers or directives
 - do not write React, Vue, Alpine, or Livewire syntax and call it PulsePoint
 - keep backend concerns separate from PulsePoint runtime concerns

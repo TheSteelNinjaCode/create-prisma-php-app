@@ -18,12 +18,19 @@
 - Use `npm run create-swagger-docs` only when Swagger or OpenAPI output must be intentionally generated or refreshed.
 - When package-script behavior matters, read `dist/docs/commands.md` first and inspect the actual `package.json` in the target project before assuming which scripts exist.
 
+## PulsePoint-First Frontend Rules
+
+- In full-stack Prisma PHP apps, treat PulsePoint as the primary JavaScript authoring model for frontend behavior.
+- For page-local interactivity, prefer `index.php` or nested `layout.php` with a plain inline `<script>` that contains PulsePoint state and functions directly, and use `pp.fetchFunction(...)` for backend calls.
+- Do not wrap inline PulsePoint code in `DOMContentLoaded`, IIFEs, manual `pp.mount()` calls, or custom scoping/bootstrap helpers. Prisma PHP scopes the component boundary and runs the script for you.
+- Reserve plain browser JavaScript or TypeScript modules for reusable helpers in `ts/`, third-party libraries, low-level browser APIs, or behavior that does not belong inside a PulsePoint component boundary.
+
 ## Route File Conventions
 
 - For PulsePoint-aware `index.php` and nested `layout.php`, keep file order as PHP first, then one parent HTML element; keep the PulsePoint `<script>` as the last child inside that same root element.
 - `index.php` and nested `layout.php` must render a single parent HTML element. Treat that root like a React-style component boundary rather than loose sibling markup.
 - For pages and nested layouts, author a plain single root element and let Prisma PHP inject the PulsePoint `pp-component` scope automatically.
-- Author plain `<script>` tags inside that root when PulsePoint is needed. Do not manually add `type="text/pp"`; Prisma PHP normalizes the script contract for the runtime.
+- Author plain `<script>` tags inside that root when PulsePoint is needed. Put the PulsePoint code at the top level of that script. Do not manually add `type="text/pp"`, `DOMContentLoaded` wrappers, IIFEs, or manual bootstrap code; Prisma PHP normalizes the script contract for the runtime.
 - Only the root `layout.php` should define `<html>`, `<head>`, and `<body>`. When PulsePoint is present, keep `MainLayout::$children;` and any `<script>` inside one clear wrapper.
 
 ## Component Boundary Rules
@@ -31,7 +38,7 @@
 - Distinguish PHPX class components from `ImportComponent` partials.
 - `ImportComponent` partials must output exactly one root element because Prisma PHP uses that root as the imported component boundary and serializes props there.
 - Do not manually add `pp-component` inside `ImportComponent` partial source; Prisma PHP injects it there.
-- When imported partials need PulsePoint logic, keep the `<script>` inside that same root element and author it as a plain `<script>` tag without `type="text/pp"`.
+- When imported partials need PulsePoint logic, keep the `<script>` inside that same root element and author it as a plain `<script>` tag without `type="text/pp"`, DOM-ready wrappers, or manual bootstrap code.
 
 ## Relevant Docs
 
