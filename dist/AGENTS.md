@@ -240,12 +240,14 @@ Use this pattern:
 
 1. PHP first
 2. one parent HTML element for the route content
-3. when PulsePoint is present, put `pp-component` on that route root
+3. when PulsePoint is present, let Prisma PHP inject the route or layout `pp-component` scope on that root automatically
 4. keep one `<script>` block as the last child inside that same root element
 
 Also follow these route-file rules:
 
 - `index.php` and nested `layout.php` must render a single parent HTML element
+- for normal pages and nested layouts, do **not** manually author `pp-component` on that root; Prisma PHP adds it automatically
+- author a plain `<script>` tag inside that root when PulsePoint logic is needed and do **not** add `type="text/pp"` manually
 - only the root `layout.php` should define `<html>`, `<head>`, and `<body>`
 - when PulsePoint is present in a root `layout.php`, keep `MainLayout::$children` and any `<script>` inside one clear wrapper
 
@@ -260,7 +262,7 @@ MainLayout::$title = 'Todos';
 MainLayout::$description = 'Track tasks and view the current item count.';
 ?>
 
-<section pp-component="todos-page">
+<section>
     <h1>Todos</h1>
     <p>Count: {count}</p>
     <script>
@@ -286,7 +288,7 @@ Example:
 
 ?>
 
-<div pp-component="search-box">
+<div>
     <h2>Search</h2>
     <input value="{query}" />
     <script>
@@ -299,7 +301,7 @@ Do not:
 
 - put a sibling `<script>` next to a route root or imported partial root
 - manually add `pp-component` inside imported partial source
-- assume `ImportComponent` injects `pp-component` for normal route files
+- manually add `type="text/pp"` to route or imported-partial scripts
 
 ## Metadata rules
 
