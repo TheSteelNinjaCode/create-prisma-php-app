@@ -1321,6 +1321,13 @@ try {
         require_once Bootstrap::$contentToInclude;
         MainLayout::$children = ob_get_clean();
 
+        if (Request::$fileToInclude === 'index.php') {
+            MainLayout::$children = TemplateCompiler::scopeRouteRoot(
+                MainLayout::$children,
+                Bootstrap::$contentToInclude
+            );
+        }
+
         if (count(Bootstrap::$layoutsToInclude) > 1) {
             $nestedLayouts = array_slice(Bootstrap::$layoutsToInclude, 1);
 
@@ -1332,6 +1339,7 @@ try {
                 ob_start();
                 require_once $layoutPath;
                 MainLayout::$children = ob_get_clean();
+                MainLayout::$children = TemplateCompiler::scopeRouteRoot(MainLayout::$children, $layoutPath);
             }
         }
     } else {
@@ -1384,6 +1392,15 @@ try {
         }
 
         MainLayout::$html = ob_get_clean();
+
+        if (file_exists(Bootstrap::$parentLayoutPath)) {
+            TemplateCompiler::validateSingleRootHtml(
+                MainLayout::$html,
+                Bootstrap::$parentLayoutPath,
+                'Layout file'
+            );
+        }
+
         MainLayout::$html = TemplateCompiler::compile(MainLayout::$html);
         MainLayout::$html = TemplateCompiler::injectDynamicContent(MainLayout::$html);
         MainLayout::$html = Bootstrap::applyRootLayoutId(MainLayout::$html);
