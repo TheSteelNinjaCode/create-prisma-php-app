@@ -18,6 +18,14 @@
 - Use `npm run create-swagger-docs` only when Swagger or OpenAPI output must be intentionally generated or refreshed.
 - When package-script behavior matters, read `dist/docs/commands.md` first and inspect the actual `package.json` in the target project before assuming which scripts exist.
 
+## CLI Command Alignment
+
+- For new apps, prefer `npx create-prisma-php-app <project-name>` as the default recommended create command.
+- For existing apps, prefer `npx pp update project` after saving feature changes in `prisma-php.json`.
+- When an existing app needs a specific release channel or pinned update version, prefer `npx pp update project --tag <value>` or `npx pp update project --tag=<value>`.
+- Use `--tag <value>` or `--tag=<value>` for release-channel or pinned-version updates.
+- Do not use `npx pp update project` as a substitute for Prisma ORM migration commands.
+
 ## PulsePoint-First Frontend Rules
 
 - In full-stack Prisma PHP apps, treat PulsePoint as the primary JavaScript authoring model for frontend behavior.

@@ -190,6 +190,16 @@ AI agents should follow this default rule:
 
 When a task involves package scripts, read `commands.md` first and inspect the current `package.json` before assuming which feature scripts exist.
 
+## CLI command alignment
+
+When a task involves Prisma PHP CLI usage, keep the command guidance aligned with `commands.md`.
+
+- for new apps, prefer `npx create-prisma-php-app <project-name>` as the default recommended create command
+- for existing apps, prefer `npx pp update project` after saving feature changes in `prisma-php.json`
+- when an existing app needs a specific release channel or pinned update version, prefer `npx pp update project --tag <value>` or `npx pp update project --tag=<value>`
+- use `--tag <value>` or `--tag=<value>` for release-channel or pinned-version updates
+- do **not** use `npx pp update project` as a substitute for Prisma ORM migration commands
+
 ## Default interactive UI and data-flow rule
 
 For normal full-stack Prisma PHP work, assume the user wants the PulsePoint-first approach unless they explicitly ask otherwise.
