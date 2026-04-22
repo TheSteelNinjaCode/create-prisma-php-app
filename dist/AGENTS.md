@@ -176,6 +176,16 @@ Treat `files-list.json` as a framework-generated file for route discovery and in
 
 If a route task appears to require editing `files-list.json`, that is almost certainly the wrong approach.
 
+## Reusable project organization
+
+When organizing a growing Prisma PHP app, keep route code and reusable code separated.
+
+- keep `src/app` focused on the route tree, route-local layouts, pages, handlers, and route-scoped partials
+- prefer `src/Components` for reusable application UI components shared across multiple routes or layouts
+- keep reusable non-UI code such as services, auth, middleware, Prisma classes, and helper libraries in `src/Lib`
+- if a partial starts in `src/app` but becomes shared across the app, promote it into `src/Components`
+- do **not** default to placing app-wide reusable components under `src/app` unless the user explicitly wants route-local colocation
+
 ## Framework-managed package scripts
 
 Prisma PHP can generate `package.json` scripts for BrowserSync, Tailwind, TypeScript, WebSocket, MCP, Swagger docs, and related project helpers.

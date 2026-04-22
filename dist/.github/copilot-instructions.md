@@ -9,6 +9,14 @@
 - Do not assume installed consumer apps also ship a root `.github/copilot-instructions.md` unless the generator explicitly creates one.
 - Keep every `dist/docs/*.md` page AI-discoverable on its own: the frontmatter description and opening section should clearly say when agents should read that file and which adjacent docs to consult next.
 
+## Project Structure Recommendations
+
+- Keep `src/app` focused on route files, layouts, handlers, and route-scoped partials.
+- Prefer `src/Components` for reusable application UI components shared across pages or layouts.
+- Keep reusable non-UI code such as services, auth, middleware, Prisma classes, and helpers in `src/Lib`.
+- If a partial starts as route-local but becomes shared across the app, move it from `src/app` to `src/Components`.
+- Suggest this structure by default when helping users organize growing Prisma PHP apps.
+
 ## Framework-Managed Package Scripts
 
 - Prisma PHP can generate `package.json` scripts for BrowserSync, Tailwind, TypeScript, WebSocket, MCP, Swagger docs, and related helpers.
