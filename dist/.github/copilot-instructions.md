@@ -2,12 +2,15 @@
 
 ## Source Of Truth
 
+- Use `./prisma-php.json` as the single source of truth for which optional Prisma PHP features are enabled in the current app and which framework-managed scaffolds should exist.
 - For Prisma PHP applications, treat `node_modules/prisma-php/dist/docs/index.md` as the entry point for the installed framework version.
+- Treat `node_modules/prisma-php/dist/docs` as framework reference docs that teach AI how Prisma PHP works. The presence of a page in that docs folder does not mean the current workspace has that feature enabled.
 - Read the matching doc in `node_modules/prisma-php/dist/docs` before generating or editing framework-specific Prisma PHP code.
 - Expect `AGENTS.md` in the project root and keep it aligned with the installed Prisma PHP docs contract.
 - In the Prisma PHP package source repo, keep `AGENTS.md`, `.github/copilot-instructions.md`, and `dist/docs` aligned so the published docs remain correct after install.
 - Do not assume installed consumer apps also ship a root `.github/copilot-instructions.md` unless the generator explicitly creates one.
 - Keep every `dist/docs/*.md` page AI-discoverable on its own: the frontmatter description and opening section should clearly say when agents should read that file and which adjacent docs to consult next.
+- When a task maps to an optional feature such as `backendOnly`, `swaggerDocs`, `typescript`, `websocket`, or `mcp`, inspect `./prisma-php.json` first, then read the matching docs page to learn the implementation contract.
 
 ## Project Structure Recommendations
 

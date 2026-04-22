@@ -6,6 +6,8 @@ This AGENTS.md belongs in the root of a Prisma PHP application.
 
 Treat `./node_modules/prisma-php/dist/docs/index.md` as the entry point for Prisma PHP guidance, then read the matching document in `./node_modules/prisma-php/dist/docs` before generating, editing, reviewing, or documenting framework-specific behavior.
 
+Treat the installed docs as framework knowledge. They explain what Prisma PHP can do and how to do it. Do not treat the presence of a page in `./node_modules/prisma-php/dist/docs` as proof that the current app has that feature enabled.
+
 Do not guess framework behavior from Laravel, Next.js, React, Vue, Livewire, Alpine, Symfony, Socket.IO, or generic PHP habits. Prisma PHP's installed docs in `./node_modules/prisma-php/dist/docs` and the current project files are the source of truth.
 
 ## Documentation source of truth
@@ -22,7 +24,9 @@ For Prisma PHP projects, use this order first:
 
 Important rules:
 
+- use `./prisma-php.json` as the single source of truth for current-project feature flags and framework-managed scaffolds
 - treat `./node_modules/prisma-php/dist/docs` as the single documentation source of truth for the installed Prisma PHP version
+- treat the docs inventory as a framework reference set for AI routing, not as a statement that every optional Prisma PHP feature is enabled in the current app
 - expect `./AGENTS.md` at the project root
 - when the installed docs and a habit from another framework conflict, follow Prisma PHP
 - when updating Prisma PHP package/docs sources, keep `AGENTS.md` and `dist/docs` aligned for consumer apps; if the Prisma PHP package source repo also maintains `.github/copilot-instructions.md`, keep that source-repo file aligned there too
@@ -50,6 +54,8 @@ AGENTS.md
 ## Required doc-routing map
 
 Before generating code, examples, instructions, or reviews, choose the documentation file based on the task.
+
+Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php.json` to decide whether the current app enables the relevant optional feature.
 
 ### Read these docs first for these tasks
 
@@ -131,7 +137,7 @@ Before generating code, examples, instructions, or reviews, choose the documenta
 - **First-time project installation or app creation flow**  
   Read `installation.md`
 
-## Docs inventory in this repo
+## Framework docs inventory in this repo
 
 The current Prisma PHP docs shipped here include:
 
@@ -161,6 +167,10 @@ The current Prisma PHP docs shipped here include:
 - `upgrading.md`
 - `validator.md`
 - `websocket.md`
+
+This inventory exists to help AI find the right Prisma PHP guidance quickly. It is not a feature inventory for the current app.
+
+When a task depends on optional capabilities such as `backendOnly`, `swaggerDocs`, `typescript`, `websocket`, or `mcp`, inspect `./prisma-php.json` before assuming the generated scaffold exists.
 
 When adding or reviewing AI guidance, do not stop at older docs only. Make sure the guidance also covers `backend-only.md`, `email.md`, `env.md`, `get-started-ia.md`, `mcp.md`, `swagger-docs.md`, `typescript.md`, and `websocket.md`, plus newer behavior documented in `fetching-data.md` and `metadata-and-og-images.md`.
 
