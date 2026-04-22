@@ -26,6 +26,18 @@
 - Use `--tag <value>` or `--tag=<value>` for release-channel or pinned-version updates.
 - Do not use `npx pp update project` as a substitute for Prisma ORM migration commands.
 
+## Authentication Route Strategy
+
+- Prisma PHP defaults to public routes.
+- Choose the route privacy strategy at the start of the app, before creating most routes.
+- If the app will have many public pages, keep the public-default strategy.
+- If the app will have only a few public entry points and most routes should require login, use the private-default strategy.
+- For private-default routing, enable both `IS_ALL_ROUTES_PRIVATE = true` and `IS_TOKEN_AUTO_REFRESH = true` in `src/Lib/Auth/AuthConfig.php`.
+- When `IS_ALL_ROUTES_PRIVATE` is `true`, Prisma PHP treats routes as private by default and uses `publicRoutes` for the public allowlist; home is already public by default because `publicRoutes` starts as `['/']`.
+- Keep `authRoutes` public by default unless the user explicitly asks to change them.
+- There is no need to modify other Prisma PHP core files for this route privacy behavior.
+- If `src/Lib/Auth/AuthConfig.php` is customized, preserve it during future Prisma PHP project updates by adding `./src/Lib/Auth/AuthConfig.php` to `excludeFiles` in `prisma-php.json`.
+
 ## PulsePoint-First Frontend Rules
 
 - In full-stack Prisma PHP apps, treat PulsePoint as the primary JavaScript authoring model for frontend behavior.

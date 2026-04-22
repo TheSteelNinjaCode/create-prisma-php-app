@@ -408,6 +408,14 @@ Important auth rules:
 
 - route privacy strategy is configured from `AuthConfig.php`
 - Prisma PHP supports both public-default and private-default route protection strategies
+- Prisma PHP defaults to public routes, so keep the public-default strategy when the app will expose many public pages
+- choose the route privacy strategy early, ideally before creating most routes in a new app or route subtree
+- if the app will have only a few public entry points and most routes should require login, switch to the private-default strategy
+- when choosing private-default routing, enable both `AuthConfig::IS_ALL_ROUTES_PRIVATE` and `AuthConfig::IS_TOKEN_AUTO_REFRESH`
+- when `IS_ALL_ROUTES_PRIVATE` is `true`, keep public exceptions in `AuthConfig::$publicRoutes`; home remains public by default because it starts as `['/']`
+- keep `AuthConfig::$authRoutes` public by default unless the user explicitly wants a different auth route allowlist
+- there is no need to modify other Prisma PHP core files to enable private-default routing
+- if `src/Lib/Auth/AuthConfig.php` was customized, protect it from future project updates by adding `./src/Lib/Auth/AuthConfig.php` to `excludeFiles` in `prisma-php.json`
 - sign users in with `Auth::getInstance()->signIn(...)`
 - sign users out with `Auth::getInstance()->signOut(...)`
 - use `Auth::getInstance()->refreshUserSession(...)` when current-session auth payloads must be updated after role or profile changes
@@ -700,6 +708,7 @@ Important rules:
 
 - update `prisma-php.json` before assuming a feature is active in a consumer app
 - do not assume Tailwind, Prisma, Swagger, WebSocket, MCP, or TypeScript support is enabled unless `prisma-php.json` says so
+- keep customized framework-managed files such as `src/Lib/Auth/AuthConfig.php` in `excludeFiles` when you need project updates to preserve them
 - after changing feature flags, follow the documented project update flow
 - for AI-driven or scripted updates, prefer `npx pp update project -y`
 
