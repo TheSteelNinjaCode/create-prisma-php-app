@@ -10,26 +10,32 @@ Treat the installed docs as framework knowledge. They explain what Prisma PHP ca
 
 Do not guess framework behavior from Laravel, Next.js, React, Vue, Livewire, Alpine, Symfony, Socket.IO, or generic PHP habits. Prisma PHP's installed docs in `./node_modules/prisma-php/dist/docs` and the current project files are the source of truth.
 
+If `.github/instructions/**/*.instructions.md` exists, treat those files as workspace-local task instructions. Inspect `.github/instructions/` before deciding how to implement the task, then read any instruction files whose name, described scope, target files, or library focus matches the current work, such as PHPXUI or `ppicons`.
+
 ## Documentation source of truth
 
 For Prisma PHP projects, use this order first:
 
 1. the user's explicit request
 2. `./prisma-php.json`
-3. the relevant installed document in `./node_modules/prisma-php/dist/docs`
-4. `./AGENTS.md`
-5. project-local conventions and existing app files
-6. Prisma PHP core internals in `vendor/tsnc/prisma-php/src` only when the docs still leave a gap
-7. general framework knowledge as the last fallback
+3. the relevant `.github/instructions/**/*.instructions.md` files for the current task, library, or target files
+4. the relevant installed document in `./node_modules/prisma-php/dist/docs`
+5. `./AGENTS.md`
+6. project-local conventions and existing app files
+7. Prisma PHP core internals in `vendor/tsnc/prisma-php/src` only when the docs still leave a gap
+8. general framework knowledge as the last fallback
 
 Important rules:
 
 - use `./prisma-php.json` as the single source of truth for current-project feature flags and framework-managed scaffolds
+- if `.github/instructions/**/*.instructions.md` exists, inspect `.github/instructions/` and read the files that match the current task, named library, or target files before generating code
+- treat `.github/instructions/**/*.instructions.md` as workspace-local guidance for third-party libraries, design systems, icon packs, and other implementation-specific rules
 - treat `./node_modules/prisma-php/dist/docs` as the single documentation source of truth for the installed Prisma PHP version
 - treat the docs inventory as a framework reference set for AI routing, not as a statement that every optional Prisma PHP feature is enabled in the current app
 - expect `./AGENTS.md` at the project root
 - when the installed docs and a habit from another framework conflict, follow Prisma PHP
-- when updating Prisma PHP package/docs sources, keep `AGENTS.md` and `dist/docs` aligned for consumer apps; if the Prisma PHP package source repo also maintains `.github/copilot-instructions.md`, keep that source-repo file aligned there too
+- when a workspace instruction file and the general Prisma PHP docs both apply, follow both; keep `./prisma-php.json` as the source of truth for feature enablement and prefer the most specific matching instruction for library- or file-scoped implementation details
+- when updating Prisma PHP package/docs sources, keep `AGENTS.md` and `dist/docs` aligned for consumer apps; if the Prisma PHP package source repo also maintains `.github/copilot-instructions.md` or `.github/instructions/**/*.instructions.md`, keep those source-repo files aligned there too
 
 ## Installed docs location
 
@@ -51,11 +57,28 @@ The project root should also include:
 AGENTS.md
 ```
 
+When present, task-scoped workspace instructions live in:
+
+```txt
+.github/instructions
+```
+
 ## Required doc-routing map
 
 Before generating code, examples, instructions, or reviews, choose the documentation file based on the task.
 
-Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php.json` to decide whether the current app enables the relevant optional feature.
+Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php.json` to decide whether the current app enables the relevant optional feature. When `.github/instructions/` exists, inspect that directory first and read any `*.instructions.md` files that match the task before routing into the Prisma PHP docs.
+
+### Read workspace instruction files first for these tasks
+
+- **Third-party UI, icon, component, or design-system work such as PHPXUI, `ppicons`, or similar workspace-specific integrations**  
+  Read the matching `.github/instructions/**/*.instructions.md` file first
+
+- **Tasks that target files, folders, or conventions covered by a workspace instruction file**  
+  Read the most specific matching `.github/instructions/**/*.instructions.md` file first
+
+- **Library-specific refactors, reviews, or implementations where the workspace provides a dedicated instruction file**  
+  Read that instruction file first, then read the matching Prisma PHP docs page for framework behavior
 
 ### Read these docs first for these tasks
 
@@ -404,12 +427,13 @@ In a consumer app, also verify `backendOnly` in `prisma-php.json`:
 Use this workflow unless the user asks for something narrower.
 
 1. read `./prisma-php.json`
-2. read the relevant installed doc from `./node_modules/prisma-php/dist/docs`
-3. inspect `./AGENTS.md` for project-level Prisma PHP guidance
-4. inspect nearby project files that match the route, feature, or component being changed
-5. inspect `vendor/tsnc/prisma-php/src` only if the docs do not answer the task
+2. inspect `.github/instructions/` and read any relevant `*.instructions.md` files when that directory exists
+3. read the relevant installed doc from `./node_modules/prisma-php/dist/docs`
+4. inspect `./AGENTS.md` for project-level Prisma PHP guidance
+5. inspect nearby project files that match the route, feature, or component being changed
+6. inspect `vendor/tsnc/prisma-php/src` only if the docs and matching workspace instructions do not answer the task
 
-Do not jump directly into framework internals if the current docs already answer the task.
+Do not jump directly into framework internals if the current docs and matching workspace instruction files already answer the task.
 
 ## Authentication rules
 

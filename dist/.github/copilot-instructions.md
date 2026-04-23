@@ -7,10 +7,18 @@
 - Treat `node_modules/prisma-php/dist/docs` as framework reference docs that teach AI how Prisma PHP works. The presence of a page in that docs folder does not mean the current workspace has that feature enabled.
 - Read the matching doc in `node_modules/prisma-php/dist/docs` before generating or editing framework-specific Prisma PHP code.
 - Expect `AGENTS.md` in the project root and keep it aligned with the installed Prisma PHP docs contract.
-- In the Prisma PHP package source repo, keep `AGENTS.md`, `.github/copilot-instructions.md`, and `dist/docs` aligned so the published docs remain correct after install.
+- In the Prisma PHP package source repo, keep `AGENTS.md`, `.github/copilot-instructions.md`, any `.github/instructions/**/*.instructions.md`, and `dist/docs` aligned so the published docs remain correct after install.
 - Do not assume installed consumer apps also ship a root `.github/copilot-instructions.md` unless the generator explicitly creates one.
+- If `.github/instructions/**/*.instructions.md` exists, treat those files as workspace-local task instructions for third-party libraries, component systems, icon packs, and other implementation-specific rules.
+- Before generating or editing code, inspect `.github/instructions/` and read any `*.instructions.md` files that match the current task, named library, target files, or implementation surface.
 - Keep every `dist/docs/*.md` page AI-discoverable on its own: the frontmatter description and opening section should clearly say when agents should read that file and which adjacent docs to consult next.
 - When a task maps to an optional feature such as `backendOnly`, `swaggerDocs`, `typescript`, `websocket`, or `mcp`, inspect `./prisma-php.json` first, then read the matching docs page to learn the implementation contract.
+
+## Workspace Task Instructions
+
+- Treat `.github/instructions/**/*.instructions.md` as an optional task-specific extension of the Prisma PHP docs contract.
+- Use those instruction files when the task mentions a library, pattern, or file surface they cover, such as a PHPXUI component library, `ppicons`, or another workspace-specific integration.
+- Keep `./prisma-php.json` as the source of truth for Prisma PHP feature flags and generated scaffolds; use `.github/instructions/**/*.instructions.md` to refine task-specific implementation details and prefer the most specific matching instruction when more than one applies.
 
 ## Project Structure Recommendations
 
