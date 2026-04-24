@@ -37,6 +37,13 @@
 - Use `npm run create-swagger-docs` only when Swagger or OpenAPI output must be intentionally generated or refreshed.
 - When package-script behavior matters, read `dist/docs/commands.md` first and inspect the actual `package.json` in the target project before assuming which scripts exist.
 
+## BrowserSync URL Source Of Truth
+
+- When AI needs to test or confirm whether a route, server response, or proxy-backed request is working, use `./settings/bs-config.json` as the source of truth for the current BrowserSync URLs.
+- Do not assume the proxy stays on the default `http://localhost:5090`; if that port is busy, the active BrowserSync ports may change.
+- Prefer confirming the current `local`, `external`, `ui`, and `uiExternal` values in `./settings/bs-config.json` before suggesting a test URL or opening the app in the browser.
+- Use this file when frontend console errors or terminal output suggest the wrong local URL, proxy port, or BrowserSync UI port is being used during debugging.
+
 ## CLI Command Alignment
 
 - For new apps, prefer `npx create-prisma-php-app <project-name>` as the default recommended create command.

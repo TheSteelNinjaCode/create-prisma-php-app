@@ -233,6 +233,17 @@ AI agents should follow this default rule:
 
 When a task involves package scripts, read `commands.md` first and inspect the current `package.json` before assuming which feature scripts exist.
 
+## BrowserSync URL source of truth
+
+When AI needs to test or confirm whether a page route, exposed function request, proxy-backed response, or local server workflow is working, check `./settings/bs-config.json` first.
+
+Important rules:
+
+- use `./settings/bs-config.json` as the source of truth for the active BrowserSync URLs in this app
+- do **not** assume the proxy remains on the default `http://localhost:5090`; if that port is already in use, Prisma PHP may use a different port
+- confirm the current `local`, `external`, `ui`, and `uiExternal` values in `./settings/bs-config.json` before suggesting a browser URL, route test URL, or BrowserSync UI URL
+- when frontend console logs, network errors, or terminal output suggest the app is being tested through the wrong URL or proxy port, re-check `./settings/bs-config.json` before changing app code
+
 ## CLI command alignment
 
 When a task involves Prisma PHP CLI usage, keep the command guidance aligned with `commands.md`.
