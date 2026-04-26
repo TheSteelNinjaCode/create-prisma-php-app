@@ -37,6 +37,22 @@ Important rules:
 - when a workspace instruction file and the general Prisma PHP docs both apply, follow both; keep `./prisma-php.json` as the source of truth for feature enablement and prefer the most specific matching instruction for library- or file-scoped implementation details
 - when updating Prisma PHP package/docs sources, keep `AGENTS.md` and `dist/docs` aligned for consumer apps; if the Prisma PHP package source repo also maintains `.github/copilot-instructions.md` or `.github/instructions/**/*.instructions.md`, keep those source-repo files aligned there too
 
+## Runtime lookup for AI
+
+Use this map only after `prisma-php.json`, matching workspace instructions, installed docs, and current project files do not answer the task.
+
+| Need to verify | Runtime/source file |
+| --- | --- |
+| route root scoping, HTML fragment parsing, component tag compilation, prop casing | `vendor/tsnc/prisma-php/src/PHPX/TemplateCompiler.php` |
+| imported PHP partial execution, one-root enforcement, prop serialization, imported `#[Exposed]` functions | `vendor/tsnc/prisma-php/src/ImportComponent.php` |
+| metadata, custom head tags, dynamic head/footer scripts | `vendor/tsnc/prisma-php/src/MainLayout.php` |
+| route and component maps | `vendor/tsnc/prisma-php/src/PrismaPHPSettings.php`, `settings/files-list.json`, `settings/component-map.json` |
+| request data, dynamic params, redirects, function-call requests | `vendor/tsnc/prisma-php/src/Request.php` |
+| exposed functions | `vendor/tsnc/prisma-php/src/Attributes/Exposed.php`, `vendor/tsnc/prisma-php/src/Attributes/ExposedRegistry.php` |
+| validation | `vendor/tsnc/prisma-php/src/Validator.php`, `vendor/tsnc/prisma-php/src/Rule.php` |
+| env values | `vendor/tsnc/prisma-php/src/Env.php` |
+| uploads, email, streaming | `vendor/tsnc/prisma-php/src/FileManager/UploadFile.php`, `vendor/tsnc/prisma-php/src/PHPMailer/Mailer.php`, `vendor/tsnc/prisma-php/src/Streaming/SSE.php` |
+
 ## Installed docs location
 
 In Prisma PHP applications, the installed docs live in:
@@ -109,7 +125,7 @@ Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php
 - **AI integration, provider SDKs, chat UIs, streamed assistant output, or deciding between page-local assistant UI, websocket, and MCP tools**  
   Read `get-started-ia.md`, then use `fetching-data.md`, `validator.md`, `websocket.md`, or `mcp.md` as needed
 
-- **PulsePoint runtime behavior such as `pp.state`, `pp.effect`, `pp-for`, `pp-spread`, or `pp-ref`**  
+- **PulsePoint runtime behavior such as `pp.state`, `pp.effect`, `pp-for`, `pp-spread`, `pp-style`, `pp-ref`, context, portals, controlled form values, or keyed diffing**
   Read `pulsepoint.md`
 
 - **Validation, sanitization, `PP\Validator`, `PP\Rule`, field validation, form validation, live validation, or request validation rules**  
@@ -118,7 +134,7 @@ Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php
 - **Environment variables, `.env`, `PP\Env`, `Env::get`, `Env::string`, `Env::bool`, `Env::int`, feature flags, host and port config, or runtime bootstrap settings**  
   Read `env.md`, then verify the official env docs at `env` and `env-file`
 
-- **Bootstrap flow, request initialization, `FUNCTION_CALL_SECRET`, `prisma_php_csrf`, `pp_local_store_key`, route resolution, or runtime init order**  
+- **Bootstrap flow, request initialization, `FUNCTION_CALL_SECRET`, `prisma_php_csrf`, route resolution, or runtime init order**  
   Read `bootstrap-runtime.md`, then use `env.md`, `fetching-data.md`, or `error-handling.md` as needed
 
 - **File uploads, `multipart/form-data`, `$_FILES`, `PP\FileManager\UploadFile`, rename flows, replace flows, delete flows, allowed file types, upload size rules, or file manager UI behavior**  
@@ -216,8 +232,40 @@ When organizing a growing Prisma PHP app, keep route code and reusable code sepa
 - keep `src/app` focused on the route tree, route-local layouts, pages, handlers, and route-scoped partials
 - prefer `src/Components` for reusable application UI components shared across multiple routes or layouts
 - keep reusable non-UI code such as services, auth, middleware, Prisma classes, and helper libraries in `src/Lib`
+- treat generated libraries such as `src/Lib/PHPXUI` and `src/Lib/PPIcons` as library-specific surfaces governed by their manifests and matching `.github/instructions/**/*.instructions.md` files
 - if a partial starts in `src/app` but becomes shared across the app, promote it into `src/Components`
 - do **not** default to placing app-wide reusable components under `src/app` unless the user explicitly wants route-local colocation
+
+## HTML-first component tag contract
+
+Class-based PHPX components and generated icon components are consumed with HTML-first `x-` tags from `settings/component-map.json`, such as `<x-alert>` and `<x-search />`.
+
+Important rules:
+
+- use the `tagName` entries in `settings/component-map.json` as the supported runtime contract
+- inspect `settings/component-map.json` instead of inventing `x-` tag names from PHP class names
+- document, review, and generate component and icon markup with the current `x-` tag shape
+- keep examples aligned with the current runtime instead of carrying alternate tag-shape guidance
+
+## Component attribute and prop contract
+
+Component attributes in Prisma PHP template markup should be authored in kebab-case. The runtime maps kebab-case attribute names to camelCase prop and public property names when hydrating PHPX components and PulsePoint component boundaries.
+
+Examples:
+
+```html
+<x-button as-child="true" />
+<x-dialog-content close-on-escape-key="true" />
+<x-calendar selected-date="{selectedDate}" on-date-select="{setSelectedDate}" />
+```
+
+Important rules:
+
+- use kebab-case for component attribute names in documentation, examples, reviews, and generated code
+- expect `as-child` to hydrate `asChild`, `close-on-escape-key` to hydrate `closeOnEscapeKey`, and `selected-date` to hydrate `selectedDate`
+- use mustache values such as `selected-date="{selectedDate}"` and `on-date-select="{setSelectedDate}"` when a component prop must receive PulsePoint state or callbacks
+- write component examples as HTML-first Prisma PHP markup using the current `x-` tag contract
+- do not document component props with camelCase template attributes when writing new Prisma PHP markup
 
 ## Framework-managed package scripts
 
@@ -653,6 +701,12 @@ Also follow these rules:
 - do not write React, Vue, Alpine, or Livewire syntax and call it PulsePoint
 - keep backend concerns separate from PulsePoint runtime concerns
 - prefer simple documented runtime primitives over abstractions copied from other ecosystems
+- use `pp-style` for template-driven inline CSS and plain `style` for fully static inline CSS
+- use `pp-spread="{...attrs}"` for dynamic attribute objects and omit nullish values from those objects
+- use `pp-for` only on `<template>` with `item in items` or `(item, index) in items`
+- use plain `key` for keyed diffing; do not invent `pp-key`
+- use `pp.ref(...)`, `pp-ref`, `pp.portal(...)`, `pp.createContext(...)`, `Context.Provider`, and `pp.context(...)` according to `pulsepoint.md`
+- use `value`, `defaultvalue`, and `defaultchecked` form bindings according to `pulsepoint.md`; do not author internal `data-pp-*` form attributes
 
 ## Component rules
 
@@ -661,72 +715,11 @@ When the task involves Prisma PHPX components, reusable UI elements, props, chil
 Also follow these rules:
 
 - do not assume React, Vue, Blade, or generic templating component behavior maps directly to Prisma PHPX
+- use HTML-first `x-` tags such as `<x-button>` and `<x-search />` when generating template markup for class-based components
+- use kebab-case component attributes and rely on the runtime to hydrate camelCase PHPX properties and PulsePoint props
 - keep component file names and class names aligned
 - preserve documented PHPX patterns for `$props`, `$children`, `$class`, and `getAttributes(...)`
 - follow documented component placement and grouping conventions before inspecting framework internals
-
-## Prisma PHP XML syntax rules
-
-Prisma PHP uses XML-style syntax for PHPX and template markup.
-
-AI agents must follow strict XML rules when generating tags and attributes.
-
-### Closing tags
-
-All tags must be properly closed.
-
-Correct:
-
-```xml
-<hr />
-<input type="text" />
-<div></div>
-```
-
-Incorrect:
-
-```xml
-<hr>
-<input type="text">
-```
-
-### Attributes
-
-All attributes must use double quotes.
-
-Correct:
-
-```xml
-<input id="email" />
-<input required="true" />
-```
-
-Incorrect:
-
-```xml
-<input id=email />
-<input required />
-```
-
-### Boolean attributes
-
-Boolean attributes must be explicit.
-
-Correct:
-
-```xml
-<input disabled="true" />
-<option selected="true">Admin</option>
-```
-
-Incorrect:
-
-```xml
-<input disabled />
-<option selected>Admin</option>
-```
-
-Do not output permissive HTML shorthand in Prisma PHP UI files.
 
 ## When to inspect framework internals
 
@@ -736,6 +729,15 @@ Useful app-mode core locations include:
 
 ```txt
 vendor/tsnc/prisma-php/src
+vendor/tsnc/prisma-php/src/PHPX/TemplateCompiler.php
+vendor/tsnc/prisma-php/src/ImportComponent.php
+vendor/tsnc/prisma-php/src/MainLayout.php
+vendor/tsnc/prisma-php/src/PrismaPHPSettings.php
+vendor/tsnc/prisma-php/src/Request.php
+vendor/tsnc/prisma-php/src/Attributes/Exposed.php
+vendor/tsnc/prisma-php/src/Attributes/ExposedRegistry.php
+vendor/tsnc/prisma-php/src/Env.php
+vendor/tsnc/prisma-php/src/Rule.php
 vendor/tsnc/prisma-php/src/PHPMailer/Mailer.php
 vendor/tsnc/prisma-php/src/FileManager/UploadFile.php
 vendor/tsnc/prisma-php/src/Validator.php

@@ -13,20 +13,34 @@
 - Before generating or editing code, inspect `.github/instructions/` and read any `*.instructions.md` files that match the current task, named library, target files, or implementation surface.
 - Keep every `dist/docs/*.md` page AI-discoverable on its own: the frontmatter description and opening section should clearly say when agents should read that file and which adjacent docs to consult next.
 - When a task maps to an optional feature such as `backendOnly`, `swaggerDocs`, `typescript`, `websocket`, or `mcp`, inspect `./prisma-php.json` first, then read the matching docs page to learn the implementation contract.
+- When docs and project files still leave a runtime gap, inspect the narrow core file that owns the behavior: `TemplateCompiler.php` for HTML fragment compilation and route root scoping, `ImportComponent.php` for imported partials, `MainLayout.php` for metadata and head/footer scripts, `PrismaPHPSettings.php` plus generated settings JSON for component and route maps, `Request.php` for request handling, `Validator.php`/`Rule.php` for validation, and feature-specific files such as `UploadFile.php`, `Mailer.php`, or `Streaming/SSE.php`.
 
 ## Workspace Task Instructions
 
 - Treat `.github/instructions/**/*.instructions.md` as an optional task-specific extension of the Prisma PHP docs contract.
 - Use those instruction files when the task mentions a library, pattern, or file surface they cover, such as a PHPXUI component library, `ppicons`, or another workspace-specific integration.
 - Keep `./prisma-php.json` as the source of truth for Prisma PHP feature flags and generated scaffolds; use `.github/instructions/**/*.instructions.md` to refine task-specific implementation details and prefer the most specific matching instruction when more than one applies.
+- When generating or updating PHP `use` imports for components from the same namespace or generated library directory, prefer grouped imports once a file needs two or more symbols, such as `use Lib\PPIcons\{ArrowRight, Mail};` or `use Lib\PHPXUI\{Badge, Button};`.
+- Single imports remain fine when only one component is needed, and existing separate imports do not need style-only cleanup unless the task asks for it.
 
 ## Project Structure Recommendations
 
 - Keep `src/app` focused on route files, layouts, handlers, and route-scoped partials.
 - Prefer `src/Components` for reusable application UI components shared across pages or layouts.
 - Keep reusable non-UI code such as services, auth, middleware, Prisma classes, and helpers in `src/Lib`.
+- Treat generated component libraries such as `src/Lib/PHPXUI` and `src/Lib/PPIcons` as library-specific surfaces governed by their manifests and `.github/instructions/*.instructions.md` files.
 - If a partial starts as route-local but becomes shared across the app, move it from `src/app` to `src/Components`.
 - Suggest this structure by default when helping users organize growing Prisma PHP apps.
+
+## Component Tag Contract
+
+- Class-based PHPX components and generated icon components are consumed with HTML-first `x-` tags from `settings/component-map.json`, such as `<x-alert>` or `<x-search />`.
+- Use the `tagName` entries in `settings/component-map.json` as the supported runtime contract for component and icon markup.
+- Do not invent `x-` tag names from PHP class names when the generated map exists; inspect `settings/component-map.json`.
+- Keep documentation, examples, and generated code focused on the current `x-` tag contract.
+- Author component attributes in kebab-case. The runtime hydrates kebab-case names into camelCase component props and public PHPX properties, such as `as-child` -> `asChild` and `close-on-escape-key` -> `closeOnEscapeKey`.
+- Use mustache values for reactive props, such as `selected-date="{selectedDate}"` and `on-date-select="{setSelectedDate}"`.
+- Write component examples as HTML-first Prisma PHP markup using the current `x-` tag contract.
 
 ## Framework-Managed Package Scripts
 
@@ -70,6 +84,9 @@
 - For page-local interactivity, prefer `index.php` or nested `layout.php` with a plain inline `<script>` that contains PulsePoint state and functions directly, and use `pp.fetchFunction(...)` for backend calls.
 - Do not wrap inline PulsePoint code in `DOMContentLoaded`, IIFEs, manual `pp.mount()` calls, or custom scoping/bootstrap helpers. Prisma PHP scopes the component boundary and runs the script for you.
 - Reserve plain browser JavaScript or TypeScript modules for reusable helpers in `ts/`, third-party libraries, low-level browser APIs, or behavior that does not belong inside a PulsePoint component boundary.
+- Use `pp-style` for template-driven inline CSS, `pp-spread="{...attrs}"` for dynamic attribute objects, `pp-for` only on `<template>`, and plain `key` for keyed diffing.
+- Use `pp.ref(...)`, `pp-ref`, `pp.portal(...)`, `pp.createContext(...)`, `Context.Provider`, and `pp.context(...)` according to `pulsepoint.md`.
+- Use `value`, `defaultvalue`, and `defaultchecked` form bindings according to `pulsepoint.md`; do not author internal `data-pp-*` runtime attributes.
 
 ## Route File Conventions
 
