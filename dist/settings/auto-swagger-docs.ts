@@ -457,7 +457,7 @@ function generateEndpoints(modelName: string, fields: any[]): void {
   const baseDir = `src/app/${kebabCasedModelName}`;
   const idField = fields.find((field) => field.isId);
   const fieldsToCreateAndUpdate = fields.filter(
-    (field) => shouldSkipField(field) === false
+    (field) => shouldSkipField(field) === false,
   );
   const idFieldName = idField.name;
   const baseDirPath = resolve(__dirname, `../${baseDir}`);
@@ -476,7 +476,7 @@ function generateEndpoints(modelName: string, fields: any[]): void {
   writeFileSync(
     resolve(__dirname, `../${listRoutePath}`),
     listRouteContent,
-    "utf-8"
+    "utf-8",
   );
 
   const idDir = `${baseDir}/[id]`;
@@ -508,7 +508,7 @@ echo json_encode($${camelCaseModelName});`;
   writeFileSync(
     resolve(__dirname, `../${idRoutePath}`),
     idRouteContent,
-    "utf-8"
+    "utf-8",
   );
 
   const createDir = `${baseDir}/create`;
@@ -564,7 +564,7 @@ echo json_encode($new${modelName});`;
   writeFileSync(
     resolve(__dirname, `../${createRoutePath}`),
     createRouteContent,
-    "utf-8"
+    "utf-8",
   );
 
   const updateDir = `${baseDir}/update/[id]`;
@@ -624,7 +624,7 @@ echo json_encode($updated${modelName});`;
   writeFileSync(
     resolve(__dirname, `../${updateRoutePath}`),
     updateRouteContent,
-    "utf-8"
+    "utf-8",
   );
 
   const deleteDir = `${baseDir}/delete/[id]`;
@@ -655,7 +655,7 @@ echo json_encode($deleted${modelName});`;
   writeFileSync(
     resolve(__dirname, `../${deleteRoutePath}`),
     deleteRouteContent,
-    "utf-8"
+    "utf-8",
   );
 }
 
@@ -675,7 +675,7 @@ async function promptUserForGenerationOptions() {
     writeFileSync(
       resolve(__dirname, "./prisma-schema-config.json"),
       JSON.stringify(prismaSchemaConfigJson, null, 2),
-      "utf-8"
+      "utf-8",
     );
 
     await swaggerConfig();
@@ -704,7 +704,7 @@ async function promptUserForGenerationOptions() {
   writeFileSync(
     resolve(__dirname, "./prisma-schema-config.json"),
     JSON.stringify(prismaSchemaConfigJson, null, 2),
-    "utf-8"
+    "utf-8",
   );
 }
 
@@ -752,8 +752,8 @@ function generateAndSaveSwaggerDocsForModel(model: any): void {
   writeFileSync(outputFilePath, swaggerAnnotation, "utf-8");
   console.log(
     `Swagger annotations for model "${model.name}" generated at: ${chalk.blue(
-      whereToSave
-    )}`
+      whereToSave,
+    )}`,
   );
 
   if (prismaSchemaConfigJson.generateEndpoints) {

@@ -3,8 +3,7 @@ import { join, basename, dirname, normalize, sep } from "path";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { getFileMeta } from "./utils.js";
 import { promises as fsPromises } from "fs";
-import { updateAllClassLogs } from "./class-log";
-import { updateComponentImports } from "./class-imports";
+import { updateComponentMap } from "./component-map";
 import { generateFileListJson } from "./files-list";
 
 const { __dirname } = getFileMeta();
@@ -152,8 +151,7 @@ export async function deleteDirectoriesIfExist(
 
 export const filesToDelete = [
   join(__dirname, "request-data.json"),
-  join(__dirname, "class-log.json"),
-  join(__dirname, "class-imports.json"),
+  join(__dirname, "component-map.json"),
 ];
 
 export const dirsToDelete = [
@@ -164,5 +162,4 @@ export const dirsToDelete = [
 await deleteFilesIfExist(filesToDelete);
 await deleteDirectoriesIfExist(dirsToDelete);
 await generateFileListJson();
-await updateAllClassLogs();
-await updateComponentImports();
+await updateComponentMap();

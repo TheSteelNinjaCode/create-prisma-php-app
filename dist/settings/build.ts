@@ -1,19 +1,11 @@
-import { join } from "path";
 import { generateFileListJson } from "./files-list.js";
-import { updateAllClassLogs } from "./class-log.js";
 import {
   deleteFilesIfExist,
   filesToDelete,
   deleteDirectoriesIfExist,
   dirsToDelete,
 } from "./project-name.js";
-import {
-  analyzeImportsInFile,
-  getAllPhpFiles,
-  SRC_DIR,
-  updateComponentImports,
-} from "./class-imports";
-import { checkComponentImports } from "./component-import-checker";
+import { updateComponentMap } from "./component-map.js";
 
 (async () => {
   console.log("📦 Generating files for production...");
@@ -21,29 +13,7 @@ import { checkComponentImports } from "./component-import-checker";
   await deleteFilesIfExist(filesToDelete);
   await deleteDirectoriesIfExist(dirsToDelete);
   await generateFileListJson();
-  await updateAllClassLogs();
-  await updateComponentImports();
-
-  const phpFiles = await getAllPhpFiles(join(SRC_DIR, "app"));
-  for (const file of phpFiles) {
-    const rawFileImports = await analyzeImportsInFile(file);
-
-    const fileImports: Record<
-      string,
-      { className: string; filePath: string; importer?: string }[]
-    > = {};
-
-    for (const key in rawFileImports) {
-      const val = rawFileImports[key];
-      if (typeof val === "string") {
-        fileImports[key] = [{ className: key, filePath: val }];
-      } else {
-        fileImports[key] = val;
-      }
-    }
-
-    await checkComponentImports(file, fileImports);
-  }
+  await updateComponentMap();
 
   console.log("✅ Generating files for production completed.");
 })();

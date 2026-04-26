@@ -9,13 +9,7 @@ import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
 import { join, dirname, relative } from "path";
 import { getFileMeta, PUBLIC_DIR, SRC_DIR } from "./utils.js";
-import { updateAllClassLogs } from "./class-log.js";
-import {
-  analyzeImportsInFile,
-  getAllPhpFiles,
-  updateComponentImports,
-} from "./class-imports";
-import { checkComponentImports } from "./component-import-checker";
+import { updateComponentMap } from "./component-map";
 import { DebouncedWorker, createSrcWatcher, DEFAULT_AWF } from "./utils.js";
 import chalk from "chalk";
 
@@ -39,24 +33,7 @@ function getExternalIP(): string | null {
 const pipeline = new DebouncedWorker(
   async () => {
     await generateFileListJson();
-    await updateAllClassLogs();
-    await updateComponentImports();
-
-    const phpFiles = await getAllPhpFiles(SRC_DIR);
-    for (const file of phpFiles) {
-      const rawFileImports = await analyzeImportsInFile(file);
-      const fileImports: Record<
-        string,
-        { className: string; filePath: string; importer?: string }[]
-      > = {};
-      for (const key in rawFileImports) {
-        const v = rawFileImports[key];
-        fileImports[key] = Array.isArray(v)
-          ? v
-          : [{ className: key, filePath: v }];
-      }
-      await checkComponentImports(file, fileImports);
-    }
+    await updateComponentMap();
 
     if (bs.active) {
       bs.reload();
