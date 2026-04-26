@@ -94,7 +94,8 @@
 - For page-local interactivity, prefer `index.php` or nested `layout.php` with a plain inline `<script>` that contains PulsePoint state and functions directly, and use `pp.fetchFunction(...)` for backend calls.
 - Do not wrap inline PulsePoint code in `DOMContentLoaded`, IIFEs, manual `pp.mount()` calls, or custom scoping/bootstrap helpers. Prisma PHP scopes the component boundary and runs the script for you.
 - Reserve plain browser JavaScript or TypeScript modules for reusable helpers in `ts/`, third-party libraries, low-level browser APIs, or behavior that does not belong inside a PulsePoint component boundary.
-- Use `pp-style` for template-driven inline CSS, `pp-spread="{...attrs}"` for dynamic attribute objects, `pp-for` only on `<template>`, and plain `key` for keyed diffing.
+- Use `pp-style` whenever inline CSS contains `{...}` interpolation or any other template-driven/reactive value, reserve plain `style` for fully static inline CSS, use `pp-spread="{...attrs}"` for dynamic attribute objects, keep `pp-for` only on `<template>`, and use plain `key` for keyed diffing.
+- Do not generate reactive inline CSS inside a plain `style` attribute such as `style="width: {progress}%";` use `pp-style="width: {progress}%";` instead so editor CSS validation does not flag the source markup as invalid.
 - Use `pp.ref(...)`, `pp-ref`, `pp.portal(...)`, `pp.createContext(...)`, `Context.Provider`, and `pp.context(...)` according to `pulsepoint.md`.
 - Use `value`, `defaultvalue`, and `defaultchecked` form bindings according to `pulsepoint.md`; do not author internal `data-pp-*` runtime attributes.
 

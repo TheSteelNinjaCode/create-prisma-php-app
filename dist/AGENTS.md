@@ -712,7 +712,8 @@ Also follow these rules:
 - do not write React, Vue, Alpine, or Livewire syntax and call it PulsePoint
 - keep backend concerns separate from PulsePoint runtime concerns
 - prefer simple documented runtime primitives over abstractions copied from other ecosystems
-- use `pp-style` for template-driven inline CSS and plain `style` for fully static inline CSS
+- use `pp-style` whenever inline CSS contains `{...}` interpolation or any other template-driven/reactive value, and reserve plain `style` for fully static inline CSS
+- do **not** generate reactive inline CSS inside a plain `style` attribute such as `style="width: {progress}%";` use `pp-style="width: {progress}%";` instead so source markup stays editor-friendly
 - use `pp-spread="{...attrs}"` for dynamic attribute objects and omit nullish values from those objects
 - use `pp-for` only on `<template>` with `item in items` or `(item, index) in items`
 - use plain `key` for keyed diffing; do not invent `pp-key`
