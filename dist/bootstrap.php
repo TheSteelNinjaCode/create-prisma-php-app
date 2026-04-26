@@ -1568,6 +1568,7 @@ try {
             CacheHandler::saveCache(Request::$decodedUri, MainLayout::$html);
         }
 
+        header('Content-Type: text/html; charset=UTF-8');
         echo MainLayout::$html;
     } else {
         $layoutPath = Bootstrap::$isContentIncluded
