@@ -16,7 +16,7 @@ import chalk from "chalk";
 const { __dirname } = getFileMeta();
 const bs: BrowserSyncInstance = browserSync.create();
 
-const PUBLIC_IGNORE_DIRS = [""];
+const PUBLIC_IGNORE_DIRS = ["uploads"];
 
 function getExternalIP(): string | null {
   const nets = networkInterfaces();

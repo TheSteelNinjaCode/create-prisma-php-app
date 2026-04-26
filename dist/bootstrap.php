@@ -94,22 +94,9 @@ final class Bootstrap extends RuntimeException
         MainLayout::init();
         ErrorHandler::registerHandlers();
 
-        setcookie("pp_local_store_key", PrismaPHPSettings::$localStoreKey, [
-            'expires' => time() + 3600,
-            'path' => '/',
-            'domain' => '',
-            'secure' => self::isHttpsRequest(),
-            'httponly' => false,
-            'samesite' => 'Lax',
-        ]);
-
         self::setCsrfCookie();
 
         self::$secondRequestC69CD = Request::$data['secondRequestC69CD'] ?? false;
-
-        if (Request::$isWire && !self::$secondRequestC69CD) {
-            self::isLocalStoreCallback();
-        }
 
         $contentInfo = self::determineContentToInclude();
         self::$contentToInclude = $contentInfo['path'] ?? '';
@@ -148,20 +135,6 @@ final class Bootstrap extends RuntimeException
         self::$requestFilesData = PrismaPHPSettings::$includeFiles;
 
         ErrorHandler::checkFatalError();
-    }
-
-    private static function isLocalStoreCallback(): void
-    {
-        if (empty($_SERVER['HTTP_X_PP_FUNCTION'])) {
-            return;
-        }
-
-        $callbackName = $_SERVER['HTTP_X_PP_FUNCTION'];
-
-        if ($callbackName === PrismaPHPSettings::$localStoreKey) {
-            self::validateCsrfToken();
-            self::jsonExit(['success' => true, 'response' => 'localStorage updated']);
-        }
     }
 
     private static function setCsrfCookie(): void
@@ -290,6 +263,11 @@ final class Bootstrap extends RuntimeException
             }
         }
 
+        $exactContentInfo = self::getExactContentInfo($requestUri, $pathname);
+        if ($exactContentInfo !== null) {
+            return $exactContentInfo;
+        }
+
         if ($pathname) {
             $groupFolder = self::findGroupFolder($pathname);
             if ($groupFolder) {
@@ -322,6 +300,139 @@ final class Bootstrap extends RuntimeException
             'pathname' => $pathname,
             'uri' => $requestUri
         ];
+    }
+
+    private static function getExactContentInfo(string $requestUri, string $pathname): ?array
+    {
+        $requestData = self::findExactRequestData($requestUri, $pathname);
+        if ($requestData === null) {
+            return null;
+        }
+
+        $includedFiles = $requestData['includedFiles'] ?? null;
+        if (!is_array($includedFiles) || empty($includedFiles)) {
+            return null;
+        }
+
+        $includePath = '';
+        $layoutsToInclude = [];
+
+        foreach ($includedFiles as $file) {
+            if (!is_string($file) || $file === '') {
+                continue;
+            }
+
+            $normalizedFile = str_replace('\\', '/', $file);
+
+            if (str_ends_with($normalizedFile, '/layout.php')) {
+                if (self::fileExistsCached($file) && !in_array($file, $layoutsToInclude, true)) {
+                    $layoutsToInclude[] = $file;
+                }
+
+                continue;
+            }
+
+            if ($includePath === '' && self::fileExistsCached($file)) {
+                $includePath = $file;
+            }
+        }
+
+        if ($includePath === '') {
+            return null;
+        }
+
+        self::hydrateDynamicParamsFromIncludePath($pathname, $includePath);
+
+        usort($layoutsToInclude, static function (string $left, string $right): int {
+            return substr_count(str_replace('\\', '/', $left), '/')
+                <=> substr_count(str_replace('\\', '/', $right), '/');
+        });
+
+        return [
+            'path' => $includePath,
+            'layouts' => $layoutsToInclude,
+            'pathname' => $pathname,
+            'uri' => $requestUri,
+        ];
+    }
+
+    private static function findExactRequestData(string $requestUri, string $pathname): ?array
+    {
+        $candidates = [];
+        $decodedRequestUri = Request::getDecodedUrl($requestUri);
+
+        if ($decodedRequestUri !== '') {
+            $candidates[] = $decodedRequestUri;
+
+            $trimmedDecodedRequestUri = ltrim($decodedRequestUri, '/');
+            if ($trimmedDecodedRequestUri !== '') {
+                $candidates[] = $trimmedDecodedRequestUri;
+            }
+        }
+
+        if ($pathname === '') {
+            $candidates[] = '/';
+        } else {
+            $candidates[] = $pathname;
+            $candidates[] = '/' . $pathname;
+        }
+
+        foreach (array_values(array_unique($candidates)) as $candidate) {
+            $requestData = PrismaPHPSettings::$includeFiles[$candidate] ?? null;
+
+            if (is_array($requestData)) {
+                return $requestData;
+            }
+        }
+
+        return null;
+    }
+
+    private static function hydrateDynamicParamsFromIncludePath(string $pathname, string $includePath): void
+    {
+        $normalizedIncludePath = str_replace('\\', '/', $includePath);
+        $normalizedAppPath = str_replace('\\', '/', APP_PATH);
+
+        if (!str_starts_with($normalizedIncludePath, $normalizedAppPath . '/')) {
+            return;
+        }
+
+        $relativeRoutePath = ltrim(substr($normalizedIncludePath, strlen($normalizedAppPath)), '/');
+        $routeSegments = array_values(array_filter(
+            explode('/', $relativeRoutePath),
+            static function (string $segment): bool {
+                return $segment !== '' && !preg_match('/^\([^)]+\)$/', $segment);
+            }
+        ));
+
+        if (!empty($routeSegments) && in_array(end($routeSegments), ['index.php', 'route.php'], true)) {
+            array_pop($routeSegments);
+        }
+
+        $pathnameSegments = $pathname === '' ? [] : explode('/', $pathname);
+        $dynamicParams = [];
+        $pathnameIndex = 0;
+
+        foreach ($routeSegments as $routeSegment) {
+            if (preg_match('/^\[\.\.\.(.+)\]$/', $routeSegment, $matches)) {
+                $dynamicParams[$matches[1]] = array_slice($pathnameSegments, $pathnameIndex);
+                break;
+            }
+
+            if (!array_key_exists($pathnameIndex, $pathnameSegments)) {
+                break;
+            }
+
+            if (preg_match('/^\[(.+)\]$/', $routeSegment, $matches)) {
+                $dynamicParams[$matches[1]] = $pathnameSegments[$pathnameIndex];
+            }
+
+            $pathnameIndex++;
+        }
+
+        if (!empty($dynamicParams)) {
+            Request::$dynamicParams = new ArrayObject($dynamicParams, ArrayObject::ARRAY_AS_PROPS);
+        }
     }
 
     private static function collectLayouts(string $pathname, ?string $groupFolder, ?string $dynamicRoute): array
@@ -1116,7 +1227,7 @@ final class Bootstrap extends RuntimeException
 
     private static function resolveClassImport(string $simpleClassKey): ?array
     {
-        $logs = PrismaPHPSettings::$classLogFiles[$simpleClassKey] ?? [];
+        $logs = PrismaPHPSettings::getClassLogFiles()[$simpleClassKey] ?? [];
         if (!is_array($logs) || empty($logs)) {
             return null;
         }
@@ -1199,9 +1310,25 @@ final class Bootstrap extends RuntimeException
             }
         }
 
-        $currentUrl = Request::getDecodedUrl(Request::$uri);
+        $currentUrl = self::normalizeRequestDataKey(Request::getDecodedUrl(Request::$uri));
+        $legacyUrl = $currentUrl === '/' ? null : '/' . $currentUrl;
+
+        if ($legacyUrl !== null && isset($currentData[$legacyUrl])) {
+            $legacyEntry = $currentData[$legacyUrl];
+            unset($currentData[$legacyUrl]);
+
+            if (!isset($currentData[$currentUrl])) {
+                $currentData[$currentUrl] = $legacyEntry;
+            } elseif (isset($legacyEntry['includedFiles']) && is_array($legacyEntry['includedFiles'])) {
+                $currentData[$currentUrl]['includedFiles'] = array_values(array_unique(array_merge(
+                    $currentData[$currentUrl]['includedFiles'] ?? [],
+                    $legacyEntry['includedFiles']
+                )));
+            }
+        }
 
         if (isset($currentData[$currentUrl])) {
+            $currentData[$currentUrl]['url'] = $currentUrl;
             $currentData[$currentUrl]['includedFiles'] = array_values(array_unique(
                 array_merge($currentData[$currentUrl]['includedFiles'], $srcAppFiles)
             ));
@@ -1211,7 +1338,7 @@ final class Bootstrap extends RuntimeException
             }
         } else {
             $currentData[$currentUrl] = [
-                'url'         => Request::$uri,
+                'url'         => $currentUrl,
                 'fileName'    => self::convertUrlToFileName($currentUrl),
                 'isCacheable' => CacheHandler::$isCacheable,
                 'cacheTtl' => CacheHandler::$ttl,
@@ -1232,6 +1359,17 @@ final class Bootstrap extends RuntimeException
         $url = trim($url, '/');
         $fileName = preg_replace('/[^a-zA-Z0-9-_]/', '_', $url);
         return $fileName ? mb_strtolower($fileName, 'UTF-8') : 'index';
+    }
+
+    private static function normalizeRequestDataKey(string $url): string
+    {
+        $trimmedUrl = trim($url, '/');
+
+        if ($trimmedUrl === '') {
+            return '/';
+        }
+
+        return $trimmedUrl;
     }
 
     private static function authenticateUserToken(): void
@@ -1258,7 +1396,17 @@ final class Bootstrap extends RuntimeException
     public static function applyRootLayoutId(string $html): string
     {
         $rootLayoutPath = self::$layoutsToInclude[0] ?? self::$parentLayoutPath;
-        $rootLayoutId = !empty($rootLayoutPath) ? md5($rootLayoutPath) : 'default-root';
+
+        if (!empty($rootLayoutPath)) {
+            $resolvedRootLayoutPath = realpath($rootLayoutPath);
+            $canonicalRootLayoutPath = $resolvedRootLayoutPath !== false
+                ? $resolvedRootLayoutPath
+                : $rootLayoutPath;
+
+            $rootLayoutId = md5(str_replace('\\', '/', $canonicalRootLayoutPath));
+        } else {
+            $rootLayoutId = 'default-root';
+        }
 
         header('X-PP-Root-Layout: ' . $rootLayoutId);
 
