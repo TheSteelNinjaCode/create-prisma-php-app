@@ -28,6 +28,7 @@
 - Keep `src/app` focused on route files, layouts, handlers, and route-scoped partials.
 - Prefer `src/Components` for reusable application UI components shared across pages or layouts.
 - Keep reusable non-UI code such as services, auth, middleware, Prisma classes, and helpers in `src/Lib`.
+- Treat `./public/uploads` as the default local public upload directory for file uploads.
 - Treat generated component libraries such as `src/Lib/PHPXUI` and `src/Lib/PPIcons` as library-specific surfaces governed by their manifests and `.github/instructions/*.instructions.md` files.
 - If a partial starts as route-local but becomes shared across the app, move it from `src/app` to `src/Components`.
 - Suggest this structure by default when helping users organize growing Prisma PHP apps.
@@ -57,6 +58,15 @@
 - Do not assume the proxy stays on the default `http://localhost:5090`; if that port is busy, the active BrowserSync ports may change.
 - Prefer confirming the current `local`, `external`, `ui`, and `uiExternal` values in `./settings/bs-config.json` before suggesting a test URL or opening the app in the browser.
 - Use this file when frontend console errors or terminal output suggest the wrong local URL, proxy port, or BrowserSync UI port is being used during debugging.
+
+## File Upload Defaults
+
+- For local public uploads, default to `./public/uploads`.
+- In PHP examples and generated code, use `PUBLIC_PATH . '/uploads/'` or the equivalent absolute `./public/uploads` path.
+- Treat files in `./public/uploads` as publicly accessible from the app's public web root.
+- Keep `./settings/bs-config.ts` aligned with `const PUBLIC_IGNORE_DIRS = ["uploads"];` so upload writes, renames, replacements, and deletes do not trigger BrowserSync reloads.
+- Do not document or generate legacy local upload directories such as `DOCUMENT_PATH . '/uploads/'`, a project-root `/uploads`, or `src/uploads`.
+- There is no backward-compatible or legacy local upload directory in this guidance.
 
 ## CLI Command Alignment
 

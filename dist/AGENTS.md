@@ -536,7 +536,7 @@ Use this file-manager decision flow:
 1. read `file-manager.md`
 2. verify the official File Manager docs for the installed version
 3. decide whether the task belongs in a rendered page with `index.php` or a direct handler with `route.php`
-4. confirm the upload destination directory is outside `src/app`
+4. use `./public/uploads` as the default local public upload directory and treat it as publicly accessible
 5. use `PP\FileManager\UploadFile` when the task matches the documented upload workflow
 6. use `PP\Validator` for non-file request values such as rename targets, labels, or filters
 7. return structured messages for expected upload failures such as invalid size, invalid type, partial upload, or missing file
@@ -546,6 +546,10 @@ Important file-manager rules:
 - do **not** omit `enctype="multipart/form-data"` on upload forms
 - do **not** forget the `[]` suffix when generating multiple-file inputs
 - do **not** place uploaded files inside `src/app`
+- use `PUBLIC_PATH . '/uploads/'` or the equivalent absolute `./public/uploads` path for local public uploads
+- treat files saved in `./public/uploads` as publicly accessible from the app's public web root
+- keep `./settings/bs-config.ts` aligned with `const PUBLIC_IGNORE_DIRS = ["uploads"];` so local upload mutations do not trigger BrowserSync reloads
+- do **not** document or generate legacy local upload destinations such as `DOCUMENT_PATH . '/uploads/'`, a project-root `/uploads`, or `src/uploads`
 - do **not** assume HTML size hints replace `php.ini` upload limits
 - do **not** invent undocumented storage abstractions when `UploadFile` already fits the task
 
