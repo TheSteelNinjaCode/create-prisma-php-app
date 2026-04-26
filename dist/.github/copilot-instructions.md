@@ -7,13 +7,14 @@
 - Treat `node_modules/prisma-php/dist/docs` as framework reference docs that teach AI how Prisma PHP works. The presence of a page in that docs folder does not mean the current workspace has that feature enabled.
 - Read the matching doc in `node_modules/prisma-php/dist/docs` before generating or editing framework-specific Prisma PHP code.
 - Expect `AGENTS.md` in the project root and keep it aligned with the installed Prisma PHP docs contract.
-- In the Prisma PHP package source repo, keep `AGENTS.md`, `.github/copilot-instructions.md`, any `.github/instructions/**/*.instructions.md`, and `dist/docs` aligned so the published docs remain correct after install.
+- In the Prisma PHP package source repo, keep the source-repo `AGENTS.md`, `.github/copilot-instructions.md`, any `.github/instructions/**/*.instructions.md`, and source-repo `dist/docs` aligned so the published docs remain correct after install. In consumer apps, the installed docs path is `node_modules/prisma-php/dist/docs`.
 - Do not assume installed consumer apps also ship a root `.github/copilot-instructions.md` unless the generator explicitly creates one.
 - If `.github/instructions/**/*.instructions.md` exists, treat those files as workspace-local task instructions for third-party libraries, component systems, icon packs, and other implementation-specific rules.
 - Before generating or editing code, inspect `.github/instructions/` and read any `*.instructions.md` files that match the current task, named library, target files, or implementation surface.
-- Keep every `dist/docs/*.md` page AI-discoverable on its own: the frontmatter description and opening section should clearly say when agents should read that file and which adjacent docs to consult next.
+- In the Prisma PHP package source repo, keep every `dist/docs/*.md` page AI-discoverable on its own. In consumer apps, those installed docs live at `node_modules/prisma-php/dist/docs/*.md`. The frontmatter description and opening section should clearly say when agents should read that file and which adjacent docs to consult next.
 - When a task maps to an optional feature such as `backendOnly`, `swaggerDocs`, `typescript`, `websocket`, or `mcp`, inspect `./prisma-php.json` first, then read the matching docs page to learn the implementation contract.
 - When docs and project files still leave a runtime gap, inspect the narrow core file that owns the behavior: `TemplateCompiler.php` for HTML fragment compilation and route root scoping, `ImportComponent.php` for imported partials, `MainLayout.php` for metadata and head/footer scripts, `PrismaPHPSettings.php` plus generated settings JSON for component and route maps, `Request.php` for request handling, `Validator.php`/`Rule.php` for validation, and feature-specific files such as `UploadFile.php`, `Mailer.php`, or `Streaming/SSE.php`.
+- When validation or rule-builder syntax is involved, read `node_modules/prisma-php/dist/docs/validator.md` first. If method shape is still unclear after that, inspect `vendor/tsnc/prisma-php/src/Rule.php` to confirm which `Rule` methods are static entry points and which methods must be chained on a builder instance.
 
 ## Workspace Task Instructions
 
@@ -28,9 +29,11 @@
 - Keep `src/app` focused on route files, layouts, handlers, and route-scoped partials.
 - Prefer `src/Components` for reusable application UI components shared across pages or layouts.
 - Keep reusable non-UI code such as services, auth, middleware, Prisma classes, and helpers in `src/Lib`.
+- Treat route-private folders such as `src/app/<route>/_components` as an implementation detail for files that stay owned by that route only.
 - Treat `./public/uploads` as the default local public upload directory for file uploads.
 - Treat generated component libraries such as `src/Lib/PHPXUI` and `src/Lib/PPIcons` as library-specific surfaces governed by their manifests and `.github/instructions/*.instructions.md` files.
 - If a partial starts as route-local but becomes shared across the app, move it from `src/app` to `src/Components`.
+- Do not default to creating `src/app/<route>/_components` for app-owned section components such as `HeroSection`, `FormSection`, or `SidebarSection`; prefer `src/Components` unless the user explicitly wants route-local colocation and the files are truly private to that route.
 - Suggest this structure by default when helping users organize growing Prisma PHP apps.
 
 ## Component Tag Contract
@@ -50,7 +53,7 @@
 - Do not default to telling users to run `npm run tailwind`, `npm run tailwind:build`, `npm run ts:watch`, or `npm run ts:build` after routine file changes, because those are usually orchestrated through the generated top-level scripts.
 - Use `npm run websocket` or `npm run mcp` only when isolating local runtime startup, debugging, or when the project's scripts show those services are not already covered by the normal development flow.
 - Use `npm run create-swagger-docs` only when Swagger or OpenAPI output must be intentionally generated or refreshed.
-- When package-script behavior matters, read `dist/docs/commands.md` first and inspect the actual `package.json` in the target project before assuming which scripts exist.
+- When package-script behavior matters, read `node_modules/prisma-php/dist/docs/commands.md` first and inspect the actual `package.json` in the target project before assuming which scripts exist.
 
 ## BrowserSync URL Source Of Truth
 
@@ -116,30 +119,42 @@
 - Do not manually add `pp-component` inside `ImportComponent` partial source; Prisma PHP injects it there.
 - When imported partials need PulsePoint logic, keep the `<script>` inside that same root element and author it as a plain `<script>` tag without `type="text/pp"`, DOM-ready wrappers, or manual bootstrap code.
 
+## Validation Rules
+
+- Use `PP\Validator` as the backend validation and normalization layer.
+- Prefer the `Rule` builder for rule-based validation.
+- Start `Rule` builders with `Rule::required()`, `Rule::optional()`, or `Rule::make()`.
+- Chain rule methods such as `->min(...)`, `->max(...)`, `->email()`, and `->regex(...)` on that builder instance.
+- Do not generate static calls such as `Rule::max(80)` or `Rule::email()`.
+- For optional constrained fields, use `Rule::optional()->max(80)` or `Rule::make()->max(80)`.
+- Validate in PHP even when the frontend already performs local checks.
+- Return structured validation results for expected failures instead of treating routine invalid input as an uncaught exception.
+- When internals matter, inspect `vendor/tsnc/prisma-php/src/Validator.php` and `vendor/tsnc/prisma-php/src/Rule.php`.
+
 ## Relevant Docs
 
-- Project structure and feature placement: `dist/docs/project-structure.md`
-- CLI project creation and update commands: `dist/docs/commands.md`
-- First-time project installation and local setup: `dist/docs/installation.md`
-- Existing-project upgrades and feature refreshes: `dist/docs/upgrading.md`
-- TypeScript frontend tooling, the `typescript` flag, and `ts/main.ts` registration: `dist/docs/typescript.md`
-- Backend-only API usage and `backendOnly`: `dist/docs/backend-only.md`
-- Route and layout structure: `dist/docs/layouts-and-pages.md`
-- AI integration, provider-backed chat, streaming, and MCP boundary: `dist/docs/get-started-ia.md`
-- Data loading, `#[Exposed]`, and SSE streaming: `dist/docs/fetching-data.md`
-- Bootstrap flow, runtime init order, request initialization, and function-call protection: `dist/docs/bootstrap-runtime.md`
-- PulsePoint runtime rules: `dist/docs/pulsepoint.md`
-- Component and `ImportComponent` rules: `dist/docs/components.md`
-- Cache behavior and `CacheHandler`: `dist/docs/caching.md`
-- Validation rules: `dist/docs/validator.md`
-- Prisma ORM schema, migrations, and generated PHP classes: `dist/docs/prisma-php-orm.md`
-- Environment variables and `PP\Env` usage: `dist/docs/env.md`
-- File uploads and file manager behavior: `dist/docs/file-manager.md`
-- Email and SMTP workflows: `dist/docs/email.md`
-- WebSocket and realtime behavior: `dist/docs/websocket.md`
-- MCP server and tool rules: `dist/docs/mcp.md`
-- Authentication: `dist/docs/authentication.md`
-- Error handling, expected failures, and route error files: `dist/docs/error-handling.md`
-- Metadata and icons: `dist/docs/metadata-and-og-images.md`
-- API-style handlers and webhooks: `dist/docs/route-handlers.md`
-- Swagger/OpenAPI generation and `swaggerDocs`: `dist/docs/swagger-docs.md`
+- Project structure and feature placement: `node_modules/prisma-php/dist/docs/project-structure.md`
+- CLI project creation and update commands: `node_modules/prisma-php/dist/docs/commands.md`
+- First-time project installation and local setup: `node_modules/prisma-php/dist/docs/installation.md`
+- Existing-project upgrades and feature refreshes: `node_modules/prisma-php/dist/docs/upgrading.md`
+- TypeScript frontend tooling, the `typescript` flag, and `ts/main.ts` registration: `node_modules/prisma-php/dist/docs/typescript.md`
+- Backend-only API usage and `backendOnly`: `node_modules/prisma-php/dist/docs/backend-only.md`
+- Route and layout structure: `node_modules/prisma-php/dist/docs/layouts-and-pages.md`
+- AI integration, provider-backed chat, streaming, and MCP boundary: `node_modules/prisma-php/dist/docs/get-started-ia.md`
+- Data loading, `#[Exposed]`, and SSE streaming: `node_modules/prisma-php/dist/docs/fetching-data.md`
+- Bootstrap flow, runtime init order, request initialization, and function-call protection: `node_modules/prisma-php/dist/docs/bootstrap-runtime.md`
+- PulsePoint runtime rules: `node_modules/prisma-php/dist/docs/pulsepoint.md`
+- Component and `ImportComponent` rules: `node_modules/prisma-php/dist/docs/components.md`
+- Cache behavior and `CacheHandler`: `node_modules/prisma-php/dist/docs/caching.md`
+- Validation rules: `node_modules/prisma-php/dist/docs/validator.md`
+- Prisma ORM schema, migrations, and generated PHP classes: `node_modules/prisma-php/dist/docs/prisma-php-orm.md`
+- Environment variables and `PP\Env` usage: `node_modules/prisma-php/dist/docs/env.md`
+- File uploads and file manager behavior: `node_modules/prisma-php/dist/docs/file-manager.md`
+- Email and SMTP workflows: `node_modules/prisma-php/dist/docs/email.md`
+- WebSocket and realtime behavior: `node_modules/prisma-php/dist/docs/websocket.md`
+- MCP server and tool rules: `node_modules/prisma-php/dist/docs/mcp.md`
+- Authentication: `node_modules/prisma-php/dist/docs/authentication.md`
+- Error handling, expected failures, and route error files: `node_modules/prisma-php/dist/docs/error-handling.md`
+- Metadata and icons: `node_modules/prisma-php/dist/docs/metadata-and-og-images.md`
+- API-style handlers and webhooks: `node_modules/prisma-php/dist/docs/route-handlers.md`
+- Swagger/OpenAPI generation and `swaggerDocs`: `node_modules/prisma-php/dist/docs/swagger-docs.md`

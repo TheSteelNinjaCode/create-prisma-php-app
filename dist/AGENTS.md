@@ -35,7 +35,8 @@ Important rules:
 - expect `./AGENTS.md` at the project root
 - when the installed docs and a habit from another framework conflict, follow Prisma PHP
 - when a workspace instruction file and the general Prisma PHP docs both apply, follow both; keep `./prisma-php.json` as the source of truth for feature enablement and prefer the most specific matching instruction for library- or file-scoped implementation details
-- when updating Prisma PHP package/docs sources, keep `AGENTS.md` and `dist/docs` aligned for consumer apps; if the Prisma PHP package source repo also maintains `.github/copilot-instructions.md` or `.github/instructions/**/*.instructions.md`, keep those source-repo files aligned there too
+- in consumer apps, use `./node_modules/prisma-php/dist/docs` as the installed docs location; do not assume a root-level `./dist/docs` directory exists
+- when updating Prisma PHP package/docs sources in the Prisma PHP package source repo, keep the source-repo `AGENTS.md` and source-repo `dist/docs` aligned; if that repo also maintains `.github/copilot-instructions.md` or `.github/instructions/**/*.instructions.md`, keep those source-repo files aligned there too
 
 ## Runtime lookup for AI
 
@@ -232,8 +233,10 @@ When organizing a growing Prisma PHP app, keep route code and reusable code sepa
 - keep `src/app` focused on the route tree, route-local layouts, pages, handlers, and route-scoped partials
 - prefer `src/Components` for reusable application UI components shared across multiple routes or layouts
 - keep reusable non-UI code such as services, auth, middleware, Prisma classes, and helper libraries in `src/Lib`
+- treat route-private folders such as `src/app/<route>/_components` as an implementation detail for files that stay owned by that route only
 - treat generated libraries such as `src/Lib/PHPXUI` and `src/Lib/PPIcons` as library-specific surfaces governed by their manifests and matching `.github/instructions/**/*.instructions.md` files
 - if a partial starts in `src/app` but becomes shared across the app, promote it into `src/Components`
+- do **not** default to creating `src/app/<route>/_components` for app-owned section components such as `HeroSection`, `FormSection`, or `SidebarSection`; prefer `src/Components` unless the user explicitly wants route-local colocation and the files are truly private to that route
 - do **not** default to placing app-wide reusable components under `src/app` unless the user explicitly wants route-local colocation
 
 ## HTML-first component tag contract
@@ -687,6 +690,9 @@ Default Prisma PHP validation rules:
 
 - use `PP\Validator` as the backend validation and normalization layer
 - prefer the `Rule` builder for rule-based validation
+- start `Rule` builders with `Rule::required()`, `Rule::optional()`, or `Rule::make()`
+- chain rule methods such as `->min(...)`, `->max(...)`, `->email()`, and `->regex(...)` on that builder instance
+- do **not** generate static calls such as `Rule::max(80)`; for optional constrained fields use `Rule::optional()->max(80)` or `Rule::make()->max(80)`
 - validate in PHP even when the frontend already performs local checks
 - return structured validation results for expected failures
 - do not treat routine invalid input as an uncaught exception
@@ -696,6 +702,7 @@ When internals matter, the documented Prisma PHP core validator location is:
 
 ```txt
 vendor/tsnc/prisma-php/src/Validator.php
+vendor/tsnc/prisma-php/src/Rule.php
 ```
 
 ## PulsePoint rules
