@@ -354,15 +354,19 @@ There are two related structure rules, and AI must not mix their responsibilitie
 Use this pattern:
 
 1. PHP first
-2. one parent HTML element for the route content
-3. when PulsePoint is present, let Prisma PHP inject the route or layout `pp-component` scope on that root automatically
-4. keep one `<script>` block as the last child inside that same root element
+2. one parent HTML element as the route boundary
+3. place the visible page or layout content inside that boundary
+4. when PulsePoint is present, let Prisma PHP inject the route or layout `pp-component` scope on that root automatically
+5. keep one `<script>` block as the last child of that boundary root
 
 Also follow these route-file rules:
 
 - `index.php` and nested `layout.php` must render a single parent HTML element
+- use that single parent element as the route boundary; if the visible content should stay inside a semantic element such as `<main>`, `<section>`, or `<article>`, wrap it in a neutral parent such as `<div>`
 - for normal pages and nested layouts, do **not** manually author `pp-component` on that root; Prisma PHP adds it automatically
 - author a plain `<script>` tag inside that root when PulsePoint logic is needed and do **not** add `type="text/pp"` manually
+- keep the `<script>` as the last child of the route boundary, usually as a sibling of the visible content container instead of nesting it inside the semantic content element by default
+- do **not** leave the `<script>` outside the route boundary
 - write PulsePoint state, derived values, and functions directly at the top level of that script; do **not** wrap them in `DOMContentLoaded`, an IIFE, manual `pp.mount()` calls, or custom scoping helpers
 - only the root `layout.php` should define `<html>`, `<head>`, and `<body>`
 - when PulsePoint is present in a root `layout.php`, keep `MainLayout::$children` and any `<script>` inside one clear wrapper
@@ -378,13 +382,16 @@ MainLayout::$title = 'Todos';
 MainLayout::$description = 'Track tasks and view the current item count.';
 ?>
 
-<section>
-    <h1>Todos</h1>
-    <p>Count: {count}</p>
+<div>
+    <section>
+        <h1>Todos</h1>
+        <p>Count: {count}</p>
+    </section>
+
     <script>
         const [count, setCount] = pp.state(0);
     </script>
-</section>
+</div>
 ```
 
 ### Imported partials rendered with `ImportComponent::render(...)`

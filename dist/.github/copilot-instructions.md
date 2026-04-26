@@ -100,10 +100,12 @@
 
 ## Route File Conventions
 
-- For PulsePoint-aware `index.php` and nested `layout.php`, keep file order as PHP first, then one parent HTML element; keep the PulsePoint `<script>` as the last child inside that same root element.
-- `index.php` and nested `layout.php` must render a single parent HTML element. Treat that root like a React-style component boundary rather than loose sibling markup.
+- For PulsePoint-aware `index.php` and nested `layout.php`, keep file order as PHP first, then one parent HTML element as the route boundary, then the visible route content inside that boundary, and keep the PulsePoint `<script>` as the last child of that boundary root.
+- `index.php` and nested `layout.php` must render a single parent HTML element. Treat that root like a component boundary rather than loose sibling markup.
+- If the visible page or layout content should stay inside a semantic element such as `<main>`, `<section>`, or `<article>`, wrap it in a neutral parent such as `<div>` so the route boundary can still own the `<script>`.
 - For pages and nested layouts, author a plain single root element and let Prisma PHP inject the PulsePoint `pp-component` scope automatically.
-- Author plain `<script>` tags inside that root when PulsePoint is needed. Put the PulsePoint code at the top level of that script. Do not manually add `type="text/pp"`, `DOMContentLoaded` wrappers, IIFEs, or manual bootstrap code; Prisma PHP normalizes the script contract for the runtime.
+- Author plain `<script>` tags inside that boundary root when PulsePoint is needed, usually as a sibling of the visible content container instead of nesting the script inside the semantic content element by default. Put the PulsePoint code at the top level of that script. Do not manually add `type="text/pp"`, `DOMContentLoaded` wrappers, IIFEs, or manual bootstrap code; Prisma PHP normalizes the script contract for the runtime.
+- Do not leave the route `<script>` outside the route boundary.
 - Only the root `layout.php` should define `<html>`, `<head>`, and `<body>`. When PulsePoint is present, keep `MainLayout::$children;` and any `<script>` inside one clear wrapper.
 
 ## Component Boundary Rules
