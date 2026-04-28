@@ -13,7 +13,7 @@
 - Before generating or editing code, inspect `.github/instructions/` and read any `*.instructions.md` files that match the current task, named library, target files, or implementation surface.
 - In the Prisma PHP package source repo, keep every `dist/docs/*.md` page AI-discoverable on its own. In consumer apps, those installed docs live at `node_modules/prisma-php/dist/docs/*.md`. The frontmatter description and opening section should clearly say when agents should read that file and which adjacent docs to consult next.
 - When a task maps to an optional feature such as `backendOnly`, `swaggerDocs`, `typescript`, `websocket`, or `mcp`, inspect `./prisma-php.json` first, then read the matching docs page to learn the implementation contract.
-- When docs and project files still leave a runtime gap, inspect the narrow core file that owns the behavior: `TemplateCompiler.php` for HTML fragment compilation and route root scoping, `ImportComponent.php` for imported partials, `MainLayout.php` for metadata and head/footer scripts, `PrismaPHPSettings.php` plus generated settings JSON for component and route maps, `Request.php` for request handling, `Validator.php`/`Rule.php` for validation, and feature-specific files such as `UploadFile.php`, `Mailer.php`, or `Streaming/SSE.php`.
+- When docs and project files still leave a runtime gap, inspect the narrow core file that owns the behavior: `TemplateCompiler.php` for HTML fragment compilation and route root scoping, `PHPX.php` plus `TwMerge.php` for PHPX class composition and frontend `twMerge(...)` emission, `ImportComponent.php` for imported partials, `MainLayout.php` for metadata and head/footer scripts, `PrismaPHPSettings.php` plus generated settings JSON for component and route maps, `Request.php` for request handling, `Validator.php`/`Rule.php` for validation, and feature-specific files such as `UploadFile.php`, `Mailer.php`, or `Streaming/SSE.php`.
 - When validation or rule-builder syntax is involved, read `node_modules/prisma-php/dist/docs/validator.md` first. If method shape is still unclear after that, inspect `vendor/tsnc/prisma-php/src/Rule.php` to confirm which `Rule` methods are static entry points and which methods must be chained on a builder instance.
 
 ## Workspace Task Instructions
@@ -45,6 +45,14 @@
 - Author component attributes in kebab-case. The runtime hydrates kebab-case names into camelCase component props and public PHPX properties, such as `as-child` -> `asChild` and `close-on-escape-key` -> `closeOnEscapeKey`.
 - Use mustache values for reactive props, such as `selected-date="{selectedDate}"` and `on-date-select="{setSelectedDate}"`.
 - Write component examples as HTML-first Prisma PHP markup using the current `x-` tag contract.
+
+## Tailwind Merge Contract
+
+- In Tailwind-enabled Prisma PHP apps, Tailwind utility conflict resolution belongs to the frontend `twMerge(...)` runtime helper.
+- `getMergeClasses(...)` and `PP\PHPX\TwMerge::merge(...)` emit frontend `twMerge(...)` expressions for the browser runtime to resolve.
+- `twMerge(...)` is an app-level browser helper, not a PulsePoint built-in.
+- In TypeScript-enabled apps, Prisma PHP registers that helper from `ts/main.ts`; use `typescript.md` for route usage and `components.md` for PHPX usage.
+- Keep Tailwind merge decisions on the frontend runtime instead of trying to finalize conflicting utility classes in PHP.
 
 ## Framework-Managed Package Scripts
 
@@ -97,6 +105,7 @@
 - For page-local interactivity, prefer `index.php` or nested `layout.php` with a plain inline `<script>` that contains PulsePoint state and functions directly, and use `pp.fetchFunction(...)` for backend calls.
 - Do not wrap inline PulsePoint code in `DOMContentLoaded`, IIFEs, manual `pp.mount()` calls, or custom scoping/bootstrap helpers. Prisma PHP scopes the component boundary and runs the script for you.
 - Reserve plain browser JavaScript or TypeScript modules for reusable helpers in `ts/`, third-party libraries, low-level browser APIs, or behavior that does not belong inside a PulsePoint component boundary.
+- Do not treat app-registered helpers such as `twMerge(...)` as PulsePoint built-ins; only use them after the relevant Prisma PHP feature flag and entry-file docs confirm they exist.
 - Use `pp-style` whenever inline CSS contains `{...}` interpolation or any other template-driven/reactive value, reserve plain `style` for fully static inline CSS, use `pp-spread="{...attrs}"` for dynamic attribute objects, keep `pp-for` only on `<template>`, and use plain `key` for keyed diffing.
 - Do not generate reactive inline CSS inside a plain `style` attribute such as `style="width: {progress}%";` use `pp-style="width: {progress}%";` instead so editor CSS validation does not flag the source markup as invalid.
 - Use `pp.ref(...)`, `pp-ref`, `pp.portal(...)`, `pp.createContext(...)`, `Context.Provider`, and `pp.context(...)` according to `pulsepoint.md`.
@@ -145,6 +154,7 @@
 - Bootstrap flow, runtime init order, request initialization, and function-call protection: `node_modules/prisma-php/dist/docs/bootstrap-runtime.md`
 - PulsePoint runtime rules: `node_modules/prisma-php/dist/docs/pulsepoint.md`
 - Component and `ImportComponent` rules: `node_modules/prisma-php/dist/docs/components.md`
+- Frontend Tailwind class composition and `twMerge(...)`: `node_modules/prisma-php/dist/docs/components.md`, `node_modules/prisma-php/dist/docs/typescript.md`, and `node_modules/prisma-php/dist/docs/layouts-and-pages.md`
 - Cache behavior and `CacheHandler`: `node_modules/prisma-php/dist/docs/caching.md`
 - Validation rules: `node_modules/prisma-php/dist/docs/validator.md`
 - Prisma ORM schema, migrations, and generated PHP classes: `node_modules/prisma-php/dist/docs/prisma-php-orm.md`

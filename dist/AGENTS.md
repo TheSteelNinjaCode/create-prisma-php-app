@@ -45,6 +45,7 @@ Use this map only after `prisma-php.json`, matching workspace instructions, inst
 | Need to verify | Runtime/source file |
 | --- | --- |
 | route root scoping, HTML fragment parsing, component tag compilation, prop casing | `vendor/tsnc/prisma-php/src/PHPX/TemplateCompiler.php` |
+| PHPX class composition, `getMergeClasses(...)`, and frontend `twMerge(...)` expression generation | `vendor/tsnc/prisma-php/src/PHPX/PHPX.php`, `vendor/tsnc/prisma-php/src/PHPX/TwMerge.php` |
 | imported PHP partial execution, one-root enforcement, prop serialization, imported `#[Exposed]` functions | `vendor/tsnc/prisma-php/src/ImportComponent.php` |
 | metadata, custom head tags, dynamic head/footer scripts | `vendor/tsnc/prisma-php/src/MainLayout.php` |
 | route and component maps | `vendor/tsnc/prisma-php/src/PrismaPHPSettings.php`, `settings/files-list.json`, `settings/component-map.json` |
@@ -116,6 +117,9 @@ Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php
 
 - **Creating, editing, composing, or reviewing PHPX components, props, children, fragments, icons, buttons, accordions, or component file placement**  
   Read `components.md`
+
+- **Tailwind utility class composition, `getMergeClasses(...)`, `PP\PHPX\TwMerge`, or frontend `twMerge(...)` usage**  
+  Confirm `tailwindcss` in `prisma-php.json`, then read `components.md` for PHPX emission, `typescript.md` for app-level helper registration, and `layouts-and-pages.md` for route examples
 
 - **TypeScript frontend tooling, the `typescript` feature flag, the root `ts/` directory, `ts/main.ts`, npm packages, or registered browser helpers used from template expressions and PulsePoint scripts**  
   Read `typescript.md`, then use `pulsepoint.md`, `layouts-and-pages.md`, or `components.md` for the affected component boundary
@@ -719,6 +723,7 @@ Also follow these rules:
 - do not write React, Vue, Alpine, or Livewire syntax and call it PulsePoint
 - keep backend concerns separate from PulsePoint runtime concerns
 - prefer simple documented runtime primitives over abstractions copied from other ecosystems
+- do not treat app-registered helpers such as `twMerge(...)` as PulsePoint built-ins; route those tasks through the Tailwind-enabled Prisma PHP docs after checking feature flags
 - use `pp-style` whenever inline CSS contains `{...}` interpolation or any other template-driven/reactive value, and reserve plain `style` for fully static inline CSS
 - do **not** generate reactive inline CSS inside a plain `style` attribute such as `style="width: {progress}%";` use `pp-style="width: {progress}%";` instead so source markup stays editor-friendly
 - use `pp-spread="{...attrs}"` for dynamic attribute objects and omit nullish values from those objects
@@ -738,6 +743,8 @@ Also follow these rules:
 - use kebab-case component attributes and rely on the runtime to hydrate camelCase PHPX properties and PulsePoint props
 - keep component file names and class names aligned
 - preserve documented PHPX patterns for `$props`, `$children`, `$class`, and `getAttributes(...)`
+- in Tailwind-enabled apps, use `getMergeClasses(...)` and `PP\PHPX\TwMerge::merge(...)` as emitters of frontend `twMerge(...)` expressions instead of finalizing Tailwind class conflicts in PHP
+- when a route or imported partial needs direct Tailwind-aware class composition, treat `twMerge(...)` as an app-level browser helper available only when `tailwindcss` is enabled
 - follow documented component placement and grouping conventions before inspecting framework internals
 
 ## When to inspect framework internals
@@ -748,6 +755,8 @@ Useful app-mode core locations include:
 
 ```txt
 vendor/tsnc/prisma-php/src
+vendor/tsnc/prisma-php/src/PHPX/PHPX.php
+vendor/tsnc/prisma-php/src/PHPX/TwMerge.php
 vendor/tsnc/prisma-php/src/PHPX/TemplateCompiler.php
 vendor/tsnc/prisma-php/src/ImportComponent.php
 vendor/tsnc/prisma-php/src/MainLayout.php

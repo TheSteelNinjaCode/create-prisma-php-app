@@ -11,17 +11,14 @@ import "/js/pp-reactive-v2.js";
 
 // createGlobalSingleton("myCustomFunction", myCustomFunction);
 
-
 // Imports goes here --End
 
 const pp = (globalThis as any).pp;
 
 if (document.readyState !== "loading") {
-	pp?.mount?.();
+  pp?.mount?.();
 } else {
-	document.addEventListener(
-		"DOMContentLoaded",
-		() => pp?.mount?.(),
-		{ once: true },
-	);
+  document.addEventListener("DOMContentLoaded", () => pp?.mount?.(), {
+    once: true,
+  });
 }
