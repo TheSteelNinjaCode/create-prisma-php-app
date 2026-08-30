@@ -39,6 +39,7 @@ One file per surface, flat in `tests/`:
 | `FeaturesTest.php` | The suite's own feature awareness mirrors `prisma-php.json` |
 | `CsrfTest.php` | The `pp_csrf` cookie family and `X-CSRF-Token` validation |
 | `RpcWireContractTest.php` | PulsePoint wire headers (`$isRpc` / `$isNavigation` / `$isWire`), including the pin that the legacy header stays dead |
+| `DeferComponentRootsTest.php` | Server-deferred component roots: outermost `[pp-component]` body roots ship inside inert `<template pp-component>` wrappers |
 | `SocketTest.php` | One socket connection: JSON frames, reserved error shape, close semantics |
 | `SocketRegistryTest.php` | Named-socket registration and duplicate refusal |
 | `SocketPoolTest.php` | Broadcast and pruning |

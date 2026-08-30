@@ -1572,6 +1572,7 @@ try {
         MainLayout::$html = TemplateCompiler::compile(MainLayout::$html);
         MainLayout::$html = TemplateCompiler::injectDynamicContent(MainLayout::$html);
         MainLayout::$html = Bootstrap::applyRootLayoutId(MainLayout::$html);
+        MainLayout::$html = TemplateCompiler::deferComponentRoots(MainLayout::$html);
 
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
 
