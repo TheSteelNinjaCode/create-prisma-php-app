@@ -1,4 +1,4 @@
-import "/js/pp-reactive-v2.js";
+import "/js/pp-reactive-v2.min.js";
 
 // The following global names have already been declared elsewhere in the project:
 // - pp: Used for the Reactive Core functionality.
