@@ -68,9 +68,8 @@ try {
         $port,
         $prefix,
         null,            // sslContext
-        true,            // logger
-        $enableJson      // enableJsonResponse
-        // , false        // (optional) stateless
+        $enableJson,     // enableJsonResponse
+        false            // stateless
     );
     echo $color("✓ Listening on {$base}", '32') . PHP_EOL;
     $server->listen($transport);

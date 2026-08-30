@@ -173,7 +173,7 @@ Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php
 - **API-style routes, JSON responses, handlers, webhooks, form-processing endpoints, `route.php`, or request validation in handlers**  
   Read `route-handlers.md`
 
-- **Swagger or OpenAPI generation, `swaggerDocs`, `pphp-swagger.json`, `create-swagger-docs`, or `settings/prisma-schema-config.json`**  
+- **Swagger or OpenAPI generation, `swaggerDocs`, generated per-model swagger docs, `create-swagger-docs`, or `settings/prisma-schema-config.json`**  
   Read `swagger-docs.md`
 
 - **Writing or running app tests, PHPUnit, the root `tests/` directory, `npm run test`, or verifying a change with the test suite**  
@@ -329,7 +329,7 @@ Default interaction stack:
 5. validate and normalize input on the PHP side with `PP\Validator`
 6. use `pp.socket(...)` (named sockets) only when the flow is genuinely long-lived and bidirectional — chat, presence, live feeds
 
-`pp.rpc(...)` is the current runtime API. The former `pp.fetchFunction(...)` does not exist any more — never generate or document it. Framework-level RPC failures (unknown function, auth, roles, CSRF, origin, rate limit, server error) arrive as HTTP error statuses with an `{"error": "..."}` body and **reject** the `pp.rpc(...)` promise, so wrap calls in `try/catch` when the UI reacts to failures. Routine, expected validation feedback should still be returned as structured data (`success`, `errors`, normalized values), not thrown.
+`pp.rpc(...)` is the runtime RPC API. Framework-level RPC failures (unknown function, auth, roles, CSRF, origin, rate limit, server error) arrive as HTTP error statuses with an `{"error": "..."}` body and **reject** the `pp.rpc(...)` promise, so wrap calls in `try/catch` when the UI reacts to failures. Routine, expected validation feedback should still be returned as structured data (`success`, `errors`, normalized values), not thrown.
 
 Treat this as the default for:
 
@@ -379,7 +379,7 @@ Also follow these route-file rules:
 - `index.php` and nested `layout.php` must render a single parent HTML element
 - use that single parent element as the route boundary; if the visible content should stay inside a semantic element such as `<main>`, `<section>`, or `<article>`, wrap it in a neutral parent such as `<div>`
 - for normal pages and nested layouts, do **not** manually author `pp-component` on that root; Prisma PHP adds it automatically
-- author a plain `<script>` tag inside that root when PulsePoint logic is needed and do **not** add `type="text/pp"` manually
+- author a plain `<script>` tag inside that root when PulsePoint logic is needed and do **not** put any `type` attribute on it — the runtime only recognizes untyped component scripts
 - keep the `<script>` as the last child of the route boundary, usually as a sibling of the visible content container instead of nesting it inside the semantic content element by default
 - do **not** leave the `<script>` outside the route boundary
 - write PulsePoint state, derived values, and functions directly at the top level of that script; do **not** wrap them in `DOMContentLoaded`, an IIFE, manual `pp.mount()` calls, or custom scoping helpers
@@ -439,7 +439,7 @@ Do not:
 
 - put a sibling `<script>` next to a route root or imported partial root
 - manually add `pp-component` inside imported partial source
-- manually add `type="text/pp"` to route or imported-partial scripts
+- add any `type` attribute to route or imported-partial component scripts
 - wrap imported-partial PulsePoint code in `DOMContentLoaded`, an IIFE, manual `pp.mount()` calls, or custom auto-execute helpers
 
 ## Metadata rules
@@ -531,6 +531,7 @@ Use this auth decision flow:
 
 Important auth rules:
 
+- the auth classes are app-owned files under `src/Lib/Auth` in the `Lib\Auth` namespace — write `use Lib\Auth\Auth;` and `use Lib\Auth\AuthConfig;`, never `PP\Auth\...`
 - route privacy strategy is configured from `AuthConfig.php`
 - Prisma PHP supports both public-default and private-default route protection strategies
 - Prisma PHP defaults to public routes, so keep the public-default strategy when the app will expose many public pages

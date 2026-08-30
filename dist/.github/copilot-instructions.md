@@ -51,7 +51,7 @@
 - In Tailwind-enabled Prisma PHP apps, Tailwind utility conflict resolution belongs to the frontend `twMerge(...)` runtime helper.
 - `getMergeClasses(...)` and `PP\PHPX\TwMerge::merge(...)` emit frontend `twMerge(...)` expressions for the browser runtime to resolve.
 - `twMerge(...)` is an app-level browser helper, not a PulsePoint built-in.
-- In TypeScript-enabled apps, Prisma PHP registers that helper from `ts/main.ts`; use `typescript.md` for route usage and `components.md` for PHPX usage.
+- In TypeScript-enabled apps, Prisma PHP registers that helper from `ts/main.ts`; in non-TypeScript Tailwind apps it is registered from `public/js/main.js` (importing `public/js/tailwind-merge.mjs`). Use `typescript.md` for route usage and `components.md` for PHPX usage.
 - Keep Tailwind merge decisions on the frontend runtime instead of trying to finalize conflicting utility classes in PHP.
 
 ## Framework-Managed Package Scripts
@@ -90,6 +90,7 @@
 ## Authentication Route Strategy
 
 - Prisma PHP defaults to public routes.
+- Auth classes are app-owned under `src/Lib/Auth` in the `Lib\Auth` namespace: `use Lib\Auth\Auth;`, `use Lib\Auth\AuthConfig;`, `use Lib\Auth\AuthRole;` — never `PP\Auth\...`.
 - Choose the route privacy strategy at the start of the app, before creating most routes.
 - If the app will have many public pages, keep the public-default strategy.
 - If the app will have only a few public entry points and most routes should require login, use the private-default strategy.
@@ -113,11 +114,11 @@
 
 ## Runtime Wire Contract
 
-- `pp.rpc(functionName, data?, optionsOrAbort?)` is the frontend-to-PHP call API. The former `pp.fetchFunction(...)` no longer exists in the runtime; never generate or document it.
+- `pp.rpc(functionName, data?, optionsOrAbort?)` is the frontend-to-PHP call API.
 - Every function called through `pp.rpc(...)` must be marked `#[Exposed]` on the PHP side.
 - Framework-level RPC failures (unknown function, auth, roles, CSRF, origin, content type, rate limit, server error) arrive as HTTP error statuses with an `{"error": "..."}` JSON body and reject the `pp.rpc(...)` promise; wrap calls in `try/catch` when the UI reacts to failures. Return routine validation feedback as structured data instead of throwing. Throwing `InvalidArgumentException` in an exposed function is the sanctioned validation crossover: its message reaches the caller as a 400.
 - Streamed responses: an exposed function that yields streams SSE `data:` lines; consume them with `onStream`, `onStreamError`, and `onStreamComplete`.
-- CSRF: the runtime reads the `pp_csrf` cookie family (`pp_csrf_<port>` in development, `pp_csrf` otherwise), managed server-side by `PP\Security\Csrf` and signed with `FUNCTION_CALL_SECRET`. Do not document or generate the removed `prisma_php_csrf` cookie.
+- CSRF: the runtime reads the `pp_csrf` cookie family (`pp_csrf_<port>` in development, `pp_csrf` otherwise), managed server-side by `PP\Security\Csrf` and signed with `FUNCTION_CALL_SECRET`.
 - Realtime: use `pp.socket(name, args, handlers)` (named sockets) for long-lived bidirectional flows. Server handlers are registered with `SocketRegistry::register(...)` in `src/Lib/Websocket/sockets.php`; the wire is one endpoint (`/__pulsepoint/ws?name=...`), arguments as the first JSON frame, JSON frames both ways, and `{"error": "..."}` reserved for failures. Do not generate raw `new WebSocket(...)` wiring for app realtime work.
 - Read `node_modules/prisma-php/dist/docs/fetching-data.md`, `bootstrap-runtime.md`, and `websocket.md` for the full contracts.
 
@@ -127,7 +128,7 @@
 - `index.php` and nested `layout.php` must render a single parent HTML element. Treat that root like a component boundary rather than loose sibling markup.
 - If the visible page or layout content should stay inside a semantic element such as `<main>`, `<section>`, or `<article>`, wrap it in a neutral parent such as `<div>` so the route boundary can still own the `<script>`.
 - For pages and nested layouts, author a plain single root element and let Prisma PHP inject the PulsePoint `pp-component` scope automatically.
-- Author plain `<script>` tags inside that boundary root when PulsePoint is needed, usually as a sibling of the visible content container instead of nesting the script inside the semantic content element by default. Put the PulsePoint code at the top level of that script. Do not manually add `type="text/pp"`, `DOMContentLoaded` wrappers, IIFEs, or manual bootstrap code; Prisma PHP normalizes the script contract for the runtime.
+- Author plain `<script>` tags inside that boundary root when PulsePoint is needed, usually as a sibling of the visible content container instead of nesting the script inside the semantic content element by default. Put the PulsePoint code at the top level of that script. Never put a `type` attribute on a component script — the runtime only recognizes untyped scripts. Do not add `DOMContentLoaded` wrappers, IIFEs, or manual bootstrap code.
 - Do not leave the route `<script>` outside the route boundary.
 - Only the root `layout.php` should define `<html>`, `<head>`, and `<body>`. When PulsePoint is present, keep `MainLayout::$children;` and any `<script>` inside one clear wrapper.
 
@@ -136,7 +137,7 @@
 - Distinguish PHPX class components from `ImportComponent` partials.
 - `ImportComponent` partials must output exactly one root element because Prisma PHP uses that root as the imported component boundary and serializes props there.
 - Do not manually add `pp-component` inside `ImportComponent` partial source; Prisma PHP injects it there.
-- When imported partials need PulsePoint logic, keep the `<script>` inside that same root element and author it as a plain `<script>` tag without `type="text/pp"`, DOM-ready wrappers, or manual bootstrap code.
+- When imported partials need PulsePoint logic, keep the `<script>` inside that same root element and author it as a plain `<script>` tag with no `type` attribute (the runtime ignores typed scripts), without DOM-ready wrappers or manual bootstrap code.
 
 ## Validation Rules
 
