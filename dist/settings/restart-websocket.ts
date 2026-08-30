@@ -13,7 +13,7 @@ const serverScriptPath = join(
   SRC_DIR,
   "Lib",
   "Websocket",
-  "websocket-server.php"
+  "websocket-server.php",
 );
 
 const ws = createRestartableProcess({
@@ -30,7 +30,7 @@ const restarter = new DebouncedWorker(
     await ws.restart("file change");
   },
   400,
-  "ws-restart"
+  "ws-restart",
 );
 
 createSrcWatcher(SRC_DIR, {

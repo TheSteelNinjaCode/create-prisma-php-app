@@ -11,7 +11,7 @@ const { __dirname } = getFileMeta();
 export async function swaggerConfig(): Promise<void> {
   const outputPath = join(
     __dirname,
-    "../src/app/swagger-docs/apis/pp-swagger.json"
+    "../src/app/swagger-docs/apis/pp-swagger.json",
   );
 
   const options = {
@@ -56,8 +56,8 @@ export async function swaggerConfig(): Promise<void> {
     writeFileSync(outputPath, swaggerSpec, "utf-8");
     console.log(
       `Swagger JSON has been generated and saved to ${chalk.blue(
-        "src/app/swagger-docs/apis/pp-swagger.json"
-      )}`
+        "src/app/swagger-docs/apis/pp-swagger.json",
+      )}`,
     );
   } catch (error) {
     console.error("Error saving Swagger JSON:", error);

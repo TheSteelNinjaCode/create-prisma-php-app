@@ -54,7 +54,10 @@ if ($probe === false) {
 fclose($probe);
 
 // ── Build app ────────────────────────────────────────────────────────────────
-$manager = new ConnectionManager(); // your app component
+// Named-socket registrations: the functions `pp.socket("name", ...)` reaches.
+require __DIR__ . '/sockets.php';
+
+$manager = new ConnectionManager(); // The PulsePoint named-socket wire.
 $server  = IoServer::factory(
     new HttpServer(new WsServer($manager)),
     $port,
@@ -73,14 +76,18 @@ echo "   Port:       {$port}" . PHP_EOL;
 echo "   URL:        {$url}" . PHP_EOL;
 echo "   PID:        {$pid}" . PHP_EOL;
 echo "   Started:    {$ts}" . PHP_EOL;
+echo "   Sockets:    " . (implode(', ', \Lib\Websocket\SocketRegistry::names()) ?: '(none registered)') . PHP_EOL;
 
 // ── Graceful shutdown & periodic logs (if loop available) ────────────────────
 $loop = property_exists($server, 'loop') ? $server->loop : null;
 if ($loop instanceof LoopInterface) {
+    // First-frame timeout and idle sweep need the loop's timers.
+    $manager->attachLoop($loop);
+
     // Periodic stats every 60s
-    $loop->addPeriodicTimer(60, function () use ($ok) {
+    $loop->addPeriodicTimer(60, function () use ($ok, $manager) {
         $mem = function_exists('memory_get_usage') ? number_format(memory_get_usage(true) / 1048576, 2) . ' MB' : 'n/a';
-        $msg = "✓ Heartbeat — memory: {$mem}";
+        $msg = "✓ Heartbeat — connections: {$manager->openConnectionCount()}, memory: {$mem}";
         echo $ok($msg) . PHP_EOL;
     });
 

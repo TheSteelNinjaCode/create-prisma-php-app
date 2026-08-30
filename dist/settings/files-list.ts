@@ -23,7 +23,7 @@ const getAllFiles = (dirPath: string): string[] => {
     } else {
       const relativePath = `.${sep}${relative(
         join(__dirname, ".."),
-        fullPath
+        fullPath,
       )}`;
       files.push(relativePath.replace(/\\/g, "/").replace(/^\.\.\//, ""));
     }
@@ -41,7 +41,7 @@ export const generateFileListJson = async (): Promise<void> => {
   if (allFiles.length > 0) {
     writeFileSync(jsonFilePath, JSON.stringify(allFiles, null, 2));
     console.log(
-      `File list generated: ${appFiles.length} app files, ${publicFiles.length} public files`
+      `File list generated: ${appFiles.length} app files, ${publicFiles.length} public files`,
     );
   } else {
     console.error("No files found to save in the JSON file.");

@@ -40,7 +40,7 @@ export function createSrcWatcher(
     logPrefix?: string;
     usePolling?: boolean;
     interval?: number;
-  }
+  },
 ): FSWatcher {
   const {
     exts,
@@ -87,7 +87,7 @@ export class DebouncedWorker {
   constructor(
     private work: () => Promise<void> | void,
     private debounceMs = 350,
-    private name = "worker"
+    private name = "worker",
   ) {}
 
   schedule(reason?: string) {
@@ -172,7 +172,7 @@ export function createRestartableProcess(spec: {
   function killOnWindows(pid: number): Promise<void> {
     return new Promise((resolve) => {
       const cp = execFile("taskkill", ["/F", "/T", "/PID", String(pid)], () =>
-        resolve()
+        resolve(),
       );
       cp.on("error", () => resolve());
     });

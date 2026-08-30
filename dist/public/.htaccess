@@ -40,7 +40,7 @@ RewriteEngine On
     Header set Content-Type "text/css; charset=UTF-8"
   </FilesMatch>
   # JS
-  <FilesMatch "\.(js)$">
+  <FilesMatch "\.(js|mjs)$">
     Header set Content-Type "application/javascript; charset=UTF-8"
   </FilesMatch>
 </IfModule>

@@ -16,6 +16,11 @@ final class CorsMiddleware
         }
 
         $cfg = self::buildConfig($overrides);
+        $cfg = self::allowImplicitLoopbackOrigin($origin, $cfg);
+
+        if ($cfg['allowCredentials'] && self::listHasWildcard($cfg['allowedOrigins'])) {
+            return;
+        }
 
         if (!self::isAllowedOrigin($origin, $cfg['allowedOrigins'])) {
             return;
@@ -82,6 +87,20 @@ final class CorsMiddleware
         return $cfg;
     }
 
+    private static function allowImplicitLoopbackOrigin(string $origin, array $cfg): array
+    {
+        if ($cfg['allowedOrigins'] !== []) {
+            return $cfg;
+        }
+
+        if (!self::isImplicitLoopbackOrigin($origin)) {
+            return $cfg;
+        }
+
+        $cfg['allowedOrigins'] = [self::normalize($origin)];
+        return $cfg;
+    }
+
     private static function parseList(string $raw): array
     {
         $raw = trim($raw);
@@ -99,6 +118,59 @@ final class CorsMiddleware
     private static function normalize(string $origin): string
     {
         return rtrim($origin, '/');
+    }
+
+    private static function isImplicitLoopbackOrigin(string $origin): bool
+    {
+        $originParts = parse_url(self::normalize($origin));
+        if (!is_array($originParts)) {
+            return false;
+        }
+
+        $originHost = strtolower((string) ($originParts['host'] ?? ''));
+        $originScheme = strtolower((string) ($originParts['scheme'] ?? ''));
+        $requestHost = self::getRequestHost();
+        $requestScheme = self::isHttpsRequest() ? 'https' : 'http';
+
+        if (
+            $originHost === '' ||
+            $requestHost === '' ||
+            $originHost !== $requestHost ||
+            $originScheme !== $requestScheme
+        ) {
+            return false;
+        }
+
+        return self::isLoopbackHost($originHost);
+    }
+
+    private static function getRequestHost(): string
+    {
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '');
+        if ($host === '') {
+            return '';
+        }
+
+        $parts = parse_url('http://' . $host);
+        if (is_array($parts) && isset($parts['host'])) {
+            return strtolower((string) $parts['host']);
+        }
+
+        return strtolower(explode(':', $host, 2)[0]);
+    }
+
+    private static function isLoopbackHost(string $host): bool
+    {
+        return in_array(trim(strtolower($host), '[]'), ['localhost', '127.0.0.1', '::1'], true);
+    }
+
+    private static function isHttpsRequest(): bool
+    {
+        return (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+            (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+        );
     }
 
     private static function isAllowedOrigin(string $origin, array $list): bool

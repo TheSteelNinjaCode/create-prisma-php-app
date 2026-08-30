@@ -19,7 +19,7 @@ const serverScriptPath = join(
   "src",
   "Lib",
   "MCP",
-  "mcp-server.php"
+  "mcp-server.php",
 );
 const watchRoot = join(__dirname, "..", "src");
 
@@ -37,7 +37,7 @@ const restarter = new DebouncedWorker(
     await mcp.restart("file change");
   },
   250,
-  "mcp-restart"
+  "mcp-restart",
 );
 
 createSrcWatcher(watchRoot, {

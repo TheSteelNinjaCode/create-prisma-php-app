@@ -2,27 +2,21 @@ import {
   createProxyMiddleware,
   responseInterceptor,
 } from "http-proxy-middleware";
-import { writeFileSync, existsSync, mkdirSync } from "fs";
+import { writeFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { networkInterfaces } from "os";
 import browserSync, { BrowserSyncInstance } from "browser-sync";
 import prismaPhpConfigJson from "../prisma-php.json";
 import { generateFileListJson } from "./files-list.js";
 import { join, dirname, relative } from "path";
 import { getFileMeta, PUBLIC_DIR, SRC_DIR } from "./utils.js";
-import { updateAllClassLogs } from "./class-log.js";
-import {
-  analyzeImportsInFile,
-  getAllPhpFiles,
-  updateComponentImports,
-} from "./class-imports";
-import { checkComponentImports } from "./component-import-checker";
+import { updateComponentMap } from "./component-map";
 import { DebouncedWorker, createSrcWatcher, DEFAULT_AWF } from "./utils.js";
 import chalk from "chalk";
 
 const { __dirname } = getFileMeta();
 const bs: BrowserSyncInstance = browserSync.create();
 
-const PUBLIC_IGNORE_DIRS = [""];
+const PUBLIC_IGNORE_DIRS = ["uploads"];
 
 function getExternalIP(): string | null {
   const nets = networkInterfaces();
@@ -39,24 +33,7 @@ function getExternalIP(): string | null {
 const pipeline = new DebouncedWorker(
   async () => {
     await generateFileListJson();
-    await updateAllClassLogs();
-    await updateComponentImports();
-
-    const phpFiles = await getAllPhpFiles(SRC_DIR);
-    for (const file of phpFiles) {
-      const rawFileImports = await analyzeImportsInFile(file);
-      const fileImports: Record<
-        string,
-        { className: string; filePath: string; importer?: string }[]
-      > = {};
-      for (const key in rawFileImports) {
-        const v = rawFileImports[key];
-        fileImports[key] = Array.isArray(v)
-          ? v
-          : [{ className: key, filePath: v }];
-      }
-      await checkComponentImports(file, fileImports);
-    }
+    await updateComponentMap();
 
     if (bs.active) {
       bs.reload();
@@ -127,11 +104,43 @@ createSrcWatcher(viteFlagFile, {
   interval: 500,
 });
 
+// ── PulsePoint named-socket proxy ────────────────────────────────────────────
+// `pp.socket("name", ...)` connects to `/__pulsepoint/ws` on the page origin;
+// in development that origin is this BrowserSync server, so the upgrade is
+// proxied to the Ratchet websocket server (WS_HOST/WS_PORT from .env).
+function getWebsocketTarget(): string {
+  let host = "127.0.0.1";
+  let port = "9001";
+
+  try {
+    const envPath = join(__dirname, "..", ".env");
+    if (existsSync(envPath)) {
+      const env = readFileSync(envPath, "utf8");
+      const portMatch = env.match(/^\s*WS_PORT\s*=\s*["']?(\d+)["']?\s*$/m);
+      if (portMatch) port = portMatch[1];
+      const hostMatch = env.match(/^\s*WS_HOST\s*=\s*["']?([^"'\s#]+)["']?\s*$/m);
+      if (hostMatch && hostMatch[1] !== "0.0.0.0") host = hostMatch[1];
+    }
+  } catch {
+    // Fall back to the defaults; the websocket feature may be unused.
+  }
+
+  return `ws://${host}:${port}`;
+}
+
+const pulsePointSocketProxy = createProxyMiddleware({
+  pathFilter: "/__pulsepoint/ws",
+  target: getWebsocketTarget(),
+  ws: true,
+  changeOrigin: true,
+});
+
 bs.init(
   {
     proxy: "http://localhost:3000",
     online: true,
     middleware: [
+      pulsePointSocketProxy,
       (_req, res, next) => {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         res.setHeader("Pragma", "no-cache");
@@ -229,6 +238,17 @@ bs.init(
     if (err) {
       console.error(chalk.red("BrowserSync failed to start:"), err);
       return;
+    }
+
+    // WebSocket upgrades bypass connect middleware, so the named-socket
+    // proxy has to hook the raw HTTP server's upgrade event itself.
+    const httpServer = (bsInstance as any).server;
+    if (httpServer && pulsePointSocketProxy.upgrade) {
+      httpServer.on("upgrade", (req: any, socket: any, head: any) => {
+        if (req.url?.startsWith("/__pulsepoint/ws")) {
+          pulsePointSocketProxy.upgrade!(req, socket, head);
+        }
+      });
     }
 
     const bsPort = bsInstance.getOption("port");

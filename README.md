@@ -1,80 +1,218 @@
-# 🚀 Create Prisma PHP App
+# Prisma PHP
 
-**Prisma PHP** — The Next-Gen Framework Merging PHP’s Power with Prisma's ORM Mastery.
+Prisma PHP is a modern full-stack PHP framework that combines native PHP, PulsePoint reactivity, PHPX components, and a Prisma-inspired ORM into one cohesive developer experience.
 
----
+Build reactive interfaces with a server-first mental model, structured routing, type-safe data access, and a project layout designed for real applications.
 
-## 📖 Introduction
+## Getting Started
 
-`create-prisma-php-app` is a game-changing CLI tool tailored for modern PHP developers. It seamlessly merges the power of PHP with Prisma's ORM excellence, delivering an unparalleled development experience. From blazing-fast routing to dynamic component-based integration, Prisma PHP revolutionizes how you build web applications — just like Next.js and React, but with PHP's unmatched server-side power.
-
----
-
-## ✨ Why Choose Prisma PHP?
-
-- ⚡ **Effortless Routing:** Manage complex routes with ease, supporting dynamic patterns and nested structures.
-- 🧩 **Component-Based Architecture:** Integrate reusable components effortlessly, just like React.
-- 🛠️ **Flexible Integration:** Choose and integrate only the packages you need, such as:
-  - 🧁 **Tailwind CSS** – for modern UI styling.
-  - 📘 **Swagger Docs** – for powerful API documentation.
-  - 🔌 **WebSocket** – for real-time interactions.
-  - 🧠 **MCP (Model Context Protocol)** – for AI tool and LLM integration.
-  - 🚀 **Prisma ORM** – for robust database management.
-- 🔐 **Out-of-the-Box Authentication:** Role-based sign-in and sign-out mechanisms ready to go.
-- 🚀 **Advanced Caching:** Supercharge performance with built-in caching options.
-
----
-
-## ⚙️ Quick Start
-
-Creating a new Prisma PHP project is just one command away!
+Create a new Prisma PHP project:
 
 ```bash
-npx create-prisma-php-app@latest
+npx create-prisma-php-app@latest my-app
 ```
 
-This interactive process will prompt you for setup options like Tailwind CSS, Swagger, Prisma ORM, and other essential features.
-
-Example:
+Start the development server:
 
 ```bash
-✔ Would you like to use Tailwind CSS? … No / Yes
-✔ Would you like to use Swagger Docs? … No / Yes
-✔ Would you like to use MCP (Model Context Protocol)? … No / Yes
-✔ Would you like to use Prisma PHP ORM? … No / Yes
+npm run dev
 ```
 
-## 📚 Documentation
+Open the local app in your browser after the dev server starts.
 
-Full docs and guides available at: [https://prismaphp.tsnc.tech](https://prismaphp.tsnc.tech)
+## Prerequisites
 
----
+Before creating a Prisma PHP project, make sure you have:
 
-## 🎥 Video Tutorials
+- Node.js 22.x or higher
+- PHP 8.2 or higher
+- Composer 2.x or higher
+- XAMPP or another local PHP environment
 
-Check out our complete step-by-step video series here:  
-[📺 Prisma PHP YouTube Series](https://www.youtube.com/playlist?list=PLS-62wu4j8sS0Ia7ZkWHQ41W85Ice85PA)
+If you are using XAMPP on Windows, enabling `extension=zip` in `php.ini` is recommended so Composer dependencies install correctly.
 
----
+## What Prisma PHP Includes
 
-## 🤝 Contributing
+Prisma PHP brings together the core pieces needed to build full-stack PHP apps:
 
-We welcome contributions! Please feel free to open issues and submit pull requests on GitHub to help improve the project.
+- **Native PHP + modern reactivity** with PulsePoint
+- **Direct RPC from the frontend** with `pp.rpc(...)` calling `#[Exposed]` PHP functions — JSON in, JSON out, SSE streaming when the function yields, and framework failures reported as real HTTP statuses
+- **Named sockets for realtime** with `pp.socket(...)` — long-lived bidirectional messaging (chat, presence, live feeds) served by a Ratchet-based socket server with per-socket auth, origin checks, and rate limits
+- **PHPX component system** for reusable UI composition
+- **Prisma PHP ORM** for schema-first, type-safe database access
+- **Built-in authentication patterns** for sessions, route protection, RBAC, credentials auth, and provider login
+- **Hardened request pipeline** with double-submit CSRF (`pp_csrf` cookie family), origin validation, content-type checks, and per-function rate limiting
+- **File-based routing** with clear route file conventions
+- **App-level test suite** with PHPUnit in a root `tests/` directory, run with `npm run test`, feature-aware via `prisma-php.json`
+- **CLI scaffolding** for new apps, starter kits, and optional features
+- **Flexible deployment options** for local development and production workflows
 
----
+## Common Create Commands
 
-## 📄 License
+Create a default full-stack app:
 
-This project is licensed under the **MIT License**.
+```bash
+npx create-prisma-php-app@latest my-app
+```
 
----
+Create a project with common options:
 
-## 👤 Author
+```bash
+npx create-prisma-php-app@latest my-app --tailwindcss --typescript
+```
 
-Created and maintained with ❤️ by The Steel Ninja Code.
+Use a starter kit:
 
----
+```bash
+npx create-prisma-php-app my-app --starter-kit=fullstack
+```
 
-## 📬 Contact
+Other documented flags may include capabilities such as WebSocket support, MCP support, backend-only mode, Swagger docs, and Prisma integration depending on the installed version.
 
-Got questions or feedback? Reach us at [thesteelninjacode@gmail.com](mailto:thesteelninjacode@gmail.com)
+## Documentation
+
+Prisma PHP ships with local documentation for the installed project version.
+
+The installed docs live here:
+
+```txt
+node_modules/prisma-php/dist/docs
+```
+
+Treat these installed docs as the primary documentation source for the current project version.
+
+You can also explore the public docs site:
+
+```txt
+https://prismaphp.tsnc.tech/
+```
+
+## AI Quick Start
+
+If you are using AI-assisted development in a Prisma PHP project:
+
+1. Read `./prisma-php.json` first.
+2. Read the installed docs in `node_modules/prisma-php/dist/docs`.
+3. Read `AGENTS.md` for task-routing rules, framework constraints, and code-generation guidance.
+4. Inspect `vendor/tsnc/prisma-php/src` only when the docs do not answer the task.
+
+## Project Capability Manifest
+
+Prisma PHP uses `prisma-php.json` at the repository root as the source of truth for enabled framework features and local environment configuration.
+
+Use it to verify capabilities such as:
+
+- Tailwind CSS support
+- backend-only mode
+- Prisma ORM support
+- Swagger docs
+- WebSocket support
+- MCP support
+- TypeScript support
+- local development paths and BrowserSync settings
+
+Do not assume a feature is enabled unless `prisma-php.json` confirms it.
+
+## Documentation Map
+
+Use these docs as the main entry points for common work:
+
+- `index.md` for the general documentation entry point
+- `project-structure.md` for project structure, route placement, and file conventions
+- `layouts-and-pages.md` for pages, layouts, nested routes, and dynamic routes
+- `components.md` for PHPX components, props, children, fragments, icons, buttons, and composition
+- `fetching-data.md` for `pp.rpc(...)`, `#[Exposed]`, streaming, and the RPC error contract
+- `websocket.md` for named sockets, `pp.socket(...)`, `SocketRegistry`, and the realtime wire contract
+- `bootstrap-runtime.md` for the runtime init order, PulsePoint wire headers, and the `pp_csrf` CSRF contract
+- `testing.md` for the root `tests/` directory, `npm run test`, and feature-gated tests
+- `prisma-php-orm.md` for Prisma ORM, `schema.prisma`, migrations, and generated PHP classes
+- `authentication.md` for auth strategy, sessions, RBAC, credentials auth, and provider flows
+- `file-manager.md` for uploads, `multipart/form-data`, `$_FILES`, and `PP\FileManager\UploadFile`
+- `route-handlers.md` for `route.php`, JSON responses, and direct server handlers
+- `error-handling.md` for expected errors, `error.php`, `not-found.php`, and validation failures
+- `caching.md` for cache behavior and `CacheHandler`
+- `metadata-and-og-images.md` for metadata, title, description, icons, and head behavior
+- `pulsepoint.md` for PulsePoint runtime usage and reactivity patterns
+- `upgrading.md` for feature enablement and project update workflows
+
+## Recommended Development Approach
+
+When working in Prisma PHP:
+
+- prefer the installed Prisma PHP docs over assumptions from other frameworks
+- use `AGENTS.md` as the strict AI operating guide
+- inspect nearby project files before generating new framework-specific code
+- inspect framework internals only when the installed docs are not enough
+
+## Route and File Conventions
+
+Prisma PHP uses file-based routing with special route files such as:
+
+- `index.php` for rendered UI routes
+- `layout.php` for shared UI wrappers
+- `route.php` for direct handlers such as JSON or API-style endpoints
+- `loading.php` for loading UI
+- `not-found.php` for route-level not-found UI
+- `error.php` for route-level or app-level error UI
+
+For task-specific route decision rules and framework generation rules, read `AGENTS.md`.
+
+## PulsePoint and Frontend Reactivity
+
+Prisma PHP uses PulsePoint for browser-side reactivity and as the wire between the page and PHP.
+
+When working with runtime features such as:
+
+- `pp.state`
+- `pp.effect`
+- `pp.ref`
+- `pp.rpc` for frontend-to-PHP calls (with streaming, uploads, and redirects)
+- `pp.socket` for named-socket realtime messaging
+- `pp-for`
+- `pp-spread`
+- `pp-ref`
+
+read the installed Prisma PHP docs for the current version first, then consult:
+
+```txt
+https://pulsepoint.tsnc.tech/llms
+```
+
+## Project Structure
+
+A generated Prisma PHP project typically includes folders like these:
+
+```text
+prisma-php-project/
+├── prisma/            # schema, migrations, seed files
+├── public/            # public entry point and assets
+├── settings/          # project configuration
+├── src/               # application source code
+├── tests/             # app-level PHPUnit tests (npm run test)
+├── package.json       # frontend/dev scripts
+├── composer.json      # PHP dependencies
+├── phpunit.xml        # test suite configuration
+└── prisma-php.json    # Prisma PHP project capability manifest
+```
+
+## Testing
+
+App tests live in the root `tests/` directory and run with:
+
+```bash
+npm run test
+```
+
+The suite runs PHPUnit on the PHP binary configured in `prisma-php.json`, uses a deterministic test environment (the real `.env` is never loaded), and is feature-aware: tests for optional features such as WebSocket skip cleanly when the feature is disabled in `prisma-php.json`. Read `testing.md` in the installed docs and the project's `tests/README.md` for the full contract.
+
+## Updating Existing Projects
+
+When enabling features or syncing framework-managed project files:
+
+1. Update `prisma-php.json` first.
+2. Read `upgrading.md` in the installed docs.
+3. Run the documented project update workflow for the current version.
+
+## Learn More
+
+Start with the installed docs for the current project version, use the topic-specific markdown guides for focused work, and rely on `AGENTS.md` when strict AI generation rules are needed.
