@@ -102,7 +102,7 @@
 ## PulsePoint-First Frontend Rules
 
 - In full-stack Prisma PHP apps, treat PulsePoint as the primary JavaScript authoring model for frontend behavior.
-- For page-local interactivity, prefer `index.php` or nested `layout.php` with a plain inline `<script>` that contains PulsePoint state and functions directly, and use `pp.fetchFunction(...)` for backend calls.
+- For page-local interactivity, prefer `index.php` or nested `layout.php` with a plain inline `<script>` that contains PulsePoint state and functions directly, and use `pp.rpc(...)` for backend calls.
 - Do not wrap inline PulsePoint code in `DOMContentLoaded`, IIFEs, manual `pp.mount()` calls, or custom scoping/bootstrap helpers. Prisma PHP scopes the component boundary and runs the script for you.
 - Reserve plain browser JavaScript or TypeScript modules for reusable helpers in `ts/`, third-party libraries, low-level browser APIs, or behavior that does not belong inside a PulsePoint component boundary.
 - Do not treat app-registered helpers such as `twMerge(...)` as PulsePoint built-ins; only use them after the relevant Prisma PHP feature flag and entry-file docs confirm they exist.
@@ -110,6 +110,16 @@
 - Do not generate reactive inline CSS inside a plain `style` attribute such as `style="width: {progress}%";` use `pp-style="width: {progress}%";` instead so editor CSS validation does not flag the source markup as invalid.
 - Use `pp.ref(...)`, `pp-ref`, `pp.portal(...)`, `pp.createContext(...)`, `Context.Provider`, and `pp.context(...)` according to `pulsepoint.md`.
 - Use `value`, `defaultvalue`, and `defaultchecked` form bindings according to `pulsepoint.md`; do not author internal `data-pp-*` runtime attributes.
+
+## Runtime Wire Contract
+
+- `pp.rpc(functionName, data?, optionsOrAbort?)` is the frontend-to-PHP call API. The former `pp.fetchFunction(...)` no longer exists in the runtime; never generate or document it.
+- Every function called through `pp.rpc(...)` must be marked `#[Exposed]` on the PHP side.
+- Framework-level RPC failures (unknown function, auth, roles, CSRF, origin, content type, rate limit, server error) arrive as HTTP error statuses with an `{"error": "..."}` JSON body and reject the `pp.rpc(...)` promise; wrap calls in `try/catch` when the UI reacts to failures. Return routine validation feedback as structured data instead of throwing. Throwing `InvalidArgumentException` in an exposed function is the sanctioned validation crossover: its message reaches the caller as a 400.
+- Streamed responses: an exposed function that yields streams SSE `data:` lines; consume them with `onStream`, `onStreamError`, and `onStreamComplete`.
+- CSRF: the runtime reads the `pp_csrf` cookie family (`pp_csrf_<port>` in development, `pp_csrf` otherwise), managed server-side by `PP\Security\Csrf` and signed with `FUNCTION_CALL_SECRET`. Do not document or generate the removed `prisma_php_csrf` cookie.
+- Realtime: use `pp.socket(name, args, handlers)` (named sockets) for long-lived bidirectional flows. Server handlers are registered with `SocketRegistry::register(...)` in `src/Lib/Websocket/sockets.php`; the wire is one endpoint (`/__pulsepoint/ws?name=...`), arguments as the first JSON frame, JSON frames both ways, and `{"error": "..."}` reserved for failures. Do not generate raw `new WebSocket(...)` wiring for app realtime work.
+- Read `node_modules/prisma-php/dist/docs/fetching-data.md`, `bootstrap-runtime.md`, and `websocket.md` for the full contracts.
 
 ## Route File Conventions
 
@@ -140,6 +150,15 @@
 - Return structured validation results for expected failures instead of treating routine invalid input as an uncaught exception.
 - When internals matter, inspect `vendor/tsnc/prisma-php/src/Validator.php` and `vendor/tsnc/prisma-php/src/Rule.php`.
 
+## Testing Rules
+
+- App tests live in the root `tests/` directory and run with `npm run test` (PHPUnit via `settings/run-tests.ts`, using the PHP binary from `prisma-php.json`). Narrow runs with `npm run test -- --filter <NameOrMethod>`.
+- When adding or changing app behavior with logic worth protecting (exposed-function validation, socket handlers, auth rules, `src/Lib` helpers), add or update the matching `tests/*Test.php` in the same change and run `npm run test` before declaring the work done.
+- Tests cover app-level code and the wire contracts the app depends on; do not test Prisma PHP framework internals from the app suite.
+- Tests of optional features (`websocket`, `mcp`, `swaggerDocs`, `prisma`, ...) must guard on the `prisma-php.json` flag via the `Tests\Support\RequiresFeature` trait (`$this->requireFeature('websocket')` as the first line of `setUp()`), so a disabled feature skips cleanly instead of fataling on missing scaffold classes. Core surfaces (CSRF, wire headers, auth) are never gated.
+- `tests/bootstrap.php` sets a deterministic env (no real `.env`); shared fakes live in `tests/Support` (`Tests\Support\...`). Socket wire tests use `Tests\Support\FakeConnection` and assert frames plus close codes.
+- Read `node_modules/prisma-php/dist/docs/testing.md` and the project's `tests/README.md` before writing tests.
+
 ## Relevant Docs
 
 - Project structure and feature placement: `node_modules/prisma-php/dist/docs/project-structure.md`
@@ -168,3 +187,4 @@
 - Metadata and icons: `node_modules/prisma-php/dist/docs/metadata-and-og-images.md`
 - API-style handlers and webhooks: `node_modules/prisma-php/dist/docs/route-handlers.md`
 - Swagger/OpenAPI generation and `swaggerDocs`: `node_modules/prisma-php/dist/docs/swagger-docs.md`
+- App test suite, `tests/` layout, and `npm run test`: `node_modules/prisma-php/dist/docs/testing.md`

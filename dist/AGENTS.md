@@ -49,7 +49,8 @@ Use this map only after `prisma-php.json`, matching workspace instructions, inst
 | imported PHP partial execution, one-root enforcement, prop serialization, imported `#[Exposed]` functions | `vendor/tsnc/prisma-php/src/ImportComponent.php` |
 | metadata, custom head tags, dynamic head/footer scripts | `vendor/tsnc/prisma-php/src/MainLayout.php` |
 | route and component maps | `vendor/tsnc/prisma-php/src/PrismaPHPSettings.php`, `settings/files-list.json`, `settings/component-map.json` |
-| request data, dynamic params, redirects, function-call requests | `vendor/tsnc/prisma-php/src/Request.php` |
+| request data, dynamic params, redirects, RPC/navigation wire detection (`$isRpc`, `$isNavigation`, `$isWire`) | `vendor/tsnc/prisma-php/src/Request.php` |
+| CSRF cookie family (`pp_csrf`, `pp_csrf_<port>`), token issuing and validation | `vendor/tsnc/prisma-php/src/Security/Csrf.php` |
 | exposed functions | `vendor/tsnc/prisma-php/src/Attributes/Exposed.php`, `vendor/tsnc/prisma-php/src/Attributes/ExposedRegistry.php` |
 | validation | `vendor/tsnc/prisma-php/src/Validator.php`, `vendor/tsnc/prisma-php/src/Rule.php` |
 | env values | `vendor/tsnc/prisma-php/src/Env.php` |
@@ -124,7 +125,7 @@ Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php
 - **TypeScript frontend tooling, the `typescript` feature flag, the root `ts/` directory, `ts/main.ts`, npm packages, or registered browser helpers used from template expressions and PulsePoint scripts**  
   Read `typescript.md`, then use `pulsepoint.md`, `layouts-and-pages.md`, or `components.md` for the affected component boundary
 
-- **Loading data, calling backend logic from the frontend, `pp.fetchFunction(...)`, `#[Exposed]`, route-local mutations, streaming responses, or interactive backend validation**  
+- **Loading data, calling backend logic from the frontend, `pp.rpc(...)`, `#[Exposed]`, route-local mutations, streaming responses, or interactive backend validation**  
   Read `fetching-data.md`
 
 - **AI integration, provider SDKs, chat UIs, streamed assistant output, or deciding between page-local assistant UI, websocket, and MCP tools**  
@@ -139,7 +140,7 @@ Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php
 - **Environment variables, `.env`, `PP\Env`, `Env::get`, `Env::string`, `Env::bool`, `Env::int`, feature flags, host and port config, or runtime bootstrap settings**  
   Read `env.md`, then verify the official env docs at `env` and `env-file`
 
-- **Bootstrap flow, request initialization, `FUNCTION_CALL_SECRET`, `prisma_php_csrf`, route resolution, or runtime init order**  
+- **Bootstrap flow, request initialization, `FUNCTION_CALL_SECRET`, `pp_csrf`, route resolution, or runtime init order**  
   Read `bootstrap-runtime.md`, then use `env.md`, `fetching-data.md`, or `error-handling.md` as needed
 
 - **File uploads, `multipart/form-data`, `$_FILES`, `PP\FileManager\UploadFile`, rename flows, replace flows, delete flows, allowed file types, upload size rules, or file manager UI behavior**  
@@ -148,7 +149,7 @@ Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php
 - **SMTP setup, `.env` mail variables, `PP\PHPMailer\Mailer`, HTML bodies, plain-text bodies, recipients, reply-to, CC, BCC, or attachments**  
   Read `email.md`, then verify the official email docs at `email-get-started`
 
-- **Ratchet websocket setup, `IoServer`, `HttpServer`, `WsServer`, `ConnectionManager`, browser `WebSocket`, or realtime route behavior**  
+- **Named sockets, `pp.socket(...)`, `SocketRegistry`, `Socket`, `SocketPool`, the Ratchet socket server, or realtime route behavior**  
   Read `websocket.md`, then verify the official websocket docs in this order: `websocket-get-started`, `websocket-chat-app`
 
 - **MCP support, `#[McpTool]`, `#[Schema]`, `PhpMcp\Server\Server`, `StreamableHttpServerTransport`, AI tool endpoints, or `src/Lib/MCP/mcp-server.php`**  
@@ -174,6 +175,9 @@ Use the docs router to learn how Prisma PHP implements a task. Use `./prisma-php
 
 - **Swagger or OpenAPI generation, `swaggerDocs`, `pphp-swagger.json`, `create-swagger-docs`, or `settings/prisma-schema-config.json`**  
   Read `swagger-docs.md`
+
+- **Writing or running app tests, PHPUnit, the root `tests/` directory, `npm run test`, or verifying a change with the test suite**  
+  Read `testing.md`, then the project's `tests/README.md`
 
 - **Upgrading Prisma PHP, enabling features, syncing framework-managed project files, or running project updates**  
   Read `upgrading.md`
@@ -207,6 +211,7 @@ The current Prisma PHP docs shipped here include:
 - `pulsepoint.md`
 - `route-handlers.md`
 - `swagger-docs.md`
+- `testing.md`
 - `typescript.md`
 - `upgrading.md`
 - `validator.md`
@@ -216,7 +221,7 @@ This inventory exists to help AI find the right Prisma PHP guidance quickly. It 
 
 When a task depends on optional capabilities such as `backendOnly`, `swaggerDocs`, `typescript`, `websocket`, or `mcp`, inspect `./prisma-php.json` before assuming the generated scaffold exists.
 
-When adding or reviewing AI guidance, do not stop at older docs only. Make sure the guidance also covers `backend-only.md`, `email.md`, `env.md`, `get-started-ia.md`, `mcp.md`, `swagger-docs.md`, `typescript.md`, and `websocket.md`, plus newer behavior documented in `fetching-data.md` and `metadata-and-og-images.md`.
+When adding or reviewing AI guidance, do not stop at older docs only. Make sure the guidance also covers `backend-only.md`, `email.md`, `env.md`, `get-started-ia.md`, `mcp.md`, `swagger-docs.md`, `typescript.md`, and `websocket.md`, plus newer behavior documented in `fetching-data.md`, `metadata-and-og-images.md`, and `testing.md`.
 
 ## Framework-generated files
 
@@ -313,15 +318,18 @@ When a task involves Prisma PHP CLI usage, keep the command guidance aligned wit
 
 For normal full-stack Prisma PHP work, assume the user wants the PulsePoint-first approach unless they explicitly ask otherwise.
 
-PulsePoint is the primary JavaScript authoring model for frontend work in Prisma PHP. For normal page behavior, keep the client logic inside a plain inline `<script>` within the route or imported-partial root, let Prisma PHP scope and execute it, and prefer `pp.fetchFunction(...)` over ad hoc endpoints.
+PulsePoint is the primary JavaScript authoring model for frontend work in Prisma PHP. For normal page behavior, keep the client logic inside a plain inline `<script>` within the route or imported-partial root, let Prisma PHP scope and execute it, and prefer `pp.rpc(...)` over ad hoc endpoints.
 
 Default interaction stack:
 
 1. render route UI with `index.php`
 2. keep browser-side interactivity in PulsePoint
-3. call backend PHP from the frontend with `pp.fetchFunction(...)`
+3. call backend PHP from the frontend with `pp.rpc(...)`
 4. mark callable PHP functions or methods with `#[Exposed]`
 5. validate and normalize input on the PHP side with `PP\Validator`
+6. use `pp.socket(...)` (named sockets) only when the flow is genuinely long-lived and bidirectional — chat, presence, live feeds
+
+`pp.rpc(...)` is the current runtime API. The former `pp.fetchFunction(...)` does not exist any more — never generate or document it. Framework-level RPC failures (unknown function, auth, roles, CSRF, origin, rate limit, server error) arrive as HTTP error statuses with an `{"error": "..."}` body and **reject** the `pp.rpc(...)` promise, so wrap calls in `try/catch` when the UI reacts to failures. Routine, expected validation feedback should still be returned as structured data (`success`, `errors`, normalized values), not thrown.
 
 Treat this as the default for:
 
@@ -343,7 +351,7 @@ Do **not** default to:
 - a PHP-only interaction style
 - plain browser-DOM wiring when PulsePoint state, bindings, and native `on*` handlers already fit the task
 - ad hoc `fetch('/api/...')` patterns
-- extra `route.php` files for page-local interactions that already fit `pp.fetchFunction(...)`
+- extra `route.php` files for page-local interactions that already fit `pp.rpc(...)`
 - a separate Node realtime or tool server when the documented Prisma PHP runtime already fits the task
 
 Choose a more PHP-only or handler-only pattern only when:
@@ -447,19 +455,19 @@ Important metadata rules:
 
 ## Streaming and SSE rules
 
-Prisma PHP supports streaming through `pp.fetchFunction(...)` when an exposed function yields values.
+Prisma PHP supports streaming through `pp.rpc(...)` when an exposed function yields values.
 
 Default streaming rules:
 
 - prefer an exposed generator that simply yields strings or arrays
-- let Prisma PHP handle the SSE response automatically for normal `pp.fetchFunction(...)` streaming
+- let Prisma PHP handle the SSE response automatically for normal `pp.rpc(...)` streaming
 - on the client, put stream UI updates in `onStream`, `onStreamError`, and `onStreamComplete`
 - do not wait for a final JSON payload when the response is streamed
 
 Current parsing rules AI should know:
 
 - Prisma PHP sends streamed payloads as SSE `data:` lines
-- the built-in `pp.fetchFunction(...)` stream parser currently forwards only `data:` lines to `onStream`
+- the built-in `pp.rpc(...)` stream parser currently forwards only `data:` lines to `onStream`
 - `event:`, `id:`, and `retry:` may be emitted by low-level SSE helpers, but the built-in stream callback currently ignores them
 - prefer JSON values or single-line strings for streamed chunks instead of multi-line text blobs
 
@@ -488,7 +496,7 @@ Important: creating a route means creating or updating the correct folder and ro
 - use `error.php` for route or app-level error UI
 - use `loading.php` when the task is specifically about a loading UI state for a route subtree
 
-For normal route-local interactivity, prefer `index.php` plus PulsePoint and `pp.fetchFunction(...)` over inventing extra handlers.
+For normal route-local interactivity, prefer `index.php` plus PulsePoint and `pp.rpc(...)` over inventing extra handlers.
 
 In a consumer app, also verify `backendOnly` in `prisma-php.json`:
 
@@ -617,26 +625,34 @@ Important env rules:
 
 ## WebSocket rules
 
-When the task involves realtime messaging, presence, live dashboards, `Ratchet`, or browser `WebSocket`, read `websocket.md` first.
+When the task involves realtime messaging, presence, live dashboards, chat, `pp.socket(...)`, or `Ratchet`, read `websocket.md` first.
 
-Prisma PHP websocket support follows a Ratchet-based PHP server plus a `ConnectionManager` under `src/Lib/Websocket`. Do not replace that default with Socket.IO, a separate Node server, or an unrelated hosted realtime service unless the user explicitly asks for a different architecture.
+Prisma PHP realtime support is built on **named sockets**: `pp.socket(name, args, handlers)` in the browser, and a Ratchet-based server under `src/Lib/Websocket` that dispatches each connection to a handler registered with `SocketRegistry`. Do not replace that default with Socket.IO, a separate Node server, raw `new WebSocket(...)` wiring, or an unrelated hosted realtime service unless the user explicitly asks for a different architecture.
 
 Use this websocket workflow:
 
 1. read `websocket.md`
 2. inspect whether websocket support is enabled in `prisma-php.json` in the target app
-3. inspect `src/Lib/Websocket`
-4. inspect the route or client script that opens the browser `WebSocket`
+3. inspect `src/Lib/Websocket`, especially `sockets.php` for the registered socket names
+4. inspect the route script that calls `pp.socket(...)`
 5. inspect `settings/restart-websocket.ts` when local restart behavior matters
 6. inspect framework internals only when the docs do not answer the task
 
 Important websocket rules:
 
+- connect from the browser with `pp.socket(name, args, handlers)`; do **not** generate raw `new WebSocket(...)` wiring for app realtime work
+- register server handlers with `SocketRegistry::register(...)` in `src/Lib/Websocket/sockets.php`; socket names are unique application-wide
+- do not put socket handlers in route files — route files are not loaded by the socket server process
+- keep the wire contract intact: one endpoint (`/__pulsepoint/ws`), the function named in the `name` query parameter, arguments as the connection's first JSON frame, one JSON value per frame in either direction, and `{"error": "..."}` (that key alone) reserved for failures
 - use `src/Lib/Websocket/websocket-server.php` as the source of truth for startup behavior
-- use `src/Lib/Websocket/ConnectionManager.php` as the lifecycle boundary for clients and broadcasts
-- preserve documented env vars and defaults: `WS_NAME`, `WS_VERSION`, `WS_HOST`, `WS_PORT`, `WS_VERBOSE`, `APP_TIMEZONE`
+- use `src/Lib/Websocket/ConnectionManager.php` as the wire and lifecycle boundary (handshake security, argument frame, dispatch, limits)
+- use `SocketPool` for broadcasts; keep authenticated and guest traffic in separate pools
+- declare auth with `requireAuth` / `allowedRoles` at registration; the handshake is verified against the JWT auth cookie before the handler runs
+- a `Socket::send(...)` that returns `false` means the browser is gone — stop sending, it is not an error
+- preserve documented env vars and defaults: `WS_NAME`, `WS_VERSION`, `WS_HOST`, `WS_PORT`, `WS_VERBOSE`, `APP_TIMEZONE`, `MAX_WEBSOCKET_CONNECTIONS`, `MAX_WEBSOCKET_MESSAGE_BYTES`, `MAX_WEBSOCKET_MESSAGES_PER_WINDOW`, `WEBSOCKET_RATE_WINDOW_SECONDS`, `WEBSOCKET_IDLE_TIMEOUT_SECONDS`, `WEBSOCKET_ALLOWED_ORIGINS`
 - preserve CLI overrides through `--host=...`, `--port=...`, and `--verbose=...`
 - preserve the documented casing `src/Lib/Websocket`
+- in development, `settings/bs-config.ts` proxies `/__pulsepoint/ws` from the BrowserSync origin to the Ratchet server, so `pp.socket(...)` needs no `url` option; pass `url` only outside that proxy
 - for existing apps, enable `websocket` in `prisma-php.json` and run `npx pp update project -y` before inventing manual scaffolding
 
 ## MCP rules
@@ -688,7 +704,7 @@ Important ORM rules:
 
 ## Validation rules
 
-When a task involves user input, form handling, search params, JSON payloads, `pp.fetchFunction(...)`, `route.php` bodies, or tool parameters, do not trust raw values.
+When a task involves user input, form handling, search params, JSON payloads, `pp.rpc(...)`, `route.php` bodies, or tool parameters, do not trust raw values.
 
 Default Prisma PHP validation rules:
 
@@ -717,7 +733,7 @@ Also follow these rules:
 
 - treat PulsePoint as the primary JavaScript authoring model for normal full-stack frontend work
 - keep page and imported-partial client logic inside the boundary's plain `<script>` tag instead of building extra DOM-ready or self-executing wrappers
-- prefer `pp.fetchFunction(...)` over ad hoc `fetch('/api/...')` calls for page-local PHP interactions
+- prefer `pp.rpc(...)` over ad hoc `fetch('/api/...')` calls for page-local PHP interactions
 - reserve plain browser JavaScript outside PulsePoint for external libraries, low-level browser APIs, and reusable helpers in `ts/`
 - do not invent undocumented PulsePoint helpers or directives
 - do not write React, Vue, Alpine, or Livewire syntax and call it PulsePoint

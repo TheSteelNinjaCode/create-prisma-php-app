@@ -16,6 +16,7 @@ use Exception;
 use InvalidArgumentException;
 use ArrayObject;
 use PP\Env;
+use PP\Security\Csrf;
 
 class Auth
 {
@@ -166,11 +167,15 @@ class Auth
     /**
      * Verifies the JWT token and returns the decoded payload if the token is valid.
      * If the token is invalid or expired, null is returned.
-     * 
-     * @param string $jwt The JWT token to verify.
-     * @return object|null Returns the decoded payload if the token is valid, or null if invalid or expired.
+     *
+     * The payload is whatever `signIn(...)` stored: a scalar such as a role
+     * string, or an object for structured user data — so the return type is
+     * `mixed`, with `null` reserved for an invalid or expired token.
+     *
+     * @param string|null $jwt The JWT token to verify.
+     * @return mixed The decoded payload, or null if invalid or expired.
      */
-    public function verifyToken(?string $jwt): ?object
+    public function verifyToken(?string $jwt): mixed
     {
         try {
             if (!$jwt) return null;
@@ -260,27 +265,9 @@ class Auth
 
     public function rotateCsrfToken(): void
     {
-        $secret = Env::string('FUNCTION_CALL_SECRET', '');
-
-        if ($secret === '') {
-            throw new InvalidArgumentException('FUNCTION_CALL_SECRET is required for CSRF protection.');
-        }
-
-        $nonce = bin2hex(random_bytes(16));
-        $signature = hash_hmac('sha256', $nonce, $secret);
-        $token = $nonce . '.' . $signature;
-
-        if (!headers_sent()) {
-            setcookie('prisma_php_csrf', $token, [
-                'expires'  => time() + 3600, // 1 hour validity
-                'path'     => '/',
-                'secure'   => $this->isHttpsRequest(),
-                'httponly' => false, // Must be FALSE so client JS can read it
-                'samesite' => 'Lax',
-            ]);
-        }
-
-        $_COOKIE['prisma_php_csrf'] = $token;
+        // The PulsePoint runtime reads the `pp_csrf` cookie family; issuing
+        // and naming live in one place so every writer stays aligned.
+        Csrf::rotate();
     }
 
     /**

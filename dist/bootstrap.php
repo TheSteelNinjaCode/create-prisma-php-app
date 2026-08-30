@@ -31,7 +31,20 @@ use PP\Attributes\Exposed;
 use PP\Attributes\ExposedRegistry;
 use PP\Streaming\SSE;
 use PP\Security\RateLimiter;
+use PP\Security\Csrf;
 use PP\Env;
+
+/**
+ * An RPC failure meant for the wire: message plus HTTP status, serialized as
+ * `{"error": "..."}` — the shape the PulsePoint runtime reads.
+ */
+final class RpcError extends RuntimeException
+{
+    public function __construct(string $message, public readonly int $status)
+    {
+        parent::__construct($message);
+    }
+}
 
 final class Bootstrap extends RuntimeException
 {
@@ -43,7 +56,6 @@ final class Bootstrap extends RuntimeException
     public static bool $isContentIncluded = false;
     public static bool $isChildContentIncluded = false;
     public static bool $isContentVariableIncluded = false;
-    public static bool $secondRequestC69CD = false;
     public static array $requestFilesData = [];
 
     private string $context;
@@ -94,9 +106,7 @@ final class Bootstrap extends RuntimeException
         MainLayout::init();
         ErrorHandler::registerHandlers();
 
-        self::setCsrfCookie();
-
-        self::$secondRequestC69CD = Request::$data['secondRequestC69CD'] ?? false;
+        Csrf::ensureCookie();
 
         $contentInfo = self::determineContentToInclude();
         self::$contentToInclude = $contentInfo['path'] ?? '';
@@ -137,73 +147,94 @@ final class Bootstrap extends RuntimeException
         ErrorHandler::checkFatalError();
     }
 
-    private static function setCsrfCookie(): void
+    /**
+     * Anti-CSRF origin check for RPC calls. NOT authentication: a browser
+     * cannot forge the Origin header, so this blocks cross-site script-driven
+     * calls; raw clients are handled by the CSRF token and auth gates.
+     *
+     * @return string|null An error message, or null when the origin is fine.
+     */
+    private static function validateRpcOrigin(): ?string
     {
-        $secret = Env::string('FUNCTION_CALL_SECRET', '');
-
-        if ($secret === '') {
-            throw new RuntimeException('FUNCTION_CALL_SECRET is required for CSRF protection.');
+        $origin = rtrim(trim($_SERVER['HTTP_ORIGIN'] ?? ''), '/');
+        if ($origin === '') {
+            return null;
         }
-        $shouldRegenerate = true;
 
-        if (isset($_COOKIE['prisma_php_csrf'])) {
-            $parts = explode('.', $_COOKIE['prisma_php_csrf']);
-            if (count($parts) === 2) {
-                [$nonce, $signature] = $parts;
-                $expectedSignature = hash_hmac('sha256', $nonce, $secret);
-
-                if (hash_equals($expectedSignature, $signature)) {
-                    $shouldRegenerate = false;
-                }
+        if (Env::string('APP_ENV', 'production') !== 'production') {
+            if (preg_match('#^http://(localhost|127\.0\.0\.1)(:\d+)?$#i', $origin)) {
+                return null;
             }
         }
 
-        if ($shouldRegenerate) {
-            $nonce = bin2hex(random_bytes(16));
-            $signature = hash_hmac('sha256', $nonce, $secret);
-            $token = $nonce . '.' . $signature;
+        $allowedOrigins = [rtrim(Request::$protocol . Request::$domainName, '/')];
 
-            setcookie('prisma_php_csrf', $token, [
-                'expires'  => time() + 3600,
-                'path'     => '/',
-                'secure'   => self::isHttpsRequest(),
-                'httponly' => false,
-                'samesite' => 'Lax',
-            ]);
-
-            $_COOKIE['prisma_php_csrf'] = $token;
+        $baseUrl = rtrim(Env::string('APP_BASE_URL', ''), '/');
+        if ($baseUrl !== '') {
+            $allowedOrigins[] = $baseUrl;
         }
+
+        foreach (self::parseOriginList(Env::string('CORS_ALLOWED_ORIGINS', '')) as $allowed) {
+            $allowedOrigins[] = $allowed;
+        }
+
+        return in_array($origin, $allowedOrigins, true) ? null : 'Invalid origin';
     }
 
-    private static function validateCsrfToken(): void
+    /**
+     * Parse an origin list env value: CSV or a JSON array, the same formats
+     * CorsMiddleware accepts.
+     *
+     * @return string[]
+     */
+    private static function parseOriginList(string $raw): array
     {
-        $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-        $cookieToken = $_COOKIE['prisma_php_csrf'] ?? '';
-        $secret = Env::string('FUNCTION_CALL_SECRET', '');
-
-        if ($secret === '') {
-            self::jsonExit(['success' => false, 'error' => 'CSRF secret is not configured']);
+        $raw = trim($raw);
+        if ($raw === '' || $raw === '[]') {
+            return [];
         }
 
-        if (empty($headerToken) || empty($cookieToken)) {
-            self::jsonExit(['success' => false, 'error' => 'CSRF token missing']);
+        $values = null;
+        if ($raw[0] === '[') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $values = array_map('strval', $decoded);
+            }
         }
 
-        if (!hash_equals($cookieToken, $headerToken)) {
-            self::jsonExit(['success' => false, 'error' => 'CSRF token mismatch']);
+        $values ??= explode(',', $raw);
+
+        $origins = [];
+        foreach ($values as $value) {
+            $value = rtrim(trim($value), '/');
+            if ($value !== '') {
+                $origins[] = $value;
+            }
         }
 
-        $parts = explode('.', $cookieToken);
-        if (count($parts) !== 2) {
-            self::jsonExit(['success' => false, 'error' => 'Invalid CSRF token format']);
+        return $origins;
+    }
+
+    /**
+     * RPC bodies are JSON or multipart uploads; any other content type with a
+     * body is refused with 415, matching the runtime's error handling.
+     */
+    private static function isRpcContentTypeAllowed(): bool
+    {
+        $contentType = strtolower(Request::$contentType);
+        if (
+            str_starts_with($contentType, 'application/json')
+            || str_starts_with($contentType, 'multipart/form-data')
+        ) {
+            return true;
         }
 
-        [$nonce, $signature] = $parts;
-        $expectedSignature = hash_hmac('sha256', $nonce, $secret);
-
-        if (!hash_equals($expectedSignature, $signature)) {
-            self::jsonExit(['success' => false, 'error' => 'Invalid CSRF token signature']);
+        $contentLength = $_SERVER['CONTENT_LENGTH'] ?? $_SERVER['HTTP_CONTENT_LENGTH'] ?? null;
+        if ($contentLength !== null) {
+            return (int) $contentLength <= 0;
         }
+
+        return strtolower((string) ($_SERVER['HTTP_TRANSFER_ENCODING'] ?? '')) === '';
     }
 
     private static function fileExistsCached(string $path): bool
@@ -950,21 +981,35 @@ final class Bootstrap extends RuntimeException
         $callbackName = $_SERVER['HTTP_X_PP_FUNCTION'] ?? null;
 
         if (empty($callbackName)) {
-            self::jsonExit(['success' => false, 'error' => 'Callback header not provided', 'response' => null]);
+            self::jsonExit(['error' => 'Missing function name'], 400);
         }
 
-        self::validateCsrfToken();
-
         if (!preg_match('/^[a-zA-Z0-9_:\->]+$/', $callbackName)) {
-            self::jsonExit(['success' => false, 'error' => 'Invalid callback format']);
+            self::jsonExit(['error' => 'Invalid function name'], 400);
+        }
+
+        if (($error = self::validateRpcOrigin()) !== null) {
+            self::jsonExit(['error' => $error], 403);
+        }
+
+        if (!self::isRpcContentTypeAllowed()) {
+            self::jsonExit(['error' => 'Invalid content type'], 415);
+        }
+
+        if (($error = Csrf::validateHeaderToken($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')) !== null) {
+            self::jsonExit(['error' => $error], 403);
         }
 
         $data = self::getRequestData();
         $args = self::convertToArrayObject($data);
 
-        $out = str_contains($callbackName, '->') || str_contains($callbackName, '::')
-            ? self::dispatchMethod($callbackName, $args)
-            : self::dispatchFunction($callbackName, $args);
+        try {
+            $out = str_contains($callbackName, '->') || str_contains($callbackName, '::')
+                ? self::dispatchMethod($callbackName, $args)
+                : self::dispatchFunction($callbackName, $args);
+        } catch (RpcError $e) {
+            self::jsonExit(['error' => $e->getMessage()], $e->status);
+        }
 
         if ($out instanceof SSE) {
             $out->send();
@@ -976,14 +1021,18 @@ final class Bootstrap extends RuntimeException
             exit;
         }
 
-        if ($out !== null) {
-            self::jsonExit($out);
-        }
-        exit;
+        // Always emit valid JSON — the runtime parses every non-stream RPC
+        // response, so a null result must arrive as the JSON literal `null`.
+        self::jsonExit($out);
     }
 
-    private static function jsonExit(mixed $payload): void
+    private static function jsonExit(mixed $payload, int $status = 200): void
     {
+        if (!headers_sent()) {
+            http_response_code($status);
+            header('Content-Type: application/json; charset=UTF-8');
+        }
+
         echo json_encode($payload, JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -991,7 +1040,18 @@ final class Bootstrap extends RuntimeException
     private static function getRequestData(): array
     {
         if (!empty($_FILES)) {
-            $data = $_POST;
+            // Non-file values in an RPC multipart body are JSON-encoded by
+            // the runtime (objects/arrays) or stringified scalars; decode
+            // what parses so `{count: 2}` arrives as a number, not "2".
+            $data = [];
+            foreach ($_POST as $key => $value) {
+                if (is_string($value)) {
+                    $decoded = json_decode($value, true);
+                    $data[$key] = json_last_error() === JSON_ERROR_NONE ? $decoded : $value;
+                } else {
+                    $data[$key] = $value;
+                }
+            }
             foreach ($_FILES as $key => $file) {
                 $data[$key] = is_array($file['name'])
                     ? array_map(
@@ -1015,69 +1075,41 @@ final class Bootstrap extends RuntimeException
         return (json_last_error() === JSON_ERROR_NONE) ? $json : $_POST;
     }
 
-    private static function validateAccess(Exposed $attribute): bool
+    /**
+     * Authorize the caller for one exposed function, mirroring the reference
+     * server: 401 when auth is required and missing, 403 on a role mismatch.
+     */
+    private static function authorizeAccess(Exposed $attribute): void
     {
-        if ($attribute->requiresAuth || !empty($attribute->allowedRoles)) {
-            $auth = Auth::getInstance();
-
-            if (!$auth->isAuthenticated()) {
-                return false;
-            }
-
-            if (!empty($attribute->allowedRoles)) {
-                $payload = $auth->getPayload();
-                $currentRole = null;
-
-                if (is_scalar($payload)) {
-                    $currentRole = $payload;
-                } else {
-                    $roleKey = !empty(Auth::ROLE_NAME) ? Auth::ROLE_NAME : 'role';
-
-                    if (is_object($payload)) {
-                        $currentRole = $payload->$roleKey ?? null;
-                    } elseif (is_array($payload)) {
-                        $currentRole = $payload[$roleKey] ?? null;
-                    }
-                }
-
-                if ($currentRole === null || !in_array($currentRole, $attribute->allowedRoles)) {
-                    return false;
-                }
-            }
+        if (!$attribute->requiresAuth && empty($attribute->allowedRoles)) {
+            return;
         }
 
-        return true;
-    }
+        $auth = Auth::getInstance();
 
-    private static function isFunctionAllowed(string $fn): bool
-    {
-        try {
-            $ref = new ReflectionFunction($fn);
-            $attrs = $ref->getAttributes(Exposed::class);
-
-            if (empty($attrs)) {
-                return false;
-            }
-
-            return self::validateAccess($attrs[0]->newInstance());
-        } catch (Throwable) {
-            return false;
+        if (!$auth->isAuthenticated()) {
+            throw new RpcError('Authentication required', 401);
         }
-    }
 
-    private static function isMethodAllowed(string $class, string $method): bool
-    {
-        try {
-            $ref = new ReflectionMethod($class, $method);
-            $attrs = $ref->getAttributes(Exposed::class);
+        if (!empty($attribute->allowedRoles)) {
+            $payload = $auth->getPayload();
+            $currentRole = null;
 
-            if (empty($attrs)) {
-                return false;
+            if (is_scalar($payload)) {
+                $currentRole = $payload;
+            } else {
+                $roleKey = !empty(Auth::ROLE_NAME) ? Auth::ROLE_NAME : 'role';
+
+                if (is_object($payload)) {
+                    $currentRole = $payload->$roleKey ?? null;
+                } elseif (is_array($payload)) {
+                    $currentRole = $payload[$roleKey] ?? null;
+                }
             }
 
-            return self::validateAccess($attrs[0]->newInstance());
-        } catch (Throwable) {
-            return false;
+            if ($currentRole === null || !in_array($currentRole, $attribute->allowedRoles)) {
+                throw new RpcError('Permission denied', 403);
+            }
         }
     }
 
@@ -1110,7 +1142,33 @@ final class Bootstrap extends RuntimeException
         }
 
         if ($limits) {
-            RateLimiter::verify($identifier, $limits);
+            try {
+                RateLimiter::verify($identifier, $limits);
+            } catch (Throwable $e) {
+                throw new RpcError('Rate limit exceeded. Try again later.', 429);
+            }
+        }
+    }
+
+    /**
+     * Run one exposed callable and translate its failures onto the wire:
+     * `InvalidArgumentException` is a message meant for the caller (400, the
+     * validation convention), anything else is a 500.
+     */
+    private static function invokeExposed(callable $callable, mixed $args): mixed
+    {
+        try {
+            return call_user_func($callable, $args);
+        } catch (RpcError $e) {
+            throw $e;
+        } catch (InvalidArgumentException $e) {
+            throw new RpcError($e->getMessage(), 400);
+        } catch (Throwable $e) {
+            if (Env::string('SHOW_ERRORS', 'false') === 'false') {
+                throw new RpcError('Internal server error', 500);
+            }
+
+            throw new RpcError("Function error: {$e->getMessage()}", 500);
         }
     }
 
@@ -1123,39 +1181,21 @@ final class Bootstrap extends RuntimeException
             }
         }
 
-        if (!self::isFunctionAllowed($fn)) {
-            return ['success' => false, 'error' => 'Function not callable from client'];
+        if (!function_exists($fn) || !is_callable($fn)) {
+            throw new RpcError('Function not found', 404);
         }
 
         $attribute = self::getExposedAttribute($fn);
-        if (!self::validateAccess($attribute)) {
-            return ['success' => false, 'error' => 'Permission denied'];
+        if ($attribute === null) {
+            // Existing but not #[Exposed]: indistinguishable from absent, on
+            // purpose — the wire must not reveal which functions exist.
+            throw new RpcError('Function not found', 404);
         }
 
-        if (function_exists($fn) && is_callable($fn)) {
-            try {
-                self::enforceRateLimit($attribute, "fn:$fn");
+        self::authorizeAccess($attribute);
+        self::enforceRateLimit($attribute, "fn:$fn");
 
-                $res = call_user_func($fn, $args);
-
-                if ($res instanceof Generator || $res instanceof SSE) {
-                    return $res;
-                }
-
-                return $res;
-            } catch (Throwable $e) {
-                if ($e->getMessage() === 'Rate limit exceeded. Try again later.') {
-                    return ['success' => false, 'error' => $e->getMessage()];
-                }
-
-                if (Env::string('SHOW_ERRORS', 'false') === 'false') {
-                    return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
-                } else {
-                    return ['success' => false, 'error' => "Function error: {$e->getMessage()}"];
-                }
-            }
-        }
-        return ['success' => false, 'error' => 'Invalid callback'];
+        return self::invokeExposed($fn, $args);
     }
 
     private static function dispatchMethod(string $call, mixed $args)
@@ -1178,51 +1218,31 @@ final class Bootstrap extends RuntimeException
         }
 
         if (!class_exists($class)) {
-            return ['success' => false, 'error' => "Class '$requested' not found"];
-        }
-
-        if (!self::isMethodAllowed($class, $method)) {
-            return ['success' => false, 'error' => 'Method not callable from client'];
+            throw new RpcError('Function not found', 404);
         }
 
         $attribute = self::getExposedAttribute($class, $method);
-        if (!$attribute) {
-            return ['success' => false, 'error' => 'Method not callable from client'];
+        if ($attribute === null) {
+            throw new RpcError('Function not found', 404);
         }
 
-        if (!self::validateAccess($attribute)) {
-            return ['success' => false, 'error' => 'Permission denied'];
+        self::authorizeAccess($attribute);
+        self::enforceRateLimit($attribute, "method:$class::$method");
+
+        if ($isStatic) {
+            if (!is_callable([$class, $method])) {
+                throw new RpcError('Function not found', 404);
+            }
+
+            return self::invokeExposed([$class, $method], $args);
         }
 
-        try {
-            self::enforceRateLimit($attribute, "method:$class::$method");
-
-            $res = null;
-            if (!$isStatic) {
-                $instance = new $class();
-                if (!is_callable([$instance, $method])) throw new Exception("Method not callable");
-                $res = call_user_func([$instance, $method], $args);
-            } else {
-                if (!is_callable([$class, $method])) throw new Exception("Static method invalid");
-                $res = call_user_func([$class, $method], $args);
-            }
-
-            if ($res instanceof Generator || $res instanceof SSE) {
-                return $res;
-            }
-
-            return $res;
-        } catch (Throwable $e) {
-            if ($e->getMessage() === 'Rate limit exceeded. Try again later.') {
-                return ['success' => false, 'error' => $e->getMessage()];
-            }
-
-            if (Env::string('SHOW_ERRORS', 'false') === 'false') {
-                return ['success' => false, 'error' => 'An error occurred. Please try again later.'];
-            } else {
-                return ['success' => false, 'error' => "Call error: {$e->getMessage()}"];
-            }
+        $instance = new $class();
+        if (!is_callable([$instance, $method])) {
+            throw new RpcError('Function not found', 404);
         }
+
+        return self::invokeExposed([$instance, $method], $args);
     }
 
     private static function resolveClassImport(string $simpleClassKey): ?array
@@ -1333,7 +1353,7 @@ final class Bootstrap extends RuntimeException
                 array_merge($currentData[$currentUrl]['includedFiles'], $srcAppFiles)
             ));
 
-            if (!Request::$isWire && !self::$secondRequestC69CD) {
+            if (!Request::$isRpc) {
                 $currentData[$currentUrl]['isCacheable'] = CacheHandler::$isCacheable;
             }
         } else {
@@ -1500,7 +1520,7 @@ try {
     }
 
     if (!Bootstrap::$isContentIncluded && !Bootstrap::$isChildContentIncluded) {
-        if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
+        if (Request::$isRpc) {
             if (isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
                 foreach (Bootstrap::$requestFilesData[Request::$decodedUri]['includedFiles'] as $file) {
                     if (file_exists($file)) {
@@ -1512,14 +1532,14 @@ try {
             }
         }
 
-        if (Request::$isWire && !Bootstrap::$secondRequestC69CD) {
+        if (Request::$isRpc) {
             while (ob_get_level() > 0) {
                 ob_end_clean();
             }
             Bootstrap::wireCallback();
         }
 
-        if ((!Request::$isWire && !Bootstrap::$secondRequestC69CD) && isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
+        if (!Request::$isRpc && isset(Bootstrap::$requestFilesData[Request::$decodedUri])) {
             $cacheEnabled = (Env::string('CACHE_ENABLED', 'false') === 'true');
 
             $shouldCache = CacheHandler::$isCacheable === true
@@ -1555,15 +1575,13 @@ try {
 
         MainLayout::$html = "<!DOCTYPE html>\n" . MainLayout::$html;
 
-        if (!Bootstrap::$secondRequestC69CD) {
-            Bootstrap::createUpdateRequestData();
-        }
+        Bootstrap::createUpdateRequestData();
 
         if (
             http_response_code() === 200
             && isset(Bootstrap::$requestFilesData[Request::$decodedUri]['fileName'])
             && $shouldCache
-            && (!Request::$isWire && !Bootstrap::$secondRequestC69CD)
+            && !Request::$isRpc
         ) {
             CacheHandler::saveCache(Request::$decodedUri, MainLayout::$html);
         }

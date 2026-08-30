@@ -36,10 +36,14 @@ If you are using XAMPP on Windows, enabling `extension=zip` in `php.ini` is reco
 Prisma PHP brings together the core pieces needed to build full-stack PHP apps:
 
 - **Native PHP + modern reactivity** with PulsePoint
+- **Direct RPC from the frontend** with `pp.rpc(...)` calling `#[Exposed]` PHP functions — JSON in, JSON out, SSE streaming when the function yields, and framework failures reported as real HTTP statuses
+- **Named sockets for realtime** with `pp.socket(...)` — long-lived bidirectional messaging (chat, presence, live feeds) served by a Ratchet-based socket server with per-socket auth, origin checks, and rate limits
 - **PHPX component system** for reusable UI composition
 - **Prisma PHP ORM** for schema-first, type-safe database access
 - **Built-in authentication patterns** for sessions, route protection, RBAC, credentials auth, and provider login
+- **Hardened request pipeline** with double-submit CSRF (`pp_csrf` cookie family), origin validation, content-type checks, and per-function rate limiting
 - **File-based routing** with clear route file conventions
+- **App-level test suite** with PHPUnit in a root `tests/` directory, run with `npm run test`, feature-aware via `prisma-php.json`
 - **CLI scaffolding** for new apps, starter kits, and optional features
 - **Flexible deployment options** for local development and production workflows
 
@@ -117,7 +121,10 @@ Use these docs as the main entry points for common work:
 - `project-structure.md` for project structure, route placement, and file conventions
 - `layouts-and-pages.md` for pages, layouts, nested routes, and dynamic routes
 - `components.md` for PHPX components, props, children, fragments, icons, buttons, and composition
-- `fetching-data.md` for `pp.fetchFunction(...)`, `#[Exposed]`, and interactive backend flows
+- `fetching-data.md` for `pp.rpc(...)`, `#[Exposed]`, streaming, and the RPC error contract
+- `websocket.md` for named sockets, `pp.socket(...)`, `SocketRegistry`, and the realtime wire contract
+- `bootstrap-runtime.md` for the runtime init order, PulsePoint wire headers, and the `pp_csrf` CSRF contract
+- `testing.md` for the root `tests/` directory, `npm run test`, and feature-gated tests
 - `prisma-php-orm.md` for Prisma ORM, `schema.prisma`, migrations, and generated PHP classes
 - `authentication.md` for auth strategy, sessions, RBAC, credentials auth, and provider flows
 - `file-manager.md` for uploads, `multipart/form-data`, `$_FILES`, and `PP\FileManager\UploadFile`
@@ -152,13 +159,15 @@ For task-specific route decision rules and framework generation rules, read `AGE
 
 ## PulsePoint and Frontend Reactivity
 
-Prisma PHP uses PulsePoint for browser-side reactivity.
+Prisma PHP uses PulsePoint for browser-side reactivity and as the wire between the page and PHP.
 
 When working with runtime features such as:
 
 - `pp.state`
 - `pp.effect`
 - `pp.ref`
+- `pp.rpc` for frontend-to-PHP calls (with streaming, uploads, and redirects)
+- `pp.socket` for named-socket realtime messaging
 - `pp-for`
 - `pp-spread`
 - `pp-ref`
@@ -179,10 +188,22 @@ prisma-php-project/
 ├── public/            # public entry point and assets
 ├── settings/          # project configuration
 ├── src/               # application source code
+├── tests/             # app-level PHPUnit tests (npm run test)
 ├── package.json       # frontend/dev scripts
 ├── composer.json      # PHP dependencies
+├── phpunit.xml        # test suite configuration
 └── prisma-php.json    # Prisma PHP project capability manifest
 ```
+
+## Testing
+
+App tests live in the root `tests/` directory and run with:
+
+```bash
+npm run test
+```
+
+The suite runs PHPUnit on the PHP binary configured in `prisma-php.json`, uses a deterministic test environment (the real `.env` is never loaded), and is feature-aware: tests for optional features such as WebSocket skip cleanly when the feature is disabled in `prisma-php.json`. Read `testing.md` in the installed docs and the project's `tests/README.md` for the full contract.
 
 ## Updating Existing Projects
 
