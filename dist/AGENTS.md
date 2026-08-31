@@ -304,6 +304,22 @@ Important rules:
 - confirm the current `local`, `external`, `ui`, and `uiExternal` values in `./settings/bs-config.json` before suggesting a browser URL, route test URL, or BrowserSync UI URL
 - when frontend console logs, network errors, or terminal output suggest the app is being tested through the wrong URL or proxy port, re-check `./settings/bs-config.json` before changing app code
 
+## Frontend browser log
+
+During `npm run dev`, browser-side errors (every `console.error` / `console.warn` from page code -- PulsePoint `[PP-ERROR]` / `[PP-WARN]` diagnostics included -- plus uncaught errors and unhandled promise rejections; `console.log` stays in the browser) are forwarded to the dev terminal and appended to `.pp/browser-log.jsonl` by `settings/dev-log-bridge.ts`. This is the feedback signal for frontend health: after editing a route or component, check it instead of assuming the page mounted cleanly.
+
+Important rules:
+
+- run `npm run logs` (or `npm run logs -- --json` for machine-readable output) to get current per-route frontend status; it renders `.pp/browser-log.jsonl` via `settings/browser-log.ts`
+- prefer `npm run logs` over reading `.pp/browser-log.jsonl` directly; the raw file is history, not current state -- an error is superseded by a later `load` or `resolved` event for the same route
+- treat the session line first: `LIVE` means the dev server is running and the statuses are current; `stale`, `ended`, or `missing` mean the entries are history from an exited session, not the current state of the app
+- a route reported `CLEAN` means its most recent page load produced no errors; mount-phase errors are genuinely re-tested by a reload
+- a route reported `NEEDS RECHECK` holds interaction-phase errors (from clicks/submits) or errors carried across a source change; a reload does not re-test those, so repeat the interaction in a browser before treating them as fixed
+- a route reported `UNCONFIRMED` was reported by a tab loaded before the current log started; reload that route to confirm whether the error is still live
+- an empty log or an unlisted route means nobody opened that page this session -- that is no signal, not a pass; open the route in a browser (through the BrowserSync URL from `./settings/bs-config.json`) to generate one
+- the log is per dev session: `.pp/` is deleted at the start of every `npm run dev`, and every source change compacts the log so stale errors do not read as current
+- the bridge is development-only; it is injected by the BrowserSync proxy in `settings/bs-config.ts` and nothing about it ships to production builds
+
 ## CLI command alignment
 
 When a task involves Prisma PHP CLI usage, keep the command guidance aligned with `commands.md`.

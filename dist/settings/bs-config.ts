@@ -11,6 +11,13 @@ import { join, dirname, relative } from "path";
 import { getFileMeta, PUBLIC_DIR, SRC_DIR } from "./utils.js";
 import { updateComponentMap } from "./component-map";
 import { DebouncedWorker, createSrcWatcher, DEFAULT_AWF } from "./utils.js";
+import {
+  compactBrowserLog,
+  devLogMiddleware,
+  endBrowserLogSession,
+  injectDevLogScript,
+  startBrowserLogSession,
+} from "./dev-log-bridge.js";
 import chalk from "chalk";
 
 const { __dirname } = getFileMeta();
@@ -32,6 +39,12 @@ function getExternalIP(): string | null {
 
 const pipeline = new DebouncedWorker(
   async () => {
+    // Source edits invalidate the browser log: everything in it was produced by
+    // code that just changed. Compact rather than truncate, so an interaction
+    // error nobody has re-tested survives an unrelated save. Only `src/` edits
+    // land here; public-asset churn goes through `publicPipeline` untouched.
+    compactBrowserLog("source file change(s)");
+
     await generateFileListJson();
     await updateComponentMap();
 
@@ -140,6 +153,10 @@ bs.init(
     proxy: "http://localhost:3000",
     online: true,
     middleware: [
+      // Serves the browser console hook and receives its reports, so browser-side
+      // PulsePoint errors show up in this terminal (and `.pp/browser-log.jsonl`)
+      // instead of only in DevTools. First so its POSTs skip the proxy logger.
+      devLogMiddleware,
       pulsePointSocketProxy,
       (_req, res, next) => {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -198,6 +215,14 @@ bs.init(
             async (responseBuffer, proxyRes, _req, _res) => {
               const contentType = proxyRes.headers["content-type"] || "";
 
+              // Dev-only: inject the browser console bridge into full HTML
+              // documents so PulsePoint errors reach this terminal and the
+              // session log. Fragments without </head> pass through untouched,
+              // and nothing here runs outside `npm run dev`.
+              if (contentType.includes("text/html")) {
+                return injectDevLogScript(responseBuffer.toString("utf8"));
+              }
+
               if (!contentType.includes("application/json")) {
                 return responseBuffer;
               }
@@ -252,6 +277,11 @@ bs.init(
     }
 
     const bsPort = bsInstance.getOption("port");
+
+    // Open the session browser log once the port is settled: the header's port
+    // is how `npm run logs` tells a live session from a stale leftover file.
+    startBrowserLogSession(Number(bsPort) || 0);
+
     const urls = bsInstance.getOption("urls");
     const localUrl = urls.get("local") || `http://localhost:${bsPort}`;
     const externalIP = getExternalIP();
@@ -297,3 +327,16 @@ bs.init(
     console.log(`\n${chalk.gray("Press Ctrl+C to stop.")}\n`);
   },
 );
+
+// Close the browser log on the way out: a reader that finds no end marker
+// treats the session as abandoned, so a clean exit should say so.
+function shutdown(exitCode: number): void {
+  endBrowserLogSession();
+  if (bs.active) {
+    bs.exit();
+  }
+  process.exit(exitCode);
+}
+
+process.once("SIGINT", () => shutdown(0));
+process.once("SIGTERM", () => shutdown(0));
